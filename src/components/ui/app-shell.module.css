@@ -1,0 +1,53 @@
+.shell {
+  height: 100dvh;
+  background: var(--dx-bg);
+  color: var(--dx-text);
+}
+
+/* fixed topbar */
+.topbar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: var(--dx-top-bar-height);
+  background: var(--dx-topbar-bg);
+  border-bottom: 1px solid var(--dx-border);
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+}
+
+/* fixed sidebar */
+.sidebar {
+  position: fixed;
+  top: var(--dx-top-bar-height);
+  left: 0;
+  width: var(--dx-sidebar-width);
+  height: calc(100dvh - var(--dx-top-bar-height));
+  z-index: 10000;
+}
+
+/* collapsed */
+:root .shell[data-sidebar="collapsed"] .sidebar {
+  width: var(--dx-sidebar-collapsed-width);
+}
+
+/* scrolling content only */
+.content {
+  position: relative;
+  height: 100dvh;
+  overflow: auto;
+  padding-top: var(--dx-top-bar-height);
+  padding-left: var(--dx-sidebar-width);
+  padding-right: var(--page-padding-x);
+  padding-bottom: var(--page-padding-y);
+  background: var(--dx-bg);
+}
+:root .shell[data-sidebar="collapsed"] .content {
+  padding-left: var(--dx-sidebar-collapsed-width);
+}
+
+/* optional page width limiter */
+.content > * {
+  max-width: var(--dx-layout-max-width);
+  margin-inline: auto;
+}

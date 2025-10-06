@@ -1,0 +1,157 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --dx-top-bar-height: 56px;
+  --dx-sidebar-width: 272px;
+  --dx-sidebar-collapsed-width: 72px;
+
+  --page-padding-x: 24px;
+  --page-padding-y: 16px;
+
+  --dx-layout-max-width: 1440px;
+
+  --dx-bg: var(--surface-color);
+  --dx-text: var(--primary-text-color);
+  --dx-border: var(--layout-border-color);
+
+  --dx-topbar-bg: var(--topbar-background-color);
+  --dx-sidebar-bg: var(--sidebar-background-color);
+
+  --dx-radius-sm: 8px;
+  --dx-radius-md: 12px;
+  --dx-radius-lg: 16px;
+
+  --font-family:       Figtree, Roboto, "Noto Sans Hebrew", "Noto Kufi Arabic", "Noto Sans JP", system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+  --title-font-family: Poppins, Roboto, "Noto Sans Hebrew", "Noto Kufi Arabic", "Noto Sans JP", system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+
+
+  --font-12: 12px;
+  --font-14: 14px;
+  --font-16: 16px;
+  --font-18: 18px;
+  --lh-16: 16px;
+  --lh-20: 20px;
+  --lh-24: 24px;
+
+  --z-shell: 1;
+  --z-topbar: 1000;
+  --z-sidebar: 900;
+  --z-surface: 1100;
+  --z-surface-control: 1110;
+  --z-surface-content: 1120;
+
+  --shadow-topbar: 0 1px 0 rgba(0,0,0,.06);
+  --shadow-md: 0 8px 24px rgba(17,42,67,.08);
+
+  --dx-primary: var(--primary-color, #0073EA);
+  --dx-primary-hover: var(--primary-hover-color, #0060B9);
+  --dx-primary-selected: var(--primary-selected-color, #DEECFB);
+  --dx-primary-selected-hover: var(--primary-selected-hover-color, #C7DEF7);
+  --dx-primary-highlighted: var(--primary-highlighted-color, #F0F4FF);
+
+  --application-background-color: #ffffff;
+  --application-surface-color: #eceff8;
+  --application-border-color: #e6e9ef;
+
+  --dx-bg: var(--application-surface-color);
+  --dx-surface: var(--application-background-color);
+  --dx-border: var(--application-border-color);
+  --dx-text: #1f2328;
+
+  --dx-topbar-bg: var(--primary-nav-bg-color);
+  --dx-sidebar-bg: var(--primary-nav-bg-color);
+
+  --dx-sidebar-overlay-start: var(--application-background-color);
+  --dx-sidebar-overlay-end: var(--application-surface-color);
+
+  --page-padding-x: clamp(12px, 1.2vw, 24px);
+  --page-padding-y: 8px;
+}
+
+body#main.light-app-theme,
+body#main.default-app-theme {
+  --topbar-background-color: #e1eff2;
+  --sidebar-background-color: #e1eff2;
+
+  --primary-color: #007f9b;
+  --primary-hover-color: #006278;
+  --primary-selected-color: #d1ecef;
+  --primary-selected-hover-color: #c6dfe3;
+  --primary-highlighted-color: #e7f4f6;
+  --primary-surface-color: #e7f4f6;
+  --surface-color: #fcfcfc;
+  --primary-nav-bg-color: #c6dfe3;
+  --icon-color: #676879;
+
+  --primary-text-color: #323338;
+  --secondary-text-color: #676879;
+  --text-color-on-primary: #ffffff;
+  --disabled-text-color: rgba(50, 51, 56, var(--disabled-component-opacity, .38));
+
+  --primary-background-color: #ffffff;
+  --primary-background-hover-color: rgba(103, 104, 121, 0.1);
+  --secondary-background-color: #ffffff;
+  --allgrey-background-color: #f6f7fb;
+  --ui-border-color: #c3c6d4;
+  --ui-background-color: #e7e9ef;
+  --layout-border-color: #d0d4e4;
+
+  --color-basic_blue: #0073ea;
+  --positive-color: #00854d;
+  --negative-color: #d83a52;
+  --warning-color: #ffcb00;
+
+  --application-background-color: var(--primary-background-color);
+  --application-surface-color: var(--allgrey-background-color);
+  --application-border-color: var(--layout-border-color);
+
+  --dx-bg: var(--application-surface-color);
+  --dx-surface: var(--application-background-color);
+  --dx-border: var(--application-border-color);
+  --dx-text: var(--primary-text-color);
+
+  --dx-topbar-bg: var(--primary-nav-bg-color);
+  --dx-sidebar-bg: var(--primary-nav-bg-color);
+
+  --dx-sidebar-overlay-start: var(--primary-background-color);
+  --dx-sidebar-overlay-end: var(--dx-sidebar-bg);
+}
+
+body#main.dark-app-theme,
+body#main.black-app-theme {
+  --application-background-color: #181b34;
+  --application-surface-color: #292f4c;
+  --application-border-color: #4b4e69;
+
+  --dx-bg: var(--application-surface-color);
+  --dx-surface: var(--application-background-color);
+  --dx-border: var(--application-border-color);
+  --dx-text: #e9eaee;
+
+  --dx-topbar-bg: var(--application-background-color);
+  --dx-sidebar-bg: var(--application-background-color);
+
+  --dx-sidebar-overlay-start: var(--application-background-color);
+  --dx-sidebar-overlay-end: var(--application-surface-color);
+}
+
+html, body, #__next { height: 100%; }
+
+body {
+  background: var(--dx-bg);
+  overflow: hidden;
+  color: var(--dx-text);
+  font-family: var(--font-family);
+  font-size: var(--font-14);
+  line-height: var(--lh-20);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+
+*::selection { background: var(--dx-primary-selected); }
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--dx-primary); outline-offset: 2px; }
