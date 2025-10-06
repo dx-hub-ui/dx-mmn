@@ -1,0 +1,39 @@
+.layers {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;         /* above sidebar/canvas */
+  pointer-events: none;   /* only specific areas accept events */
+}
+
+/* ===== BYPASS (skip navigation) ===== */
+.bypass { position: absolute; top: 8px; left: 8px; pointer-events: auto; }
+.skipBtn {
+  position: absolute;
+  transform: translateY(-150%);
+  background: var(--dx-surface, #fff);
+  border: 1px solid rgb(9 30 66 / 10%);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+/* show when focused (keyboard users) */
+.skipBtn:focus { transform: none; }
+
+/* ===== SURFACE / CONTROL ===== */
+.surface { position: absolute; inset: 0; pointer-events: none; }
+.surfaceControl { position: absolute; inset: 0; pointer-events: none; }
+.topbarRow {
+  pointer-events: auto;              /* topbar is interactive */
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 1440px) 1fr;
+  align-items: center;
+  height: var(--dx-top-bar-height, 56px);
+}
+.topbarRow > * { grid-column: 2; height: 100%; display: flex; align-items: center; padding-inline: 12px; }
+.surfaceContent { pointer-events: none; }
+
+/* ===== ABSOLUTE SLOTS (menus / toasts / dialogs) ===== */
+.absSlot { position: absolute; inset: 0; pointer-events: none; }
+.absSlot > * { pointer-events: auto; }
+
+/* Useful helpers if you want “corner” placement for toasts later */
+.toastTopRight { position: absolute; top: 72px; right: 16px; pointer-events: auto; }
