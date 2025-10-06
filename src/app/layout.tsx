@@ -1,18 +1,13 @@
-import type { Metadata } from 'next';
-import './globals.css';
-import '@vibe/core/tokens';
+// src/app/layout.tsx
+import "./globals.css";
+import "monday-ui-style/dist/index.css"; // ✅ estilos base do Monday/Vibe
 
-export const metadata: Metadata = {
-  title: 'Vibe Starter',
-  description: 'Next.js + @vibe/core with monday-style App Shell'
-};
+export const metadata = { title: "DX Vibe" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body id="main" className="default-app-theme">
-        {children}
-      </body>
+      <body id="main" className="light-app-theme">{children}</body>
     </html>
   );
 }

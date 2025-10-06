@@ -1,0 +1,174 @@
+/* src/app/tables/tables.module.css */
+
+/* Página dentro do main do AppShell (sem paddings externos) */
+.page {
+  display: grid;
+  gap: var(--dx-page-gap, 16px);
+  min-width: 0; /* evita overflow horizontal dentro do grid do shell */
+  background: var(--primary-background-color);
+  border-radius: var(--dx-radius-md, 12px);
+}
+
+/* Header/card usam a superfície do app; nada de padding externo aqui */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--dx-surface, var(--surface-color));
+  border: 1px solid var(--dx-border, var(--layout-border-color));
+  border-radius: var(--dx-radius-md, 12px);
+  padding: 12px 16px;
+}
+
+.title {
+  margin: 0;
+  font: var(--dx-font-h4, 600 18px/28px var(--font-family, system-ui));
+  color: var(--dx-text, var(--primary-text-color));
+}
+
+.actions { display: inline-flex; gap: 8px; }
+
+/* Cards de seção */
+.card {
+  background: var(--dx-surface, var(--surface-color));
+  border: 1px solid var(--dx-border, var(--layout-border-color));
+  border-radius: var(--dx-radius-md, 12px);
+  overflow: hidden;
+}
+
+.cardHeader {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--dx-border, var(--layout-border-color));
+  background: var(--dx-topbar-bg, var(--topbar-background-color));
+}
+
+/* ===== Tabela ===== */
+.tableWrap {
+  overflow: auto;       /* scroll só aqui */
+  max-width: 100%;
+  /* ajuda sticky funcionar bem e melhora perf de scroll */
+  contain: layout paint;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font: var(--dx-font-body, 400 14px/20px var(--font-family, system-ui));
+  color: var(--dx-text, var(--primary-text-color));
+}
+
+/* Cabeçalho sticky dentro do .tableWrap */
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3; /* > primeira coluna */
+  text-align: left;
+  font-weight: 600;
+  background: var(--dx-surface, var(--surface-color));
+  border-bottom: 1px solid var(--dx-border, var(--layout-border-color));
+  padding: 10px 12px;
+  color: var(--secondary-text-color);
+  /* evita que sombras/bordas "vazem" no sticky */
+  background-clip: padding-box;
+}
+
+/* Primeira coluna sticky (label da linha) */
+.thSticky {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--dx-surface, var(--surface-color));
+  box-shadow: 1px 0 0 0 var(--dx-border, var(--layout-border-color));
+}
+
+.tr:nth-child(2n) {
+  background: color-mix(in oklab, var(--dx-surface, var(--surface-color)) 92%, var(--primary-selected-color) 8%);
+}
+
+.table td,
+.table th {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--dx-border, var(--layout-border-color));
+  vertical-align: middle;
+}
+
+.rowTitle { font-weight: 600; }
+
+/* Células auxiliares */
+.ownerCell { display: inline-flex; align-items: center; gap: 8px; }
+.avatar {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--primary-color);
+  box-shadow: 0 0 0 2px var(--dx-surface, var(--surface-color)) inset;
+}
+.ownerName { color: var(--dx-text, var(--primary-text-color)); }
+.dateCell { color: var(--secondary-text-color); }
+
+/* ===== Pills ===== */
+.pill {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 10px;
+  border-radius: 999px; font: 600 12px/20px var(--font-family, system-ui); color: #fff;
+}
+.pill_done { background: var(--positive-color); }
+.pill_working { background: var(--primary-color); }
+.pill_stuck { background: var(--negative-color); }
+
+/* ===== Chips ===== */
+.chip {
+  display: inline-flex; align-items: center; height: 24px; padding: 0 10px;
+  border-radius: 10px; font: 500 12px/20px var(--font-family, system-ui);
+  background: var(--primary-selected-color);
+  color: var(--primary-text-color);
+  border: 1px solid var(--ui-border-color);
+}
+.chip_low { background: #e7f4f6; }
+.chip_medium { background: #f5f0ff; }
+.chip_high { background: #fff4e5; }
+.chip_urgent { background: #ffe7ea; }
+
+/* ===== Form ===== */
+.form { display: grid; gap: 12px; padding: 16px; }
+.fieldRow { display: grid; gap: 6px; }
+
+.label { font: 600 12px/16px var(--font-family, system-ui); color: var(--secondary-text-color); }
+
+.input,
+.select {
+  display: inline-flex; width: 100%; height: 36px; padding: 0 12px;
+  border-radius: 8px; border: 1px solid var(--ui-border-color);
+  background: var(--primary-background-color);
+  color: var(--dx-text);
+  outline: none;
+}
+.input:focus,
+.select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 20%, transparent);
+}
+
+.fieldset {
+  padding: 10px 12px; border: 1px dashed var(--ui-border-color);
+  border-radius: 10px; display: flex; gap: 16px; align-items: center;
+}
+.legend { padding: 0 6px; color: var(--secondary-text-color); font: 600 12px/16px var(--font-family, system-ui); }
+.radio { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--dx-text); }
+
+.pillsRow,
+.chipsRow { display: flex; flex-wrap: wrap; gap: 8px; }
+.formActions { margin-top: 4px; display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ===== Modal (overlay na viewport; a página continua dentro do main) ===== */
+.modalRoot { position: fixed; inset: 0; z-index: 10050; }
+.modalScrim { position: absolute; inset: 0; background: color-mix(in srgb, #000 40%, transparent); }
+.modalCard {
+  position: absolute; top: min(20vh, 160px); left: 50%; transform: translateX(-50%);
+  width: min(640px, calc(100vw - 32px));
+  background: var(--dx-surface, var(--surface-color));
+  border: 1px solid var(--dx-border, var(--layout-border-color));
+  border-radius: 14px; box-shadow: 0 24px 60px rgba(0,0,0,.18); overflow: hidden;
+}
+.modalHeader { padding: 12px 16px; border-bottom: 1px solid var(--dx-border, var(--layout-border-color)); background: var(--dx-topbar-bg, var(--topbar-background-color)); }
+.modalTitle { margin: 0; font: 600 16px/24px var(--font-family, system-ui); color: var(--dx-text); }
+.modalBody { padding: 16px; display: grid; gap: 12px; }
+.modalActions { margin-top: 8px; display: flex; gap: 8px; justify-content: flex-end; }

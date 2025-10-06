@@ -21,6 +21,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      monday-ui-style:
+        specifier: ^0.26.0
+        version: 0.26.0(stylelint@14.16.1)
       next:
         specifier: 14.2.4
         version: 14.2.4(react-dom@18.2.0(react@18.2.0))(react@18.2.0)

@@ -12,6 +12,7 @@
     "@vibe/core": "^3.69.1",
     "@vibe/icons": "^1.11.0",
     "clsx": "^2.1.1",
+    "monday-ui-style": "^0.26.0",
     "next": "14.2.4",
     "react": "18.2.0",
     "react-dom": "18.2.0"

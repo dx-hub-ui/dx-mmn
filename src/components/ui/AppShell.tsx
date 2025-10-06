@@ -1,25 +1,39 @@
+// src/components/ui/AppShell.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import clsx from "clsx";
 import Topbar from "./topbar";
 import Sidebar from "./sidebar";
 import styles from "./app-shell.module.css";
 
-export default function AppShell({ children, className }: { children: React.ReactNode; className?: string }) {
+export default function AppShell({
+  children,
+  className
+}: { children: React.ReactNode; className?: string }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, []);
-
   return (
-    <div className={clsx(styles.shell, className)} data-sidebar={isSidebarOpen ? "expanded" : "collapsed"}>
-      <Topbar className={styles.topbar} isSidebarOpen={isSidebarOpen} />
-      <Sidebar className={styles.sidebar} isOpen={isSidebarOpen} onToggle={() => setIsSidebarOpen(v => !v)} />
-      <main className={styles.content}>{children}</main>
+    <div
+      className={clsx(styles.shell, className)}
+      data-sidebar={isSidebarOpen ? "expanded" : "collapsed"}
+      role="application"
+      aria-label="DX Hub shell"
+    >
+      <div className={styles.topbar}>
+        <Topbar isSidebarOpen={isSidebarOpen} />
+      </div>
+
+      <div className={styles.sidebar}>
+        <Sidebar
+          isOpen={isSidebarOpen}
+          onToggle={() => setIsSidebarOpen(v => !v)}
+        />
+      </div>
+
+      <main className={styles.content} role="main" id="main-content">
+        {children}
+      </main>
     </div>
   );
 }
