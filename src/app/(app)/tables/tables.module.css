@@ -6,7 +6,7 @@
   gap: var(--dx-page-gap, 16px);
   min-width: 0; /* evita overflow horizontal dentro do grid do shell */
   background: var(--primary-background-color);
-  border-radius: var(--dx-radius-md, 12px);
+  
 }
 
 /* Header/card usam a superfície do app; nada de padding externo aqui */

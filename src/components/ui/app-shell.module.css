@@ -1,15 +1,19 @@
-/* src/components/ui/app-shell.module.css */
+/* ===================== Shell grid ===================== */
 .shell {
   display: grid;
   grid-template-rows: var(--dx-top-bar-height) 1fr;
   grid-template-columns: var(--dx-sidebar-width) minmax(0, 1fr);
   height: 100dvh;
-  width: 100%;
-  background: var(--dx-bg);
+  background: var(--dx-sidebar-bg);
   color: var(--dx-text);
-  overflow: hidden; /* scroll só no .content */
+  overflow: hidden;
 }
 
+.shell[data-sidebar="collapsed"] {
+  grid-template-columns: var(--dx-sidebar-collapsed-width) minmax(0, 1fr);
+}
+
+/* ===================== Topbar ===================== */
 .topbar {
   grid-row: 1 / 2;
   grid-column: 1 / -1;
@@ -19,34 +23,63 @@
   z-index: var(--z-topbar, 1000);
 }
 
+/* ===================== Sidebar ===================== */
 .sidebar {
   grid-row: 2 / 3;
   grid-column: 1 / 2;
   position: sticky;
   top: var(--dx-top-bar-height);
   height: calc(100dvh - var(--dx-top-bar-height));
-  z-index: var(--z-sidebar, 900);
+  z-index: 1200;            /* canvas ficará acima (ver abaixo) */
 }
 
+/* ===================== Main ===================== */
 .content {
   grid-row: 2 / 3;
   grid-column: 2 / 3;
+  position: relative;
   min-width: 0;
   overflow: auto;
-  padding: var(--page-padding-y) var(--page-padding-x);
+  /* sem padding externo: o canvas vai ocupar 100% e
+     cuidará do padding interno do conteúdo */
+  padding: 0;
   background: var(--dx-bg);
+  z-index: 800;
+  border-radius: var(--dx-radius-lg) 0 0 0;
 }
 
-/* collapsed ↔ expanded controlam a 1ª coluna */
-.shell[data-sidebar="collapsed"] {
-  grid-template-columns: var(--dx-sidebar-collapsed-width) minmax(0, 1fr);
-}
-.shell[data-sidebar="expanded"] {
-  grid-template-columns: var(--dx-sidebar-width) minmax(0, 1fr);
+/* ===================== Canvas (paper do main) ===================== */
+/* ocupa 100% da área do main; colado na topbar e na sidebar */
+.canvas {
+  position: relative;
+  z-index: 1300;                  /* sempre acima da sidebar */
+  width: 100%;
+  min-height: 100%;
+  background: var(--dx-surface);
+
+  /* sem bordas/raio visíveis nas extremidades externas */
+  border: none;
+  border-radius: 0;
+
+  /* padding interno do conteúdo da página */
+  padding: 32px;
+
+  /* nenhuma margem: cola na topbar e na sidebar */
+  margin: 0;
+  overflow: visible;
 }
 
-/* largura máx. opcional do conteúdo */
-.content > * {
-  max-width: var(--dx-layout-max-width);
+
+
+/* conteúdo da página dentro do canvas (opcional) */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   margin-inline: auto;
+}
+
+/* responsivo opcional */
+@media (max-width: 1024px) {
+  .canvas { padding: 16px; }
 }

@@ -12,70 +12,79 @@
     );
 }
 
-/* --- SIDEBAR: não usa border visível; só sombra (evita “filete”) --- */
-.sidebar {
+/* sempre clicável acima do canvas/main */
+.edgeToggle { z-index: 4000; }
+
+/* === SIDEBAR ======================================================= */
+.sidebar{
   position: sticky;
-  top: var(--dx-top-bar-height);
-  height: calc(100dvh - var(--dx-top-bar-height));
-  width: var(--dx-sidebar-width);
-  padding: var(--dx-space-3);
-  padding-left: var(--dx-space-5);
-  box-sizing: border-box;
-
+  top: var(--dx-top-bar-height, 56px);
+  z-index: 3000;   
+  height: calc(100dvh - var(--dx-top-bar-height, 56px));
+  width: 100%;
   background: var(--dx-sidebar-bg);
-  /* remove a borda que estava aparecendo na base/lateral */
-  border: 0;
-   /*border-radius: var(--dx-radius-lg);*/
-  box-shadow: 0 8px 24px rgb(9 30 66 / 10%);
 
-  overflow: hidden;
-  isolation: isolate;
-  z-index: 1; /* abaixo do conteúdo flutuante do main, mas suficiente p/ overlay */
+  /* raio da sidebar (se quiser apenas o TL na própria barra) use: var(--dx-radius-lg) 0 0 0 */
+  border-radius: var(--dx-radius-lg);
+  overflow: hidden; /* sombra/máscara respeitam o raio */
+
+  /* sem “filete” na direita: sombras direcionais (esquerda + topo apenas) */
+  box-shadow:
+    inset -24px 0 28px -18px var(--dx-surface, var(--surface-color)),
+    inset 0 -20px 24px -14px var(--dx-surface, var(--surface-color));
+
+  /* transição idêntica ao monday para o colapso */
+  transition: width .3s cubic-bezier(.4, 0, .2, 1);
 }
 
-/* --- overlays --- */
+/* === OVERLAYS ====================================================== */
 .sidebar::before,
 .sidebar::after {
   content: "";
   position: absolute;
-  left: var(--dx-space-3);
-  right: -3px; /* empurra um pouco p/ fora p/ não sobrar linha */
+  left: var(--dx-space-3, 12px);
+  right: -3px;           /* um pouco “pra fora” pra não sobrar linha */
   top: 0;
   pointer-events: none;
+  /* overlay com somente top-left arredondado */
+  border-radius: var(--dx-radius-lg) 0 0 0; /* TL TR BR BL */
 }
 
-/* overlay principal: 135°, 65% altura
-   de --primary-background-color (5%) até --dx-sidebar-bg (100%)
-   + fade “spread” embaixo e à direita via máscara */
+/* overlay principal: 135°, 65% altura com fade embaixo e na direita */
 .sidebar::before {
   height: 65%;
   z-index: 1;
 
-  /* gradiente EXATO pedido */
   background: linear-gradient(
     135deg,
     var(--primary-background-color) 5%,
     var(--dx-sidebar-bg) 100%
   );
 
-  /* fade vertical p/ desaparecer no fundo DA SIDEBAR (sem borda) */
-  -webkit-mask-image: linear-gradient(180deg, #000 0% 80%, transparent 100%);
-          mask-image: linear-gradient(180deg, #000 0% 80%, transparent 100%);
-  -webkit-mask-size: 100% 100%;
-          mask-size: 100% 100%;
+  /* fade vertical + fade à direita (entra “por baixo” do canvas) */
+  /* Tentamos intersectar duas máscaras: vertical e direita */
+  -webkit-mask-image:
+      linear-gradient(180deg, #000 0 80%, transparent 100%),
+      linear-gradient(90deg, #000 0 calc(100% - 16px), transparent 100%);
+          mask-image:
+      linear-gradient(180deg, #000 0 80%, transparent 100%),
+      linear-gradient(90deg, #000 0 calc(100% - 16px), transparent 100%);
+  /* Interseção das máscaras (webkit + padronizado) */
+  -webkit-mask-composite: source-in;
+          mask-composite: intersect;
 
   /* “vidro” levinho, sem criar borda dura */
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 28%),
-    inset 0 -28px 40px rgb(255 255 255 / 14%);
-    border-radius: var(--dx-radius-lg);
+    inset 0 -28px 40px #ffffff24;
 }
 
-/* “sheen” horizontal discreto, também some embaixo */
+/* “sheen” horizontal discreto, também some embaixo e na direita */
 .sidebar::after {
   height: 58%;
   z-index: 2;
-  --w: calc(100% - var(--dx-space-3));
+
+  --w: calc(100% - var(--dx-space-3, 12px));
   --s1: calc(var(--w) * 0.28);
   --s2: calc(var(--w) * 0.66);
 
@@ -89,55 +98,91 @@
   mix-blend-mode: overlay;
   opacity: .75;
 
-  -webkit-mask-image: linear-gradient(180deg, #000 0% 78%, transparent 100%);
-          mask-image: linear-gradient(180deg, #000 0% 78%, transparent 100%);
-  -webkit-mask-size: 100% 100%;
-          mask-size: 100% 100%;
+  -webkit-mask-image:
+      linear-gradient(180deg, #000 0 78%, transparent 100%),
+      linear-gradient(90deg, #000 0 calc(100% - 16px), transparent 100%);
+          mask-image:
+      linear-gradient(180deg, #000 0 78%, transparent 100%),
+      linear-gradient(90deg, #000 0 calc(100% - 16px), transparent 100%);
+  -webkit-mask-composite: source-in;
+          mask-composite: intersect;
 }
 
-/* fog do rodapé (mantém o leitoso sem borda) */
-.sidebarFog {
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 88px;
-  pointer-events: none;
-  background: linear-gradient(180deg, transparent, rgb(255 255 255 / .65));
-  z-index: 1;
-}
-
-/* conteúdo */
+/* === CONTEÚDO ====================================================== */
 .sidebarInner {
   position: relative;
   z-index: 3;
   height: 100%;
   display: flex;
   flex-direction: column;
-  gap: var(--dx-space-4);
-  padding: var(--dx-space-4) var(--dx-space-4) var(--dx-space-4);
+  gap: var(--dx-space-4, 12px);
+  padding: var(--dx-space-4, 12px);
   overflow: hidden;
 }
 
-/* toggle lateral */
-.edgeToggle { position: absolute; top: 12px; right: -12px; z-index: 4; }
-.toggleButton {
+/* === TOGGLE (chevron) ============================================== */
+/* Coloca “meio a meio” entre sidebar e canvas; sem tooltip: NÃO passe `title`/`aria-label` de tooltip no componente. */
+.edgeToggle{
+  position: absolute;
+  top: 12px;
+  left: calc(100% - 14px);   /* metade pra fora */
+  width: 26px;
+  height: 26px;
+  z-index: 10002;            /* acima de sidebar e main */
+  isolation: isolate;        /* cria stacking context próprio */
+}
+
+.edgeToggle::before{
+  content: "";
+  position: absolute;
+  inset: -8px;               /* maior que o botão */
   border-radius: 9999px;
-  box-shadow: 0 2px 8px rgb(17 42 67 / 16%);
-  background: var(--dx-surface);
+  background: var(--dx-surface);           /* cor do papel da main */
+  box-shadow: 0 0 0 1px rgba(9,30,66,.06);  /* leve contorno */
+  z-index: -1;               /* fica atrás do botão, mas acima do resto pela isolation */
 }
 
-/* header estilo workspace (opcional) */
-.wsHeader {
-  display: flex;
+.toggleButton{
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding-inline: 10px;
-  border-radius: var(--dx-radius-md);
-  background: transparent;
+  justify-content: center;
+  background: var(--dx-surface);
+  border: none;              /* monday usa sem borda no controle */
+  border-radius: 50%;
+  box-shadow: 0 6px 18px rgba(9,30,66,.18);
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 200ms ease; /* vibe-ish */
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
 }
-.wsHeader:hover { background: var(--primary-background-hover-color); }
 
-/* nav */
+.toggleButton:hover { opacity: .9; }
+.toggleButton:active { transform: translateX(0.5px); }
+.toggleButton:focus-visible {
+  /* foco acessível sem tooltip; anel suave */
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--dx-primary) 30%, transparent),
+    0 6px 18px rgba(9,30,66,.18);
+}
+
+/* Ícone dentro do botão */
+.toggleButton svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+/* === SOBREPOSIÇÕES: garantimos que não passem por cima do chevron === */
+.sidebar::before,
+.sidebar::after {
+  pointer-events: none;
+  z-index: 1;          /* abaixo do toggle (z=10002) */
+}
+
+/* === NAV =========================================================== */
 .nav { display: flex; flex-direction: column; gap: 4px; }
 .navGroupLabel {
   margin: 6px 10px 4px;
@@ -160,7 +205,11 @@
   padding-inline: 10px;
   font-size: 14px;
   line-height: 20px;
-  transition: background .16s ease, color .16s ease, box-shadow .16s ease;
+  transition:
+    background .16s ease,
+    color .16s ease,
+    box-shadow .16s ease,
+    transform .18s ease;
 }
 .navItem:hover { background: var(--primary-background-hover-color); }
 .navItem[aria-current="page"],
@@ -181,17 +230,33 @@
   border-radius: 1px;
 }
 
-/* ===== estado colapsado ===== */
+/* === ESTADO COLAPSADO ============================================== */
 [data-collapsed="true"] .sidebar {
   width: var(--dx-sidebar-collapsed-width);
-  padding-left: var(--dx-space-3);
-  padding-right: var(--dx-space-3);
 }
-[data-collapsed="true"] .navItem { justify-content: center; gap: 0; padding-inline: 0; }
-[data-collapsed="true"] .navLabel { opacity: 0; width: 0; overflow: hidden; }
-[data-collapsed="true"] .wsHeader { justify-content: center; }
 
-/* ===== scrollbar clean (limita ao escopo da sidebar) ===== */
+/* Remove TUDO (ícone + label) no colapsado */
+[data-collapsed="true"] .navItem {
+  justify-content: center;
+  gap: 0;
+  padding-inline: 0;
+}
+[data-collapsed="true"] .navLabel { opacity: 0; width: 0; overflow: hidden; }
+[data-collapsed="true"] .navIcon {
+  opacity: 0;
+  transform: scale(.85);
+  width: 0;
+  margin: 0;
+  transition: opacity .16s ease, transform .16s ease, width .16s ease;
+}
+
+/* Animação sutil no hover quando colapsado (efeito “ping”) */
+[data-collapsed="true"] .navItem:hover {
+  transform: translateX(2px) scale(1.05);
+  background: transparent; /* mantém limpo como no monday */
+}
+
+/* === SCROLLBAR CLEAN =============================================== */
 .sidebar ::-webkit-scrollbar { width: 10px; }
 .sidebar ::-webkit-scrollbar-thumb {
   background: rgb(9 30 66 / 10%);

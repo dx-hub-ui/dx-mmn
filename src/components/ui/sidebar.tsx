@@ -1,10 +1,10 @@
+// src/components/ui/sidebar.tsx
 "use client";
 
 import { useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { IconButton } from "@vibe/core";
 import {
   Home as HomeIcon,
   Settings as SettingsIcon,
@@ -38,42 +38,37 @@ export default function Sidebar({
   const pathname = usePathname();
   const collapsed = !isOpen;
 
-  // normalize pathname to match hrefs without trailing slash issues
-  const activePath = useMemo(() => (pathname?.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname) ?? "/", [pathname]);
+  // normaliza pathname para bater com href sem barra final
+  const activePath = useMemo(() => {
+    if (!pathname) return "/";
+    if (pathname !== "/" && pathname.endsWith("/")) return pathname.slice(0, -1);
+    return pathname;
+  }, [pathname]);
 
   return (
-    // wrapper com data-collapsed para casar com os seletores do CSS
+    // o data-collapsed controla os estilos colapsados via CSS
     <div data-collapsed={collapsed ? "true" : "false"}>
-      <aside
-        className={clsx(styles.sidebar, className)}
-        aria-label="Main navigation"
-      >
-        {/* fog opcional (para o fade do rodapé da sidebar) */}
+      <aside className={clsx(styles.sidebar, className)} aria-label="Main navigation">
+        {/* neblina/gradient opcional no rodapé da sidebar */}
         <div className={styles.sidebarFog} />
 
         <div className={styles.sidebarInner}>
-          {/* Toggle de borda (igual monday) */}
-          <div className={styles.edgeToggle} aria-hidden="true">
-            <IconButton
-              icon={isOpen ? NavigationChevronLeft : NavigationChevronRight}
-              size={IconButton.sizes.SMALL}
-              ariaLabel={isOpen ? "Collapse navigation" : "Expand navigation"}
-              className={styles.toggleButton}
-              ariaExpanded={isOpen}
+          {/* Chevron “meio a meio”, sem tooltip, acima de tudo */}
+          <div className={styles.edgeToggle}>
+            <button
+              type="button"
+              aria-label={isOpen ? "Collapse navigation" : "Expand navigation"}
               onClick={onToggle}
-            />
+              className={styles.toggleButton}
+            >
+              {isOpen ? <NavigationChevronLeft size={16} /> : <NavigationChevronRight size={16} />}
+            </button>
           </div>
 
           {/* Navegação */}
           <nav className={styles.nav} role="navigation" aria-label="Sidebar">
-            {/* Exemplo de rótulo de grupo (opcional) */}
-            {/* <div className={styles.navGroupLabel}>Favorites</div> */}
-
             {ITEMS.map(({ id, label, href, icon: Icon }) => {
-              const isActive =
-                activePath === href ||
-                (href !== "/" && activePath?.startsWith(href));
-
+              const isActive = activePath === href || (href !== "/" && activePath.startsWith(href));
               return (
                 <Link
                   key={id}
@@ -82,7 +77,7 @@ export default function Sidebar({
                   aria-current={isActive ? "page" : undefined}
                   data-selected={isActive ? "true" : undefined}
                 >
-                  <span className={clsx(styles.navIcon)} aria-hidden>
+                  <span className={styles.navIcon} aria-hidden>
                     <Icon size={18} />
                   </span>
                   <span className={styles.navLabel}>{label}</span>
