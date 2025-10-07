@@ -1,0 +1,59 @@
+.root {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: clamp(24px, 4vw, 72px);
+  background: var(--dx-bg, var(--application-surface-color));
+}
+
+.panel {
+  width: min(100%, 420px);
+  display: grid;
+  gap: 24px;
+  padding: clamp(24px, 5vw, 40px);
+  background: var(--dx-surface, var(--primary-background-color));
+  border: 1px solid var(--dx-border, var(--layout-border-color));
+  border-radius: var(--dx-radius-lg, 16px);
+  box-shadow: var(--shadow-md, 0 16px 32px -24px rgba(15, 23, 42, 0.35));
+  color: var(--dx-text, var(--primary-text-color));
+}
+
+.logoArea {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+
+.form {
+  display: grid;
+  gap: 20px;
+}
+
+.actions {
+  display: grid;
+  gap: 12px;
+}
+
+.helperText {
+  text-align: center;
+}
+
+.statusMessage {
+  border-radius: var(--dx-radius-md, 12px);
+  padding: 12px 16px;
+  background: var(--dx-primary-selected, rgba(174, 222, 229, 0.4));
+  color: var(--dx-text, var(--primary-text-color));
+}
+
+.errorMessage {
+  border-radius: var(--dx-radius-md, 12px);
+  padding: 12px 16px;
+  background: rgba(216, 58, 82, 0.12);
+  color: var(--negative-color, #d83a52);
+}
+
+.redirectHint {
+  font-size: 0.875rem;
+  color: var(--secondary-text-color, #676879);
+  text-align: center;
+}

@@ -38,6 +38,15 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 4. Atualize as variáveis `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` com os valores do projeto.
 5. Para testar localmente, crie usuários via Magic Link ou usando o seed incluído (com emails `owner@example.com`, `leader@example.com`, etc.).
 
+## Login via Magic Link
+
+1. Acesse `http://localhost:3000/sign-in` (ou `/sign-in?redirectTo=/app/acme` para redirecionar após o login).
+2. Informe o email associado ao seu usuário e envie o formulário para receber um link mágico.
+3. O Supabase validará o token e redirecionará para `/auth/callback`, onde a sessão é persistida e você é levado ao caminho definido em `redirectTo` (padrão `/app`).
+4. Se precisar reenviar o link, basta repetir o processo; a tela exibirá o status da solicitação e qualquer erro retornado pelo Supabase.
+
+> **Dica:** durante o desenvolvimento, configure `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` com os valores do projeto para que o formulário fique ativo. Em ambientes de review, a interface informa quando as variáveis não estão configuradas.
+
 ## Variáveis de ambiente
 
 ### Next.js (`.env.local`)
@@ -62,14 +71,17 @@ Quando publicar, configure as mesmas variáveis no Supabase para cada função.
 
 ## Fluxo funcional
 
-1. **Criação de organização** (`POST /api/orgs/create`):
+1. **Login seguro** (`/sign-in` + `/auth/callback`):
+   - Usuários solicitam um link mágico de acesso.
+   - Após confirmar o link recebido por email, o browser é redirecionado para `/auth/callback`, que registra a sessão antes de seguir para o segmento protegido.
+2. **Criação de organização** (`POST /api/orgs/create`):
    - Usuário autenticado chama a rota.
    - Route handler contata a Edge Function `create_org`, que valida o slug, cria a organização e um membership `org` para o usuário.
-2. **Geração de convite** (`POST /api/invites/generate`):
+3. **Geração de convite** (`POST /api/invites/generate`):
    - Somente `org` e `leader` ativos podem gerar convites para `leader` ou `rep`.
    - Pode-se amarrar um novo `rep` a um líder específico (hierarquia) através de `parentLeaderId`.
    - Edge Function `generate_invite` retorna apenas o token do convite; combine com sua URL pública para compartilhar.
-3. **Resgate de convite** (`POST /api/invites/redeem`):
+4. **Resgate de convite** (`POST /api/invites/redeem`):
    - Usuário autenticado envia o token.
    - Edge Function `redeem_invite` valida uso/expiração, cria (ou ajusta) o membership e incrementa `used_count`.
    - A rota Next.js redireciona para `/app/:slug` da organização correspondente.
