@@ -1,0 +1,116 @@
+.bulkBar {
+  position: fixed;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  background: var(--surface-color, #fff);
+  border: 1px solid var(--dx-border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+  z-index: 10040;
+}
+
+.summaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.summaryRow strong {
+  font-size: 15px;
+}
+
+.actionsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.panelOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.32);
+  display: grid;
+  place-items: center;
+  z-index: 10050;
+}
+
+.panel {
+  background: var(--surface-color, #fff);
+  border-radius: 12px;
+  padding: 24px;
+  width: min(480px, calc(100% - 32px));
+  max-height: calc(100dvh - 120px);
+  overflow: auto;
+  border: 1px solid var(--dx-border);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.24);
+}
+
+.panel h2 {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field input,
+.field textarea,
+.field select {
+  border: 1px solid var(--dx-border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 14px;
+  background: var(--surface-color, #fff);
+  color: inherit;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.feedback {
+  font-size: 13px;
+  color: var(--green-700, #166534);
+}
+
+.errorMessage {
+  font-size: 13px;
+  color: var(--red-700, #b91c1c);
+}
+
+@media (max-width: 768px) {
+  .bulkBar {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+  }
+}
