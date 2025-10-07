@@ -4,6 +4,11 @@ import { ContactFilters, ContactInput } from "@/features/crm/contacts/types";
 import { listContacts } from "@/features/crm/contacts/server/listContacts";
 import { createContact } from "@/features/crm/contacts/server/upsertContact";
 
+type ContactMutationBody = Partial<ContactInput> & {
+  organizationId?: string;
+  actorMembershipId?: string;
+};
+
 function parseFilters(searchParams: URLSearchParams): ContactFilters {
   const filters: ContactFilters = {};
 
@@ -95,7 +100,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
 
-  const body = (await req.json()) as Partial<ContactInput> & { organizationId?: string };
+  const body = (await req.json()) as ContactMutationBody;
   const organizationId = body.organizationId;
 
   if (!organizationId) {
@@ -104,6 +109,10 @@ export async function POST(req: NextRequest) {
 
   if (!body.ownerMembershipId) {
     return NextResponse.json({ error: "ownerMembershipId é obrigatório" }, { status: 400 });
+  }
+
+  if (!body.actorMembershipId) {
+    return NextResponse.json({ error: "actorMembershipId é obrigatório" }, { status: 400 });
   }
 
   const payload: ContactInput = {
@@ -117,10 +126,11 @@ export async function POST(req: NextRequest) {
     nextActionAt: body.nextActionAt ?? null,
     nextActionNote: body.nextActionNote ?? null,
     referredByContactId: body.referredByContactId ?? null,
+    source: body.source ?? null,
   };
 
   try {
-    const result = await createContact(supabase, organizationId, payload);
+    const result = await createContact(supabase, organizationId, payload, body.actorMembershipId);
 
     if (!result.success) {
       return NextResponse.json({ errors: result.errors }, { status: 400 });

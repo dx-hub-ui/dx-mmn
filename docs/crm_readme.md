@@ -14,9 +14,10 @@
 - `src/lib/telemetry.ts`: wrapper simples que reusa provedores já existentes (`window.analytics` ou `dataLayer`), caindo em `console.debug` em dev.
 
 ## Modelo de Dados
-- `contacts` ganhou colunas `score` (0-100), `referred_by_contact_id` (cadeia de indicações) e `next_action_note` (texto do próximo passo). Índices exclusivos garantem dedupe por telefone/e-mail normalizados.
+- `contacts` ganhou colunas `score` (0-100), `referred_by_contact_id` (cadeia de indicações), `next_action_note` (texto do próximo passo) e agora expõe `source` na API/board para sub-header do modal. Índices exclusivos garantem dedupe por telefone/e-mail normalizados.
 - `status` foi renomeado de `ganho` para `cadastrado` para alinhar com a pipeline oficial (`Novo → Contato feito → Qualificado → Follow-up → Cadastrado → Perdido`).
-- Seed (`supabase/seed.sql`) oferece dados com cadeias de indicações (até 1 nível), scores distribuídos e próximos passos realistas para validar filtros e views.
+- `contact_events` (nova tabela criada em `002_crm_contact_events.sql`) armazena timeline normalizada (`event_type`, `payload` JSON, `actor_membership_id`). Cada create/update relevante gera eventos automáticos: criação, mudança de estágio, troca de dono e atualização de próximo passo.
+- Seed (`supabase/seed.sql`) oferece dados com cadeias de indicações (até 1 nível), eventos históricos e próximos passos realistas para validar filtros, timeline e views.
 
 ## Funcionalidades da Sprint 1
 - Board com colunas exigidas (checkbox, Nome, Dono, Estágio, Último toque, Próximo passo, Indicado por, Telefone, Tags, Score, Ações).
@@ -27,19 +28,28 @@
 - Criação rápida no topo da grade reutilizando as mesmas regras.
 - Seleção persistente entre filtros e paginações virtuais com telemetria `crm/selection_changed`.
 
+## Funcionalidades da Sprint 2
+- **Modal de contato completo** (`ContactModal`): cabeçalho com estágio editável, atalhos (WhatsApp/ligar/e-mail), sub-header com origem/tags e tabs Atividades, Dados, Próximo passo e Indicações. A timeline consome `contact_events` com filtros contextuais e navegação com setas (`←/→`). Fechar com `Esc` retorna foco à linha; `O`/enter abre a partir do grid.
+- **Edição completa dentro da modal** reaproveitando `EditableContactForm`, com validações compartilhadas e refresh da timeline pós-salvar. Telemetria adicionada: `crm/contact_modal_open`, `crm/contact_modal_save`, `crm/contact_modal_tab_change`.
+- **Kanban de estágios** (`ContactsKanban`): colunas por estágio com drag & drop via `@dnd-kit`. Atualiza Supabase e timeline com feedback visual, respeitando filtros/views ativos. Telemetria `crm/contact_stage_changed` envia `{ contactId, from, to, source }`.
+- **API GET `/api/crm/contacts/[id]`** retorna detalhe + timeline + referidos, mantendo autenticação Supabase.
+- **Atualização de dados** ao mover estágio/trocar dono define eventos em lote e sincroniza board/modal.
+
 ## Telemetria
 - `crm/board_view_loaded`: enviado ao montar o board com `{ organizationId, total }`.
 - `crm/filters_changed`: emitido ao alterar filtros ou view salva.
 - `crm/selection_changed`: emitido quando o conjunto selecionado muda.
-- Eventos futuros (modal, bulk actions, kanban) devem reutilizar `trackEvent`.
+- `crm/contact_modal_open`, `crm/contact_modal_save`, `crm/contact_modal_tab_change`: instrumentam abertura, salvamento e troca de abas da modal.
+- `crm/contact_stage_changed`: usado para board/modal/kanban ao alterar estágio.
+- Próximos eventos (bulk actions, importação) continuarão usando `trackEvent`.
 
 ## Decisões & Gaps
 - **@vibe/code indisponível**: não existe pacote público acessível, optamos por `@vibe/core` + CSS modules alinhados aos tokens globais; registrado aqui para futuras integrações caso o pacote seja disponibilizado.
 - **Virtualização customizada**: `@tanstack/react-virtual` foi adotado para evitar dependência pesada; garante foco e semântica de grid.
 - **Permissões**: RLS via Supabase garante owner visível; UI respeita roles (`Meus` usa membership atual, `Time` usa árvore via `visible_membership_ids`).
-- **Importação/relatórios**: serão tratados nas sprints seguintes (documentado na DoD). Nenhuma funcionalidade placeholder foi exposta.
+- **Mutação autenticada**: rotas POST/PATCH (`/api/crm/contacts`) exigem `actorMembershipId` explícito para registrar eventos e validar hierarquias; requisições sem o campo respondem 400.
+- **Importação/relatórios**: permanecem pendentes para a Sprint 3.
 
-## Próximos Passos (Sprints 2 e 3)
-1. Modal de contato com tabs (atividade, dados, tarefas, indicações) + telemetria `crm/contact_modal_*`.
-2. Kanban com drag-and-drop usando a mesma fonte de dados (estágios) e eventos `crm/contact_stage_changed`.
-3. Barra inferior para ações em lote + importação CSV e relatórios básicos (funil, top indicantes).
+## Próximos Passos (Sprint 3)
+1. Barra inferior para ações em lote com telemetria `crm/bulkbar_open`/`crm/bulk_action_execute`.
+2. Fluxo de importação CSV com dry-run e relatórios (funil / top indicantes).

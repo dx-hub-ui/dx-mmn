@@ -17,7 +17,7 @@
 supabase start
 supabase db reset --use-migra --seed supabase/seed.sql
 ```
-Isso aplica todas as migrações (`000_*.sql` + `001_crm_contacts_extensions.sql`) e popula contatos de exemplo com cadeias de indicação, scores e próximos passos.
+Isso aplica todas as migrações (`000_*.sql`, `001_crm_contacts_extensions.sql`, `002_crm_contact_events.sql`) e popula contatos de exemplo com cadeias de indicação, eventos de timeline e próximos passos.
 
 ## 3. Instalar dependências
 ```bash
@@ -63,6 +63,7 @@ O seed inclui:
 - Estágios distribuídos (`novo`, `contatado`, `qualificado`, `followup`, `cadastrado`, `perdido`).
 - Scores (0-100) e próximos passos com datas futuras/passadas.
 - Cadeia de indicações (`referred_by_contact_id`) para validar a coluna "Indicado por" e a view "Indicados por mim".
+- Eventos de timeline (`contact_events`) simulando criação, mudança de estágio e atualização de próximo passo.
 - Dedupe garantido por índices (`organization_id + whatsapp` e `organization_id + email`).
 
 ## 8. Telemetria e logs
@@ -75,3 +76,9 @@ O seed inclui:
 - [x] Criação/edição inline com validação BR (telefone E.164) e dedupe.
 - [x] Seleção persistente com telemetria.
 - [x] Documentação (este arquivo + `docs/crm_readme.md`).
+
+## 10. Checklist Sprint 2
+- [x] Modal de contato com tabs (Atividades, Dados, Próximo passo, Indicações) e timeline baseada em `contact_events`.
+- [x] Kanban de estágios com drag & drop (`@dnd-kit`), refletindo filtros/views ativos.
+- [x] Telemetria adicionada (`crm/contact_modal_*`, `crm/contact_stage_changed`).
+- [x] Testes atualizados (Vitest para modal/kanban + Playwright com troca de modo e modal).

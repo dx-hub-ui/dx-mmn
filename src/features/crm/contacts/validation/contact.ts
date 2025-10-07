@@ -75,6 +75,7 @@ export function validateContactInput(payload: ContactInput): {
   }
 
   const normalizedTags = Array.from(new Set((payload.tags ?? []).map((tag) => tag.trim()).filter(Boolean)));
+  const normalizedSource = payload.source ? payload.source.trim() : null;
 
   return {
     value: {
@@ -88,6 +89,7 @@ export function validateContactInput(payload: ContactInput): {
       nextActionNote: payload.nextActionNote?.trim() ?? null,
       nextActionAt: payload.nextActionAt ?? null,
       referredByContactId: payload.referredByContactId ?? null,
+      source: normalizedSource,
     },
   };
 }

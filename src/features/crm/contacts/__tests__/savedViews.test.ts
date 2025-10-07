@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { applySavedView } from "../../contacts/utils/savedViews";
-import { ContactRecord, MembershipSummary } from "../../contacts/types";
+import { applySavedView } from "@/features/crm/contacts/utils/savedViews";
+import { ContactRecord, MembershipSummary } from "@/features/crm/contacts/types";
 
 const baseMembership: MembershipSummary = {
   id: "member-1",
@@ -22,6 +22,7 @@ const contacts: ContactRecord[] = [
     email: "primeiro@example.com",
     whatsapp: "+5511999999999",
     stage: "novo",
+    source: "manual",
     tags: ["vip"],
     score: 80,
     lastTouchAt: new Date().toISOString(),
@@ -41,6 +42,7 @@ const contacts: ContactRecord[] = [
     email: "segundo@example.com",
     whatsapp: "+5511888888888",
     stage: "followup",
+    source: "indicacao",
     tags: ["time"],
     score: 40,
     lastTouchAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString(),

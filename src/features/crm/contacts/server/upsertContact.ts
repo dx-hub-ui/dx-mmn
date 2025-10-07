@@ -1,7 +1,8 @@
 import { ContactInput, ContactRecord } from "../types";
 import { validateContactInput } from "../validation/contact";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { ContactRow, mapContactRow } from "./listContacts";
+import { fetchContactById } from "./queries";
+import { logContactEvents, ContactEventInsert } from "./contactEvents";
 
 export type ContactUpsertResult =
   | { success: true; contact: ContactRecord }
@@ -82,35 +83,11 @@ async function ensureReferral(
   }
 }
 
-async function fetchContactById(
-  supabase: SupabaseServerClient,
-  contactId: string
-): Promise<ContactRecord | null> {
-  const { data, error } = await supabase
-    .from("contacts")
-    .select(
-      `id, organization_id, owner_membership_id, name, email, whatsapp, status, tags, score, last_touch_at, next_action_at, next_action_note, referred_by_contact_id, created_at, updated_at,
-       owner:memberships (id, organization_id, role, user_id, parent_leader_id, profile:profiles (id, email, raw_user_meta_data)),
-       referred_by:contacts!contacts_referred_by_contact_id_fkey (id, name)`
-    )
-    .eq("id", contactId)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  if (!data) {
-    return null;
-  }
-
-  return mapContactRow(data as unknown as ContactRow);
-}
-
 export async function createContact(
   supabase: SupabaseServerClient,
   organizationId: string,
-  payload: ContactInput
+  payload: ContactInput,
+  actorMembershipId: string
 ): Promise<ContactUpsertResult> {
   const validation = validateContactInput(payload);
 
@@ -164,6 +141,7 @@ export async function createContact(
     email: normalized.email,
     whatsapp: normalized.whatsapp,
     status: normalized.stage === "cadastrado" ? "ganho" : normalized.stage,
+    source: normalized.source,
     tags: normalized.tags ?? [],
     score: normalized.score,
     next_action_at: normalized.nextActionAt,
@@ -193,6 +171,34 @@ export async function createContact(
     };
   }
 
+  const events: ContactEventInsert[] = [
+    {
+      contactId: contact.id,
+      organizationId,
+      type: "created",
+      actorMembershipId,
+      payload: {
+        stage: contact.stage,
+        ownerMembershipId: contact.ownerMembershipId,
+      },
+    },
+  ];
+
+  if (contact.nextActionAt || contact.nextActionNote) {
+    events.push({
+      contactId: contact.id,
+      organizationId,
+      type: "next_step_set",
+      actorMembershipId,
+      payload: {
+        note: contact.nextActionNote,
+        date: contact.nextActionAt,
+      },
+    });
+  }
+
+  await logContactEvents(supabase, events);
+
   return { success: true, contact };
 }
 
@@ -200,7 +206,8 @@ export async function updateContact(
   supabase: SupabaseServerClient,
   organizationId: string,
   contactId: string,
-  payload: ContactInput
+  payload: ContactInput,
+  actorMembershipId: string
 ): Promise<ContactUpsertResult> {
   const validation = validateContactInput(payload);
 
@@ -256,12 +263,22 @@ export async function updateContact(
     };
   }
 
+  const previous = await fetchContactById(supabase, contactId);
+
+  if (!previous) {
+    return {
+      success: false,
+      errors: [{ field: "base", code: "not_found", message: "Contato não encontrado" }],
+    };
+  }
+
   const dbPayload = {
     owner_membership_id: normalized.ownerMembershipId,
     name: normalized.name,
     email: normalized.email,
     whatsapp: normalized.whatsapp,
     status: normalized.stage === "cadastrado" ? "ganho" : normalized.stage,
+    source: normalized.source,
     tags: normalized.tags ?? [],
     score: normalized.score,
     next_action_at: normalized.nextActionAt,
@@ -285,6 +302,56 @@ export async function updateContact(
       success: false,
       errors: [{ field: "base", code: "not_found", message: "Contato não encontrado" }],
     };
+  }
+
+  const events: ContactEventInsert[] = [];
+
+  if (previous.stage !== contact.stage) {
+    events.push({
+      contactId: contact.id,
+      organizationId,
+      type: "stage_changed",
+      actorMembershipId,
+      payload: {
+        from: previous.stage,
+        to: contact.stage,
+      },
+    });
+  }
+
+  if (previous.ownerMembershipId !== contact.ownerMembershipId) {
+    events.push({
+      contactId: contact.id,
+      organizationId,
+      type: "owner_changed",
+      actorMembershipId,
+      payload: {
+        from: previous.ownerMembershipId,
+        to: contact.ownerMembershipId,
+      },
+    });
+  }
+
+  const nextStepChanged =
+    previous.nextActionAt !== contact.nextActionAt || previous.nextActionNote !== contact.nextActionNote;
+
+  if (nextStepChanged) {
+    events.push({
+      contactId: contact.id,
+      organizationId,
+      type: "next_step_set",
+      actorMembershipId,
+      payload: {
+        fromNote: previous.nextActionNote,
+        fromDate: previous.nextActionAt,
+        note: contact.nextActionNote,
+        date: contact.nextActionAt,
+      },
+    });
+  }
+
+  if (events.length > 0) {
+    await logContactEvents(supabase, events);
   }
 
   return { success: true, contact };

@@ -61,6 +61,25 @@ INSERT INTO public.contacts (
   ('10000000-0000-0000-0000-000000000010', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'cccc3333-cccc-3333-cccc-333333333333', 'Kleber Ramos', 'kleber@clientes.com', '+55 62 90000-0010', 'Goiânia', 'GO', 'indicação', ARRAY['follow'], 'perdido', 25, '10000000-0000-0000-0000-000000000002', 'bbbb2222-bbbb-2222-bbbb-222222222222', 'Preferiu concorrente', timezone('utc', now()) - interval '10 days', timezone('utc', now()) + interval '9 days', 'Revisar argumentos para retomada')
 ON CONFLICT (id) DO NOTHING;
 
+-- Contact timeline sample events
+INSERT INTO public.contact_events (
+  id,
+  organization_id,
+  contact_id,
+  actor_membership_id,
+  event_type,
+  payload,
+  occurred_at
+)
+VALUES
+  ('20000000-0000-0000-0000-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '10000000-0000-0000-0000-000000000001', 'aaaa1111-aaaa-1111-aaaa-111111111111', 'created', jsonb_build_object('stage', 'qualificado'), timezone('utc', now()) - interval '21 days'),
+  ('20000000-0000-0000-0000-000000000002', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '10000000-0000-0000-0000-000000000001', 'aaaa1111-aaaa-1111-aaaa-111111111111', 'next_step_set', jsonb_build_object('note', 'Confirmar proposta enviada', 'date', timezone('utc', now()) + interval '3 days'), timezone('utc', now()) - interval '7 days'),
+  ('20000000-0000-0000-0000-000000000003', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '10000000-0000-0000-0000-000000000002', 'aaaa1111-aaaa-1111-aaaa-111111111111', 'created', jsonb_build_object('stage', 'contatado'), timezone('utc', now()) - interval '10 days'),
+  ('20000000-0000-0000-0000-000000000004', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '10000000-0000-0000-0000-000000000003', 'bbbb2222-bbbb-2222-bbbb-222222222222', 'created', jsonb_build_object('stage', 'followup'), timezone('utc', now()) - interval '15 days'),
+  ('20000000-0000-0000-0000-000000000005', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '10000000-0000-0000-0000-000000000003', 'bbbb2222-bbbb-2222-bbbb-222222222222', 'stage_changed', jsonb_build_object('from', 'novo', 'to', 'followup'), timezone('utc', now()) - interval '4 days'),
+  ('20000000-0000-0000-0000-000000000006', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '10000000-0000-0000-0000-000000000009', 'aaaa1111-aaaa-1111-aaaa-111111111111', 'created', jsonb_build_object('stage', 'cadastrado'), timezone('utc', now()) - interval '30 days')
+ON CONFLICT (id) DO NOTHING;
+
 -- Guidance for testing RLS scenarios locally
 -- Use supabase start then supabase login; run `supabase functions serve` or JWT overrides in Supabase Studio.
 -- You can simulate each role by issuing a JWT with the corresponding user id above (owner, leader, rep1, rep2).

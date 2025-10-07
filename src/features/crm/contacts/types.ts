@@ -80,6 +80,7 @@ export type ContactBase = {
   email: string | null;
   whatsapp: string | null;
   stage: ContactStageId;
+  source: string | null;
   tags: string[];
   score: number | null;
   lastTouchAt: string | null;
@@ -101,11 +102,45 @@ export type ContactInput = {
   whatsapp?: string | null;
   stage: ContactStageId;
   ownerMembershipId: string;
+  source?: string | null;
   tags?: string[];
   score?: number | null;
   nextActionAt?: string | null;
   nextActionNote?: string | null;
   referredByContactId?: string | null;
+};
+
+export type ContactTimelineEventType =
+  | "created"
+  | "note"
+  | "interaction_whatsapp"
+  | "interaction_call"
+  | "interaction_email"
+  | "stage_changed"
+  | "owner_changed"
+  | "next_step_set";
+
+export type ContactTimelineEvent = {
+  id: string;
+  contactId: string;
+  organizationId: string;
+  occurredAt: string;
+  type: ContactTimelineEventType;
+  payload: Record<string, unknown>;
+  actorMembershipId: string | null;
+  actor: MembershipSummary | null;
+};
+
+export type ContactReferralSummary = {
+  id: string;
+  name: string;
+  stage: ContactStageId;
+};
+
+export type ContactDetail = {
+  contact: ContactRecord;
+  referrals: ContactReferralSummary[];
+  timeline: ContactTimelineEvent[];
 };
 
 export type ContactFilters = {

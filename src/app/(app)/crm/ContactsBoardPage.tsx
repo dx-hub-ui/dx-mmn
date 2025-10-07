@@ -4,17 +4,25 @@ import { useCallback, useEffect, useMemo, useRef, useState, FormEvent } from "re
 import { Button } from "@vibe/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
-  ContactInput,
   ContactRecord,
   ContactStageId,
   CONTACT_STAGES,
   MembershipSummary,
   SavedViewId,
   ContactFilters,
+  ContactDetail,
 } from "@/features/crm/contacts/types";
 import { SAVED_VIEWS, applySavedView } from "@/features/crm/contacts/utils/savedViews";
 import { trackEvent } from "@/lib/telemetry";
 import styles from "@/features/crm/contacts/components/contacts-board.module.css";
+import {
+  contactToEditable,
+  emptyEditableForm,
+  parseEditableContactForm,
+  EditableContactForm,
+} from "@/features/crm/contacts/utils/forms";
+import ContactModal, { ContactModalTab } from "@/features/crm/contacts/components/ContactModal";
+import ContactsKanban from "@/features/crm/contacts/components/ContactsKanban";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" });
 const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
@@ -44,19 +52,6 @@ type OrganizationInfo = {
   slug: string;
 };
 
-type EditableContactForm = {
-  name: string;
-  email: string;
-  whatsapp: string;
-  stage: ContactStageId;
-  ownerMembershipId: string;
-  tags: string;
-  score: string;
-  nextActionAt: string;
-  nextActionNote: string;
-  referredByContactId: string;
-};
-
 type FeedbackState = { type: "success" | "error"; message: string } | null;
 
 type ContactsBoardPageProps = {
@@ -70,55 +65,6 @@ type VirtualRow =
   | { type: "group"; id: string; label: string; count: number }
   | { type: "contact"; contact: ContactRecord };
 
-function contactToEditable(contact: ContactRecord): EditableContactForm {
-  return {
-    name: contact.name,
-    email: contact.email ?? "",
-    whatsapp: contact.whatsapp ?? "",
-    stage: contact.stage,
-    ownerMembershipId: contact.ownerMembershipId,
-    tags: contact.tags.join(", "),
-    score: contact.score != null ? String(contact.score) : "",
-    nextActionAt: contact.nextActionAt ? contact.nextActionAt.substring(0, 10) : "",
-    nextActionNote: contact.nextActionNote ?? "",
-    referredByContactId: contact.referredByContactId ?? "",
-  };
-}
-
-function emptyForm(currentMembershipId: string): EditableContactForm {
-  return {
-    name: "",
-    email: "",
-    whatsapp: "",
-    stage: "novo",
-    ownerMembershipId: currentMembershipId,
-    tags: "",
-    score: "",
-    nextActionAt: "",
-    nextActionNote: "",
-    referredByContactId: "",
-  };
-}
-
-function parseEditable(form: EditableContactForm): ContactInput {
-  const tags = form.tags
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-
-  return {
-    name: form.name,
-    email: form.email || null,
-    whatsapp: form.whatsapp || null,
-    stage: form.stage,
-    ownerMembershipId: form.ownerMembershipId,
-    tags,
-    score: form.score ? Number(form.score) : null,
-    nextActionAt: form.nextActionAt ? new Date(form.nextActionAt).toISOString() : null,
-    nextActionNote: form.nextActionNote || null,
-    referredByContactId: form.referredByContactId || null,
-  };
-}
 
 function formatDate(value: string | null): string {
   if (!value) return "—";
@@ -209,9 +155,19 @@ export default function ContactsBoardPage({
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
   const [editingForm, setEditingForm] = useState<EditableContactForm | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  const [createForm, setCreateForm] = useState<EditableContactForm>(() => emptyForm(currentMembership.id));
+  const [createForm, setCreateForm] = useState<EditableContactForm>(() =>
+    emptyEditableForm(currentMembership.id)
+  );
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [formErrors, setFormErrors] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"board" | "kanban">("board");
+  const [modalState, setModalState] = useState<{ contactId: string; index: number } | null>(null);
+  const [modalDetail, setModalDetail] = useState<ContactDetail | null>(null);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [modalTab, setModalTab] = useState<ContactModalTab>("activities");
+  const [modalForm, setModalForm] = useState<EditableContactForm | null>(null);
+  const [modalSaving, setModalSaving] = useState(false);
   const scrollParentRef = useRef<HTMLDivElement | null>(null);
 
   const availableTags = useMemo(() => {
@@ -241,6 +197,233 @@ export default function ContactsBoardPage({
 
     return base.filter((contact) => matchesFilters(contact, enrichedFilters));
   }, [savedView, contacts, currentMembership, memberships, filters]);
+
+  const loadModalDetail = useCallback(
+    async (contactId: string) => {
+      setModalLoading(true);
+      setModalError(null);
+      try {
+        const url = new URL(`/api/crm/contacts/${contactId}`, window.location.origin);
+        url.searchParams.set("organizationId", organization.id);
+        const response = await fetch(url.toString(), { cache: "no-store" });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(body?.error ?? "Erro ao carregar contato");
+        }
+        const detail = body.detail as ContactDetail;
+        setModalDetail(detail);
+        setModalForm(contactToEditable(detail.contact));
+      } catch (error) {
+        setModalDetail(null);
+        setModalError(error instanceof Error ? error.message : "Erro ao carregar contato");
+      } finally {
+        setModalLoading(false);
+      }
+    },
+    [organization.id]
+  );
+
+  useEffect(() => {
+    if (!modalState) {
+      return;
+    }
+    loadModalDetail(modalState.contactId);
+  }, [modalState, loadModalDetail]);
+
+  useEffect(() => {
+    if (!modalState) {
+      return;
+    }
+    const newIndex = visibleContacts.findIndex((contact) => contact.id === modalState.contactId);
+    if (newIndex >= 0 && newIndex !== modalState.index) {
+      setModalState((current) => (current ? { ...current, index: newIndex } : current));
+    }
+  }, [visibleContacts, modalState]);
+
+  type ContactUpdateResult = { success: true; contact: ContactRecord } | { success: false; error: string };
+
+  const submitContactForm = useCallback(
+    async (contactId: string, form: EditableContactForm): Promise<ContactUpdateResult> => {
+      try {
+        const payload = parseEditableContactForm(form);
+        const response = await fetch(`/api/crm/contacts/${contactId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...payload,
+            organizationId: organization.id,
+            actorMembershipId: currentMembership.id,
+          }),
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const firstError = body?.errors?.[0]?.message ?? body?.error ?? "Erro ao atualizar contato";
+          return { success: false, error: firstError };
+        }
+        const updatedContact: ContactRecord = body.contact;
+        setContacts((current) => current.map((item) => (item.id === updatedContact.id ? updatedContact : item)));
+        if (modalState?.contactId === updatedContact.id) {
+          setModalForm(contactToEditable(updatedContact));
+          setModalDetail((currentDetail) =>
+            currentDetail ? { ...currentDetail, contact: updatedContact } : currentDetail
+          );
+        }
+        return { success: true, contact: updatedContact };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Erro ao atualizar contato",
+        };
+      }
+    },
+    [organization.id, currentMembership.id, modalState]
+  );
+
+  const applyContactUpdate = useCallback(
+    async (
+      contactId: string,
+      updates: Partial<EditableContactForm>,
+      source: "modal" | "kanban" | "board"
+    ): Promise<ContactUpdateResult> => {
+      const existing = contacts.find((item) => item.id === contactId);
+      if (!existing) {
+        return { success: false, error: "Contato não encontrado" };
+      }
+      const nextForm = { ...contactToEditable(existing), ...updates };
+      const result = await submitContactForm(contactId, nextForm);
+      if (!result.success) {
+        setFeedback({ type: "error", message: result.error });
+        return result;
+      }
+      const shouldRefreshTimeline =
+        ("stage" in updates && updates.stage !== existing.stage) ||
+        "nextActionAt" in updates ||
+        "nextActionNote" in updates;
+      if ("stage" in updates && updates.stage && updates.stage !== existing.stage) {
+        trackEvent("crm/contact_stage_changed", {
+          contactId,
+          from: existing.stage,
+          to: updates.stage,
+          source,
+        });
+        setFeedback({ type: "success", message: "Estágio atualizado" });
+      }
+      if (shouldRefreshTimeline && modalState?.contactId === contactId) {
+        await loadModalDetail(contactId);
+      }
+      return result;
+    },
+    [contacts, submitContactForm, loadModalDetail, modalState]
+  );
+
+  const handleModalRefresh = useCallback(() => {
+    if (modalState) {
+      loadModalDetail(modalState.contactId);
+    }
+  }, [modalState, loadModalDetail]);
+
+  const handleModalSubmit = useCallback(async () => {
+    if (!modalState || !modalForm) {
+      throw new Error("Contato não encontrado");
+    }
+    setModalSaving(true);
+    try {
+      const result = await submitContactForm(modalState.contactId, modalForm);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      setFeedback({ type: "success", message: "Contato atualizado" });
+      trackEvent("crm/contact_modal_save", { contactId: modalState.contactId });
+      await loadModalDetail(modalState.contactId);
+    } finally {
+      setModalSaving(false);
+    }
+  }, [modalState, modalForm, submitContactForm, loadModalDetail]);
+
+  const handleModalStageChange = useCallback(
+    async (stage: ContactStageId) => {
+      if (!modalState) {
+        return;
+      }
+      await applyContactUpdate(modalState.contactId, { stage }, "modal");
+    },
+    [modalState, applyContactUpdate]
+  );
+
+  const handleModalTabChange = useCallback(
+    (tab: ContactModalTab) => {
+      setModalTab(tab);
+      if (modalState) {
+        trackEvent("crm/contact_modal_tab_change", { contactId: modalState.contactId, tab });
+      }
+    },
+    [modalState]
+  );
+
+  const handleOpenContact = useCallback(
+    (contactId: string) => {
+      const index = visibleContacts.findIndex((contact) => contact.id === contactId);
+      if (index === -1) {
+        return;
+      }
+      setModalState({ contactId, index });
+      setModalDetail(null);
+      setModalForm(null);
+      setModalError(null);
+      setModalSaving(false);
+      setModalTab("activities");
+      trackEvent("crm/contact_modal_open", {
+        contactId,
+        index,
+        total: visibleContacts.length,
+      });
+    },
+    [visibleContacts]
+  );
+
+  const handleModalNavigate = useCallback(
+    (direction: "prev" | "next") => {
+      if (!modalState) {
+        return;
+      }
+      const newIndex =
+        direction === "prev"
+          ? Math.max(0, modalState.index - 1)
+          : Math.min(visibleContacts.length - 1, modalState.index + 1);
+      const target = visibleContacts[newIndex];
+      if (!target || target.id === modalState.contactId) {
+        return;
+      }
+      setModalState({ contactId: target.id, index: newIndex });
+      setModalDetail(null);
+      setModalForm(null);
+      setModalError(null);
+      setModalSaving(false);
+      setModalTab("activities");
+      trackEvent("crm/contact_modal_open", {
+        contactId: target.id,
+        index: newIndex,
+        total: visibleContacts.length,
+      });
+    },
+    [modalState, visibleContacts]
+  );
+
+  const closeModal = useCallback(() => {
+    setModalState(null);
+    setModalDetail(null);
+    setModalForm(null);
+    setModalError(null);
+    setModalSaving(false);
+    setModalTab("activities");
+  }, []);
+
+  const handleKanbanStageChange = useCallback(
+    async (contactId: string, stage: ContactStageId) => {
+      await applyContactUpdate(contactId, { stage }, "kanban");
+    },
+    [applyContactUpdate]
+  );
 
   const rows: VirtualRow[] = useMemo(() => {
     if (grouping === "stage") {
@@ -359,11 +542,15 @@ export default function ContactsBoardPage({
     setIsLoading(true);
     setFormErrors(null);
     try {
-      const payload = parseEditable(createForm);
+      const payload = parseEditableContactForm(createForm);
       const response = await fetch("/api/crm/contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, organizationId: organization.id }),
+        body: JSON.stringify({
+          ...payload,
+          organizationId: organization.id,
+          actorMembershipId: currentMembership.id,
+        }),
       });
 
       if (!response.ok) {
@@ -378,7 +565,7 @@ export default function ContactsBoardPage({
       const newContact: ContactRecord = body.contact;
       setContacts((current) => [newContact, ...current.filter((contact) => contact.id !== newContact.id)]);
       setFeedback({ type: "success", message: "Contato criado com sucesso" });
-      setCreateForm(emptyForm(currentMembership.id));
+      setCreateForm(emptyEditableForm(currentMembership.id));
       setIsCreating(false);
     } catch (error) {
       setFeedback({
@@ -409,38 +596,18 @@ export default function ContactsBoardPage({
     setIsLoading(true);
     setFormErrors(null);
     try {
-      const payload = parseEditable(editingForm);
-      const response = await fetch(`/api/crm/contacts/${editingContactId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, organizationId: organization.id }),
-      });
-
-      if (!response.ok) {
-        const body = await response.json();
-        const firstError: string = body?.errors?.[0]?.message ?? "Erro ao atualizar contato";
-        setFormErrors(firstError);
-        setFeedback({ type: "error", message: firstError });
+      const result = await submitContactForm(editingContactId, editingForm);
+      if (!result.success) {
+        setFormErrors(result.error);
+        setFeedback({ type: "error", message: result.error });
         return;
       }
-
-      const body = await response.json();
-      const updatedContact: ContactRecord = body.contact;
-      setContacts((current) => {
-        const next = current.map((contact) => (contact.id === updatedContact.id ? updatedContact : contact));
-        return next;
-      });
       setFeedback({ type: "success", message: "Contato atualizado" });
       cancelEdit();
-    } catch (error) {
-      setFeedback({
-        type: "error",
-        message: error instanceof Error ? error.message : "Erro ao atualizar contato",
-      });
     } finally {
       setIsLoading(false);
     }
-  }, [editingContactId, editingForm, organization.id, cancelEdit]);
+  }, [editingContactId, editingForm, submitContactForm, cancelEdit]);
 
   const onSubmitCreate = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -601,18 +768,28 @@ export default function ContactsBoardPage({
               }));
             }}
           />
+          <div className={styles.viewModeToggle} role="group" aria-label="Modo de visualização">
+            <button
+              type="button"
+              className={styles.viewModeButton}
+              aria-pressed={viewMode === "board"}
+              onClick={() => setViewMode("board")}
+            >
+              Tabela
+            </button>
+            <button
+              type="button"
+              className={styles.viewModeButton}
+              aria-pressed={viewMode === "kanban"}
+              onClick={() => setViewMode("kanban")}
+            >
+              Kanban
+            </button>
+          </div>
         </div>
       </div>
 
       <div className={styles.boardShell}>
-        {selection.size > 0 && (
-          <div className={styles.selectionSummary} role="status">
-            <span>{selection.size} contato(s) selecionado(s)</span>
-            <Button kind={Button.kinds.TERTIARY} onClick={() => setSelection(new Set())}>
-              Limpar seleção
-            </Button>
-          </div>
-        )}
         <nav className={styles.viewsNav} aria-label="Views salvas">
           {SAVED_VIEWS.map((view) => (
             <button
@@ -633,7 +810,16 @@ export default function ContactsBoardPage({
           </div>
         )}
 
-        {isCreating && (
+        {viewMode === "board" && selection.size > 0 && (
+          <div className={styles.selectionSummary} role="status">
+            <span>{selection.size} contato(s) selecionado(s)</span>
+            <Button kind={Button.kinds.TERTIARY} onClick={() => setSelection(new Set())}>
+              Limpar seleção
+            </Button>
+          </div>
+        )}
+
+        {viewMode === "board" && isCreating && (
           <form className={styles.rowItem} onSubmit={onSubmitCreate} aria-label="Criar contato">
             <div className={styles.checkboxCell}>
               <Button kind={Button.kinds.TERTIARY} onClick={() => setIsCreating(false)} type="button">
@@ -716,37 +902,39 @@ export default function ContactsBoardPage({
                 value={createForm.whatsapp}
                 onChange={(event) => setCreateForm((current) => ({ ...current, whatsapp: event.target.value }))}
               />
-              <input
-                className={styles.inlineInput}
-                placeholder="Tags (separadas por vírgula)"
-                value={createForm.tags}
-                onChange={(event) => setCreateForm((current) => ({ ...current, tags: event.target.value }))}
-              />
-            </div>
             <input
               className={styles.inlineInput}
-              placeholder="Score"
-              type="number"
-              min={0}
-              max={100}
-              value={createForm.score}
-              onChange={(event) => setCreateForm((current) => ({ ...current, score: event.target.value }))}
+              placeholder="Tags (separadas por vírgula)"
+              value={createForm.tags}
+              onChange={(event) => setCreateForm((current) => ({ ...current, tags: event.target.value }))}
             />
-            <div className={styles.rowActions}>
-              <Button kind={Button.kinds.PRIMARY} type="submit" loading={isLoading}>
-                Salvar
-              </Button>
-            </div>
-            {formErrors && <div className={styles.metaLine}>{formErrors}</div>}
-          </form>
+          </div>
+          <input
+            className={styles.inlineInput}
+            placeholder="Score"
+            type="number"
+            min={0}
+            max={100}
+            value={createForm.score}
+            onChange={(event) => setCreateForm((current) => ({ ...current, score: event.target.value }))}
+          />
+          <div className={styles.rowActions}>
+            <Button kind={Button.kinds.PRIMARY} type="submit" loading={isLoading}>
+              Salvar
+            </Button>
+          </div>
+          {formErrors && <div className={styles.metaLine}>{formErrors}</div>}
+        </form>
         )}
 
-        <div className={styles.tableHead} role="row">
-          <div className={styles.checkboxCell}>
-            <input
-              type="checkbox"
-              aria-label="Selecionar todos"
-              checked={visibleContacts.length > 0 && visibleContacts.every((contact) => selection.has(contact.id))}
+        {viewMode === "board" && (
+          <>
+            <div className={styles.tableHead} role="row">
+              <div className={styles.checkboxCell}>
+                <input
+                  type="checkbox"
+                  aria-label="Selecionar todos"
+                  checked={visibleContacts.length > 0 && visibleContacts.every((contact) => selection.has(contact.id))}
               onChange={toggleSelectAll}
             />
           </div>
@@ -761,11 +949,11 @@ export default function ContactsBoardPage({
           <span>Score</span>
           <span>Ações</span>
         </div>
-        <div ref={scrollParentRef} className={styles.tableScrollArea} role="grid">
-          <div className={styles.tableBody}>
-            <div className={styles.virtualSpacer} style={{ height: totalHeight }}>
-              <div style={{ transform: `translateY(${paddingTop}px)`, paddingBottom: `${paddingBottom}px` }}>
-                {virtualItems.map((virtualRow) => {
+            <div ref={scrollParentRef} className={styles.tableScrollArea} role="grid">
+              <div className={styles.tableBody}>
+                <div className={styles.virtualSpacer} style={{ height: totalHeight }}>
+                  <div style={{ transform: `translateY(${paddingTop}px)`, paddingBottom: `${paddingBottom}px` }}>
+                    {virtualItems.map((virtualRow) => {
                   const row = rows[virtualRow.index];
                   if (!row) return null;
 
@@ -954,6 +1142,18 @@ export default function ContactsBoardPage({
                         right: 0,
                       }}
                       role="row"
+                      tabIndex={0}
+                      onDoubleClick={() => handleOpenContact(contact.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          handleOpenContact(contact.id);
+                        }
+                        if (event.key.toLowerCase() === "o") {
+                          event.preventDefault();
+                          handleOpenContact(contact.id);
+                        }
+                      }}
                     >
                       <div className={styles.checkboxCell}>
                         <input
@@ -964,9 +1164,13 @@ export default function ContactsBoardPage({
                         />
                       </div>
                       <div className={styles.nameCell}>
-                        <a className={styles.nameLink} href="#" onClick={(event) => event.preventDefault()}>
+                        <button
+                          type="button"
+                          className={styles.nameLink}
+                          onClick={() => handleOpenContact(contact.id)}
+                        >
                           {contact.name}
-                        </a>
+                        </button>
                         <span className={styles.metaLine}>{contact.email ?? "—"}</span>
                       </div>
                       <span>{contact.owner?.displayName ?? "—"}</span>
@@ -990,14 +1194,46 @@ export default function ContactsBoardPage({
                     </div>
                   );
                 })}
-                {rows.length === 0 && !isCreating && (
-                  <div className={styles.emptyState}>Nenhum contato para os filtros selecionados.</div>
-                )}
+                    {rows.length === 0 && !isCreating && (
+                      <div className={styles.emptyState}>Nenhum contato para os filtros selecionados.</div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
+
+        {viewMode === "kanban" && (
+          <ContactsKanban
+            contacts={visibleContacts}
+            onStageChange={handleKanbanStageChange}
+            onOpenContact={handleOpenContact}
+          />
+        )}
       </div>
+
+      <ContactModal
+        open={modalState != null}
+        detail={modalDetail}
+        loading={modalLoading}
+        error={modalError}
+        onClose={closeModal}
+        onRefresh={handleModalRefresh}
+        onSubmit={handleModalSubmit}
+        onStageChange={handleModalStageChange}
+        onNavigate={handleModalNavigate}
+        canNavigatePrev={modalState ? modalState.index > 0 : false}
+        canNavigateNext={modalState ? modalState.index < visibleContacts.length - 1 : false}
+        positionLabel={modalState ? `${modalState.index + 1} de ${visibleContacts.length}` : ""}
+        memberships={memberships}
+        form={modalForm}
+        onFormChange={(form) => setModalForm(form)}
+        onTabChange={handleModalTabChange}
+        activeTab={modalTab}
+        onOpenContact={handleOpenContact}
+        saving={modalSaving}
+      />
     </section>
   );
 }

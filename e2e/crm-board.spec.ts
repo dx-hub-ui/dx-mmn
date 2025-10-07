@@ -12,4 +12,17 @@ test.describe("CRM Board", () => {
     await expect(page.getByText("Estágio")).toBeVisible();
     await expect(page.getByRole("button", { name: "Novo contato" })).toBeVisible();
   });
+
+  test("abre modal de contato e alterna para kanban", async ({ page }) => {
+    await page.goto("/crm");
+    await page.getByRole("button", { name: "Kanban" }).click();
+    await expect(page.getByText(/Arraste contatos/)).toBeVisible();
+    await page.getByRole("button", { name: "Tabela" }).click();
+    await expect(page.getByText("Nome")).toBeVisible();
+    const contactButton = page.getByRole("button", { name: /Maria/ }).first();
+    await contactButton.click();
+    await expect(page.getByRole("heading", { name: /Maria/ })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("heading", { name: /Contatos/ })).toBeVisible();
+  });
 });

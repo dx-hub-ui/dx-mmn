@@ -85,6 +85,26 @@
   gap: 8px;
 }
 
+.viewModeToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.viewModeButton {
+  border: 1px solid var(--dx-border);
+  background: var(--surface-color, #fff);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.viewModeButton[aria-pressed="true"] {
+  background: rgba(31, 111, 235, 0.16);
+  color: var(--blue-700, #104da3);
+  border-color: var(--blue-600, #1f6feb);
+}
+
 .selectControl {
   min-width: 180px;
   border: 1px solid var(--dx-border);

@@ -13,6 +13,7 @@ export type ContactRow = {
   email: string | null;
   whatsapp: string | null;
   status: string;
+  source: string | null;
   tags: string[] | null;
   score: number | null;
   last_touch_at: string | null;
@@ -64,6 +65,7 @@ export function mapContactRow(row: ContactRow): ContactRecord {
     name: row.name,
     email: row.email,
     whatsapp: row.whatsapp,
+    source: row.source,
     stage: (row.status === "ganho" ? "cadastrado" : (row.status as ContactRecord["stage"])) ?? "novo",
     tags: row.tags ?? [],
     score: row.score,
@@ -99,7 +101,7 @@ export async function listContacts(
   let query = supabase
     .from("contacts")
     .select(
-      `id, organization_id, owner_membership_id, name, email, whatsapp, status, tags, score, last_touch_at, next_action_at, next_action_note, referred_by_contact_id, created_at, updated_at,
+      `id, organization_id, owner_membership_id, name, email, whatsapp, status, source, tags, score, last_touch_at, next_action_at, next_action_note, referred_by_contact_id, created_at, updated_at,
        owner:memberships (id, organization_id, role, user_id, parent_leader_id, profile:profiles (id, email, raw_user_meta_data)),
        referred_by:contacts!contacts_referred_by_contact_id_fkey (id, name)`
     )
