@@ -505,6 +505,28 @@ export default function ContactModal({
                     placeholder="ID do contato"
                   />
                 </div>
+                {form.stage === "perdido" ? (
+                  <>
+                    <div className={styles.formControl}>
+                      <label htmlFor="modal-lost-reason">Motivo da perda</label>
+                      <textarea
+                        id="modal-lost-reason"
+                        value={form.lostReason}
+                        onChange={(event) => handleInputChange("lostReason", event.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                    <div className={styles.formControl}>
+                      <label htmlFor="modal-lost-review">Revisar em</label>
+                      <input
+                        id="modal-lost-review"
+                        type="date"
+                        value={form.lostReviewAt}
+                        onChange={(event) => handleInputChange("lostReviewAt", event.target.value)}
+                      />
+                    </div>
+                  </>
+                ) : null}
               </div>
               <div className={styles.footerActions}>
                 <Button kind={Button.kinds.SECONDARY} type="button" onClick={onClose}>

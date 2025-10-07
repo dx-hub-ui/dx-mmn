@@ -1,5 +1,19 @@
 # Changelog
 
+# 2025-10-28
+
+### Added
+- Barra de ações inferior (`BulkActionsBar`) com ações completas (estágio, dono, próximo passo, indicado por, tags, cadastrado/perdido, mesclar, arquivar, reativar, excluir, exportar) e telemetria `crm/bulkbar_open`/`crm/bulk_action_execute`.
+- Fluxo de importação CSV com dry-run, validações de estágio/dono/telefone e API `/api/crm/import`, além de parser tolerante a aspas e delimitadores `,`/`;`.
+- Relatórios Funil e Top Indicantes disponíveis no board, mais testes Vitest cobrindo bulk actions e parser CSV.
+
+### Changed
+- `ContactsBoardPage` agora emite telemetria granular (`crm/owner_changed`, `crm/next_step_set`, `crm/referral_linked`) ao atualizar contatos (modal, kanban, inline ou bulk) e fornece feedback específico para estágio/próximo passo.
+- `performBulkAction` recebeu cobertura de testes e suporte a arquivar/reativar/excluir mantendo permissões.
+
+### Documentation
+- `docs/crm_readme.md` e `docs/dev_setup_crm.md` atualizados com funcionalidades da Sprint 3, instruções de importação e checklist final.
+
 # 2025-10-21
 
 ### Added

@@ -25,4 +25,17 @@ test.describe("CRM Board", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("heading", { name: /Contatos/ })).toBeVisible();
   });
+
+  test("seleciona contatos e abre modais auxiliares", async ({ page }) => {
+    await page.goto("/crm");
+    const firstCheckbox = page.getByRole("checkbox", { name: /Selecionar/ }).first();
+    await firstCheckbox.check();
+    await expect(page.getByRole("button", { name: "Mover estágio" })).toBeVisible();
+    await page.getByRole("button", { name: "Importar CSV" }).click();
+    await expect(page.getByRole("dialog", { name: /Importar contatos via CSV/ })).toBeVisible();
+    await page.getByRole("button", { name: "Fechar" }).click();
+    await page.getByRole("button", { name: "Relatórios" }).click();
+    await expect(page.getByRole("dialog", { name: /Relatórios de contatos/ })).toBeVisible();
+    await page.getByRole("button", { name: "Fechar" }).click();
+  });
 });

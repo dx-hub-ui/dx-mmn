@@ -87,6 +87,9 @@ export type ContactBase = {
   nextActionAt: string | null;
   nextActionNote: string | null;
   referredByContactId: string | null;
+  lostReason: string | null;
+  lostReviewAt: string | null;
+  archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -108,6 +111,8 @@ export type ContactInput = {
   nextActionAt?: string | null;
   nextActionNote?: string | null;
   referredByContactId?: string | null;
+  lostReason?: string | null;
+  lostReviewAt?: string | null;
 };
 
 export type ContactTimelineEventType =
@@ -170,3 +175,39 @@ export type ContactsBoardTelemetryEvent =
   | { type: "crm/board_view_loaded"; payload: { organizationId: string; total: number } }
   | { type: "crm/selection_changed"; payload: { count: number } }
   | { type: "crm/filters_changed"; payload: { filters: ContactFilters; view: SavedViewId | null } };
+
+export type BulkActionType =
+  | "stage"
+  | "owner"
+  | "next_step"
+  | "referral"
+  | "tags"
+  | "mark_cadastrado"
+  | "mark_perdido"
+  | "archive"
+  | "unarchive"
+  | "delete"
+  | "merge";
+
+export type BulkActionPayload =
+  | { type: "stage"; stage: ContactStageId; lostReason?: string | null; lostReviewAt?: string | null }
+  | { type: "owner"; ownerMembershipId: string }
+  | { type: "next_step"; note: string | null; date: string | null; applyIfEmpty: boolean }
+  | { type: "referral"; referredByContactId: string | null }
+  | { type: "tags"; mode: "add" | "remove"; tags: string[] }
+  | { type: "mark_cadastrado" }
+  | { type: "mark_perdido"; reason: string; reviewAt: string | null }
+  | { type: "archive" }
+  | { type: "unarchive" }
+  | { type: "delete" }
+  | { type: "merge"; primaryContactId: string; fieldsToKeep?: Array<"whatsapp" | "email" | "tags" | "nextAction"> };
+
+export type BulkActionResult = {
+  updated: ContactRecord[];
+  removedIds: string[];
+  errors: { contactId: string; message: string }[];
+};
+
+export type BulkTelemetryEvent =
+  | { type: "crm/bulkbar_open"; payload: { count: number } }
+  | { type: "crm/bulk_action_execute"; payload: { action: BulkActionType; count: number } };

@@ -23,6 +23,9 @@ import {
 } from "@/features/crm/contacts/utils/forms";
 import ContactModal, { ContactModalTab } from "@/features/crm/contacts/components/ContactModal";
 import ContactsKanban from "@/features/crm/contacts/components/ContactsKanban";
+import BulkActionsBar from "@/features/crm/contacts/components/BulkActionsBar";
+import ImportContactsModal from "@/features/crm/contacts/components/ImportContactsModal";
+import ReportsDialog from "@/features/crm/contacts/components/ReportsDialog";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" });
 const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
@@ -64,6 +67,15 @@ type ContactsBoardPageProps = {
 type VirtualRow =
   | { type: "group"; id: string; label: string; count: number }
   | { type: "contact"; contact: ContactRecord };
+
+type ContactUpdateSource = "board" | "modal" | "kanban" | "bulk";
+
+function nextStepSignature(contact: ContactRecord | undefined) {
+  if (!contact) {
+    return "|";
+  }
+  return `${contact.nextActionAt ?? ""}|${contact.nextActionNote ?? ""}`;
+}
 
 
 function formatDate(value: string | null): string {
@@ -158,6 +170,8 @@ export default function ContactsBoardPage({
   const [createForm, setCreateForm] = useState<EditableContactForm>(() =>
     emptyEditableForm(currentMembership.id)
   );
+  const [importOpen, setImportOpen] = useState(false);
+  const [reportsOpen, setReportsOpen] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [formErrors, setFormErrors] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"board" | "kanban">("board");
@@ -169,6 +183,95 @@ export default function ContactsBoardPage({
   const [modalForm, setModalForm] = useState<EditableContactForm | null>(null);
   const [modalSaving, setModalSaving] = useState(false);
   const scrollParentRef = useRef<HTMLDivElement | null>(null);
+
+  const emitContactTelemetry = useCallback(
+    (previous: ContactRecord | undefined, updated: ContactRecord, source: ContactUpdateSource) => {
+      if (!previous) {
+        return;
+      }
+
+      if (previous.stage !== updated.stage) {
+        trackEvent("crm/contact_stage_changed", {
+          contactId: updated.id,
+          from: previous.stage,
+          to: updated.stage,
+          source,
+        });
+      }
+
+      if (previous.ownerMembershipId !== updated.ownerMembershipId) {
+        trackEvent("crm/owner_changed", {
+          contactId: updated.id,
+          from: previous.ownerMembershipId,
+          to: updated.ownerMembershipId,
+          source,
+        });
+      }
+
+      if (nextStepSignature(previous) !== nextStepSignature(updated)) {
+        trackEvent("crm/next_step_set", {
+          contactId: updated.id,
+          source,
+          hasNote: Boolean(updated.nextActionNote),
+          hasDate: Boolean(updated.nextActionAt),
+          cleared: !updated.nextActionAt && !updated.nextActionNote,
+        });
+      }
+
+      const previousReferral = previous.referredByContactId ?? null;
+      const updatedReferral = updated.referredByContactId ?? null;
+      if (previousReferral !== updatedReferral) {
+        trackEvent("crm/referral_linked", {
+          contactId: updated.id,
+          source,
+          from: previousReferral,
+          to: updatedReferral,
+        });
+      }
+    },
+    []
+  );
+
+  const selectedIdsArray = useMemo(() => Array.from(selection), [selection]);
+
+  const handleBulkUpdate = useCallback(
+    (updatedContacts: ContactRecord[], removedIds: string[]) => {
+      if (updatedContacts.length === 0 && removedIds.length === 0) {
+        return;
+      }
+      setContacts((current) => {
+        const map = new Map(current.map((contact) => [contact.id, contact] as const));
+        updatedContacts.forEach((contact) => {
+          const previous = map.get(contact.id);
+          emitContactTelemetry(previous, contact, "bulk");
+          map.set(contact.id, contact);
+        });
+        removedIds.forEach((id) => {
+          map.delete(id);
+        });
+        return Array.from(map.values());
+      });
+      if (removedIds.length > 0) {
+        setSelection((current) => {
+          const next = new Set(current);
+          removedIds.forEach((id) => next.delete(id));
+          return next;
+        });
+      }
+    },
+    [emitContactTelemetry, setContacts, setSelection]
+  );
+
+  const handleImportedContacts = useCallback(
+    (newContacts: ContactRecord[]) => {
+      if (newContacts.length === 0) {
+        return;
+      }
+      handleBulkUpdate(newContacts, []);
+      setFeedback({ type: "success", message: `${newContacts.length} contato(s) importado(s)` });
+    },
+    [handleBulkUpdate]
+  );
 
   const availableTags = useMemo(() => {
     const tags = new Set<string>();
@@ -295,25 +398,23 @@ export default function ContactsBoardPage({
         setFeedback({ type: "error", message: result.error });
         return result;
       }
-      const shouldRefreshTimeline =
-        ("stage" in updates && updates.stage !== existing.stage) ||
-        "nextActionAt" in updates ||
-        "nextActionNote" in updates;
-      if ("stage" in updates && updates.stage && updates.stage !== existing.stage) {
-        trackEvent("crm/contact_stage_changed", {
-          contactId,
-          from: existing.stage,
-          to: updates.stage,
-          source,
-        });
+      const updated = result.contact;
+      emitContactTelemetry(existing, updated, source);
+      if (existing.stage !== updated.stage) {
         setFeedback({ type: "success", message: "Estágio atualizado" });
+      } else if (nextStepSignature(existing) !== nextStepSignature(updated)) {
+        setFeedback({ type: "success", message: "Próximo passo atualizado" });
       }
+      const shouldRefreshTimeline =
+        existing.stage !== updated.stage ||
+        existing.nextActionAt !== updated.nextActionAt ||
+        existing.nextActionNote !== updated.nextActionNote;
       if (shouldRefreshTimeline && modalState?.contactId === contactId) {
         await loadModalDetail(contactId);
       }
-      return result;
+      return { success: true, contact: updated };
     },
-    [contacts, submitContactForm, loadModalDetail, modalState]
+    [contacts, emitContactTelemetry, submitContactForm, loadModalDetail, modalState]
   );
 
   const handleModalRefresh = useCallback(() => {
@@ -593,6 +694,7 @@ export default function ContactsBoardPage({
     if (!editingContactId || !editingForm) {
       return;
     }
+    const previous = contacts.find((contact) => contact.id === editingContactId);
     setIsLoading(true);
     setFormErrors(null);
     try {
@@ -602,12 +704,13 @@ export default function ContactsBoardPage({
         setFeedback({ type: "error", message: result.error });
         return;
       }
+      emitContactTelemetry(previous, result.contact, "board");
       setFeedback({ type: "success", message: "Contato atualizado" });
       cancelEdit();
     } finally {
       setIsLoading(false);
     }
-  }, [editingContactId, editingForm, submitContactForm, cancelEdit]);
+  }, [contacts, editingContactId, editingForm, emitContactTelemetry, submitContactForm, cancelEdit]);
 
   const onSubmitCreate = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -634,6 +737,12 @@ export default function ContactsBoardPage({
           <div className={styles.actionsRow}>
             <Button kind={Button.kinds.PRIMARY} onClick={() => setIsCreating(true)}>
               Novo contato
+            </Button>
+            <Button kind={Button.kinds.SECONDARY} onClick={() => setImportOpen(true)}>
+              Importar CSV
+            </Button>
+            <Button kind={Button.kinds.SECONDARY} onClick={() => setReportsOpen(true)}>
+              Relatórios
             </Button>
             <Button kind={Button.kinds.SECONDARY} loading={isRefreshing} onClick={handleRefresh}>
               Atualizar
@@ -807,15 +916,6 @@ export default function ContactsBoardPage({
         {feedback && (
           <div className={feedback.type === "success" ? styles.loadingState : styles.errorState} role="status">
             {feedback.message}
-          </div>
-        )}
-
-        {viewMode === "board" && selection.size > 0 && (
-          <div className={styles.selectionSummary} role="status">
-            <span>{selection.size} contato(s) selecionado(s)</span>
-            <Button kind={Button.kinds.TERTIARY} onClick={() => setSelection(new Set())}>
-              Limpar seleção
-            </Button>
           </div>
         )}
 
@@ -1090,6 +1190,30 @@ export default function ContactsBoardPage({
                             </option>
                           ))}
                       </select>
+                      {editingForm.stage === "perdido" && (
+                        <div className={styles.nameCell}>
+                          <textarea
+                            className={styles.inlineTextarea}
+                            placeholder="Motivo da perda"
+                            value={editingForm.lostReason}
+                            onChange={(event) =>
+                              setEditingForm((current) =>
+                                current ? { ...current, lostReason: event.target.value } : current
+                              )
+                            }
+                          />
+                          <input
+                            className={styles.inlineInput}
+                            type="date"
+                            value={editingForm.lostReviewAt}
+                            onChange={(event) =>
+                              setEditingForm((current) =>
+                                current ? { ...current, lostReviewAt: event.target.value } : current
+                              )
+                            }
+                          />
+                        </div>
+                      )}
                       <div className={styles.nameCell}>
                         <input
                           className={styles.inlineInput}
@@ -1234,6 +1358,27 @@ export default function ContactsBoardPage({
         onOpenContact={handleOpenContact}
         saving={modalSaving}
       />
+      {viewMode === "board" && selectedIdsArray.length > 0 ? (
+        <BulkActionsBar
+          organizationId={organization.id}
+          actorMembershipId={currentMembership.id}
+          selectedIds={selectedIdsArray}
+          contacts={contacts}
+          currentMembership={currentMembership}
+          memberships={memberships}
+          onClear={() => setSelection(new Set())}
+          onUpdate={handleBulkUpdate}
+        />
+      ) : null}
+      <ImportContactsModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        organizationId={organization.id}
+        actorMembershipId={currentMembership.id}
+        memberships={memberships}
+        onImported={handleImportedContacts}
+      />
+      <ReportsDialog open={reportsOpen} onClose={() => setReportsOpen(false)} contacts={contacts} />
     </section>
   );
 }

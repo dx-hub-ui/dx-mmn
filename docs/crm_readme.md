@@ -35,21 +35,31 @@
 - **API GET `/api/crm/contacts/[id]`** retorna detalhe + timeline + referidos, mantendo autenticação Supabase.
 - **Atualização de dados** ao mover estágio/trocar dono define eventos em lote e sincroniza board/modal.
 
+## Funcionalidades da Sprint 3
+- **Barra de ações em lote** (`BulkActionsBar`): ativada ao selecionar ≥1 contato, trazendo ações de estágio, dono, próximo passo, indicado por, tags, marcar `Cadastrado`/`Perdido`, mesclar duplicados, arquivar, reativar, excluir, exportar CSV e atalho "Mais…". Respeita papéis através de `filterContactsByOwnership` e utilitários em `utils/permissions.ts`, emitindo telemetria `crm/bulkbar_open`/`crm/bulk_action_execute`.
+- **Fluxo de importação CSV** (`ImportContactsModal` + `/api/crm/import`): suporta dry-run com relatório de erros (telefone, dono, estágio, duplicados) e aplicação final com normalização BR, validação Supabase e retorno dos contatos inseridos. O parser aceita delimitadores `,` e `;`, campos entre aspas e múltiplas linhas.
+- **Relatórios básicos** (`ReportsDialog`): mostra funil por estágio (considerando arquivados) e ranking de indicantes nos últimos 30 dias; diálogo acessível, com foco gerenciado e fechamento por `Esc`.
+- **Regras de perda/arquivamento**: campos `lost_reason`, `lost_review_at` e `archived_at` são atualizados tanto em formulários individuais quanto em ações em lote, com mensagens de feedback e refresh automático da modal.
+- **APIs complementares**: `/api/crm/contacts/bulk` e `/api/crm/import` encapsulam Supabase e validações, retornando contatos atualizados, IDs removidos e erros parciais para toasts resumirem falhas.
+
 ## Telemetria
 - `crm/board_view_loaded`: enviado ao montar o board com `{ organizationId, total }`.
 - `crm/filters_changed`: emitido ao alterar filtros ou view salva.
 - `crm/selection_changed`: emitido quando o conjunto selecionado muda.
 - `crm/contact_modal_open`, `crm/contact_modal_save`, `crm/contact_modal_tab_change`: instrumentam abertura, salvamento e troca de abas da modal.
-- `crm/contact_stage_changed`: usado para board/modal/kanban ao alterar estágio.
-- Próximos eventos (bulk actions, importação) continuarão usando `trackEvent`.
+- `crm/contact_stage_changed`: usado para board/modal/kanban/bulk ao alterar estágio.
+- `crm/owner_changed`: disparado ao reatribuir dono (inline, modal ou bulk).
+- `crm/next_step_set`: registra alterações do próximo passo, com payload `{ hasDate, hasNote, cleared, source }`.
+- `crm/referral_linked`: emitido quando o vínculo de indicação é criado ou alterado.
+- `crm/bulkbar_open`, `crm/bulk_action_execute`: acompanham abertura da barra inferior e execução de ações em lote.
 
 ## Decisões & Gaps
 - **@vibe/code indisponível**: não existe pacote público acessível, optamos por `@vibe/core` + CSS modules alinhados aos tokens globais; registrado aqui para futuras integrações caso o pacote seja disponibilizado.
 - **Virtualização customizada**: `@tanstack/react-virtual` foi adotado para evitar dependência pesada; garante foco e semântica de grid.
 - **Permissões**: RLS via Supabase garante owner visível; UI respeita roles (`Meus` usa membership atual, `Time` usa árvore via `visible_membership_ids`).
 - **Mutação autenticada**: rotas POST/PATCH (`/api/crm/contacts`) exigem `actorMembershipId` explícito para registrar eventos e validar hierarquias; requisições sem o campo respondem 400.
-- **Importação/relatórios**: permanecem pendentes para a Sprint 3.
+- **Parser CSV leve**: `parseCsv` implementado manualmente. Casos com delimitadores alternativos ou arquivos muito grandes devem ser validados em QA futuro.
 
-## Próximos Passos (Sprint 3)
-1. Barra inferior para ações em lote com telemetria `crm/bulkbar_open`/`crm/bulk_action_execute`.
-2. Fluxo de importação CSV com dry-run e relatórios (funil / top indicantes).
+## Próximos Passos
+1. Validar parser CSV com arquivos grandes (10k+ linhas) e diferentes codificações/delimitadores.
+2. Evoluir relatórios com métricas de conversão por origem/time e exportação filtrada.

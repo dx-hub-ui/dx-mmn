@@ -70,15 +70,27 @@ O seed inclui:
 - `src/lib/telemetry.ts` encaminha eventos para `window.analytics` ou `dataLayer`. Em desenvolvimento, caem em `console.debug`.
 - Para depurar chamadas Supabase, use `supabase logs tail` em paralelo.
 
-## 9. Checklist Sprint 1
+## 9. Fluxo de importação CSV
+1. Gere um arquivo `.csv` com cabeçalho contendo ao menos `nome` (outros campos aceitos: `email`, `telefone`, `dono`, `estágio`, `tags`, `origem`, `próximo passo`, `próximo passo data`, `indicado por`, `motivo perda`, `revisar em`). Delimitadores `,` e `;` são suportados.
+2. No board, clique em **Importar CSV** e envie o arquivo. O modal executa o *dry-run* automaticamente e apresenta a tabela de erros.
+3. Resolva avisos (ex.: dono não encontrado, telefone inválido) e clique em **Aplicar importação** para persistir.
+4. Para testes automatizados, use o comando Playwright (`pnpm e2e`) após iniciar o Supabase; a spec `crm-board.spec.ts` cobre abertura do modal de importação.
+
+## 10. Checklist Sprint 1
 - [x] Migração + seed atualizados.
 - [x] Board com filtros, views salvas, agrupamento e virtualização.
 - [x] Criação/edição inline com validação BR (telefone E.164) e dedupe.
 - [x] Seleção persistente com telemetria.
 - [x] Documentação (este arquivo + `docs/crm_readme.md`).
 
-## 10. Checklist Sprint 2
+## 11. Checklist Sprint 2
 - [x] Modal de contato com tabs (Atividades, Dados, Próximo passo, Indicações) e timeline baseada em `contact_events`.
 - [x] Kanban de estágios com drag & drop (`@dnd-kit`), refletindo filtros/views ativos.
 - [x] Telemetria adicionada (`crm/contact_modal_*`, `crm/contact_stage_changed`).
 - [x] Testes atualizados (Vitest para modal/kanban + Playwright com troca de modo e modal).
+
+## 12. Checklist Sprint 3
+- [x] Barra de ações inferior com permissões por papel e telemetria (`crm/bulkbar_open`, `crm/bulk_action_execute`).
+- [x] Fluxo completo de importação CSV (dry-run + aplicação) validado com dados realistas.
+- [x] Relatórios Funil/Top Indicantes disponíveis na página e cobertos por testes de componente.
+- [x] Eventos de telemetria para `crm/owner_changed`, `crm/next_step_set`, `crm/referral_linked` emitidos a partir das mutações.

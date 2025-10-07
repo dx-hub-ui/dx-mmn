@@ -20,6 +20,9 @@ export type ContactRow = {
   next_action_at: string | null;
   next_action_note: string | null;
   referred_by_contact_id: string | null;
+  lost_reason: string | null;
+  lost_review_at: string | null;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
   owner: {
@@ -73,6 +76,9 @@ export function mapContactRow(row: ContactRow): ContactRecord {
     nextActionAt: row.next_action_at,
     nextActionNote: row.next_action_note,
     referredByContactId: row.referred_by_contact_id,
+    lostReason: row.lost_reason,
+    lostReviewAt: row.lost_review_at,
+    archivedAt: row.archived_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     owner:
@@ -102,6 +108,7 @@ export async function listContacts(
     .from("contacts")
     .select(
       `id, organization_id, owner_membership_id, name, email, whatsapp, status, source, tags, score, last_touch_at, next_action_at, next_action_note, referred_by_contact_id, created_at, updated_at,
+       lost_reason, lost_review_at, archived_at,
        owner:memberships (id, organization_id, role, user_id, parent_leader_id, profile:profiles (id, email, raw_user_meta_data)),
        referred_by:contacts!contacts_referred_by_contact_id_fkey (id, name)`
     )

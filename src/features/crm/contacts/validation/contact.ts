@@ -7,7 +7,9 @@ export type ContactValidationErrorCode =
   | "phone_invalid"
   | "stage_invalid"
   | "owner_required"
-  | "score_invalid";
+  | "score_invalid"
+  | "lost_reason_required"
+  | "lost_review_invalid";
 
 export type ContactValidationError = {
   field: keyof ContactInput | "whatsapp";
@@ -70,12 +72,41 @@ export function validateContactInput(payload: ContactInput): {
     }
   }
 
+  const normalizedTags = Array.from(new Set((payload.tags ?? []).map((tag) => tag.trim()).filter(Boolean)));
+  const normalizedSource = payload.source ? payload.source.trim() : null;
+
+  let lostReason: string | null = payload.lostReason ? payload.lostReason.trim() : null;
+  let lostReviewAt: string | null = payload.lostReviewAt ?? null;
+
+  if (payload.stage === "perdido") {
+    if (!lostReason) {
+      errors.push({
+        field: "lostReason",
+        code: "lost_reason_required",
+        message: "Informe o motivo da perda",
+      });
+    }
+
+    if (lostReviewAt) {
+      const date = new Date(lostReviewAt);
+      if (Number.isNaN(date.getTime())) {
+        errors.push({
+          field: "lostReviewAt",
+          code: "lost_review_invalid",
+          message: "Data de revisão inválida",
+        });
+      } else {
+        lostReviewAt = date.toISOString();
+      }
+    }
+  } else {
+    lostReason = null;
+    lostReviewAt = null;
+  }
+
   if (errors.length > 0) {
     return { errors };
   }
-
-  const normalizedTags = Array.from(new Set((payload.tags ?? []).map((tag) => tag.trim()).filter(Boolean)));
-  const normalizedSource = payload.source ? payload.source.trim() : null;
 
   return {
     value: {
@@ -90,6 +121,8 @@ export function validateContactInput(payload: ContactInput): {
       nextActionAt: payload.nextActionAt ?? null,
       referredByContactId: payload.referredByContactId ?? null,
       source: normalizedSource,
+      lostReason,
+      lostReviewAt,
     },
   };
 }

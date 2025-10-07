@@ -292,16 +292,6 @@
   color: var(--text-secondary, rgba(18, 21, 31, 0.65));
 }
 
-.selectionSummary {
-  padding: 8px 16px;
-  background: rgba(58, 89, 255, 0.1);
-  border-bottom: 1px solid var(--dx-border);
-  font-size: 13px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
 @media (max-width: 1200px) {
   .tableHead,
   .rowItem {
