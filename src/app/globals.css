@@ -15,7 +15,7 @@
   /* Spacing (used by sidebar.module.css) */
   --dx-space-2: 8px;
   --dx-space-3: 12px;
-  --dx-space-4: 12px;
+  --dx-space-4: 16px;
   --dx-space-5: 20px;
 
   /* Page paddings */
@@ -62,10 +62,13 @@
   --application-surface-color: #f6f7fb;
   --application-border-color: #e6e9ef;
 
-  --dx-bg: var(--application-surface-color);
+  --dx-bg: var(--application-background-color);
   --dx-surface: var(--application-background-color);
   --dx-border: var(--application-border-color);
   --dx-text: #1f2328;
+  
+  --dx-surface-control-bg:  var(--surface-color);
+
 
   /* Topbar / Sidebar container backgrounds (theme overrides below) */
   --topbar-background-color: #e1eff2;
@@ -115,10 +118,10 @@ body#main.default-app-theme {
 
   --primary-color: #007f9b;
   --primary-hover-color: #006278;
-  --primary-selected-color: #d1ecef;
-  --primary-selected-hover-color: #c6dfe3;
+  --primary-selected-color: rgba(174, 222, 229, 0.40);
+  --primary-selected-hover-color: rgba(174, 222, 229, 0.40);
   --primary-highlighted-color: #e7f4f6;
-  --surface-color:  #e1eff2;
+  --surface-color:  rgba(174, 222, 229, 0.40);
 
   --primary-text-color: #323338;
   --secondary-text-color: #676879;
@@ -138,7 +141,7 @@ body#main.default-app-theme {
   --application-border-color: var(--layout-border-color);
 
   --dx-bg: var(--application-surface-color);
-  --dx-surface: var(--application-background-color);
+  --dx-surface: var(--surface-color);
   --dx-border: var(--application-border-color);
   --dx-text: var(--primary-text-color);
 

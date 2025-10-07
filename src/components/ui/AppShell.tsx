@@ -1,44 +1,100 @@
-// src/components/ui/AppShell.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import clsx from "clsx";
+import SurfaceControl from "@/components/surface/SurfaceControl";
 import Topbar from "./topbar";
 import Sidebar from "./sidebar";
 import styles from "./app-shell.module.css";
+import { NavigationChevronLeft, NavigationChevronRight } from "@vibe/icons";
 
 export default function AppShell({
   children,
-  className,
+  className
 }: {
   children: React.ReactNode;
   className?: string;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
+  // trava o body scroll (padrão monday)
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  // Larguras padrão (tokens)
+  const SIDEBAR_EXPANDED = "272px";
+  const SIDEBAR_COLLAPSED = "30px";
+
+  // Duração/curva padrão
+  const SIDEBAR_ANIM = "320ms";
+  const SIDEBAR_EASE = "cubic-bezier(.4,0,.2,1)";
+
+  // Var compartilhada para layout/overlays
+  const sidebarCurrent = useMemo(
+    () => (isSidebarOpen ? SIDEBAR_EXPANDED : SIDEBAR_COLLAPSED),
+    [isSidebarOpen]
+  );
+
+  const handleToggleSidebar = useCallback(() => {
+    setIsSidebarOpen((v) => !v);
+  }, []);
+
   return (
-    <div
-      className={clsx(styles.shell, className)}
-      data-sidebar={isSidebarOpen ? "expanded" : "collapsed"}
-    >
-      <div className={styles.topbar}>
-        <Topbar isSidebarOpen={isSidebarOpen} />
-      </div>
+    <SurfaceControl>
+      <div
+        className={clsx(styles.shell, className)}
+        data-sidebar={isSidebarOpen ? "expanded" : "collapsed"}
+        style={
+          {
+            ["--dx-sidebar-width" as any]: SIDEBAR_EXPANDED,
+            ["--dx-sidebar-collapsed-width" as any]: SIDEBAR_COLLAPSED,
+            ["--sidebar-current" as any]: sidebarCurrent,
+            ["--dx-sidebar-anim" as any]: SIDEBAR_ANIM,
+            ["--dx-sidebar-ease" as any]: SIDEBAR_EASE
+          } as React.CSSProperties
+        }
+      >
+        {/* Topbar fixa */}
+        <header className={styles.topbar} role="banner">
+          <Topbar isSidebarOpen={isSidebarOpen} />
+        </header>
 
-      <div className={styles.sidebar}>
-        <Sidebar
-          isOpen={isSidebarOpen}
-          onToggle={() => setIsSidebarOpen((v) => !v)}
-        />
-      </div>
+        {/* Sidebar fixa */}
+        <aside className={styles.sidebarWrap} aria-label="Primary">
+          <Sidebar isOpen={isSidebarOpen} onToggle={handleToggleSidebar} />
+        </aside>
 
-      <main className={styles.content} role="main" id="main-content">
-        {/* <- o “paper” grande do main */}
-        <div className={styles.canvas}>
-          {/* conteúdo da página vive aqui dentro */}
-          <div className={styles.page}>{children}</div>
+        {/* Chevron fora da Sidebar, com z-index alto */}
+        <div className={styles.edgeToggleShell}>
+          <button
+            type="button"
+            aria-label={isSidebarOpen ? "Collapse navigation" : "Expand navigation"}
+            className={styles.edgeToggleBtn}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleToggleSidebar();
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleToggleSidebar();
+            }}
+          >
+            {isSidebarOpen ? <NavigationChevronLeft size={16} /> : <NavigationChevronRight size={16} />}
+          </button>
         </div>
-      </main>
-    </div>
+
+        {/* Main rolável */}
+        <main id="main-content" tabIndex={-1} className={styles.main} role="main">
+          <div className={styles.canvas}>{children}</div>
+        </main>
+      </div>
+    </SurfaceControl>
   );
 }

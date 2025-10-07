@@ -1,16 +1,10 @@
-// src/components/ui/sidebar.tsx
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import {
-  Home as HomeIcon,
-  Settings as SettingsIcon,
-  NavigationChevronLeft,
-  NavigationChevronRight
-} from "@vibe/icons";
+import { Home as HomeIcon, Settings as SettingsIcon } from "@vibe/icons";
 import styles from "./sidebar.module.css";
 
 type Item = {
@@ -21,8 +15,8 @@ type Item = {
 };
 
 const ITEMS: Item[] = [
-  { id: "home",     label: "Home",     href: "/",         icon: HomeIcon },
-  { id: "tables",   label: "Tables",   href: "/tables",   icon: HomeIcon },
+  { id: "home",     label: "Home",     href: "/",       icon: HomeIcon },
+  { id: "tables",   label: "Tables",   href: "/tables", icon: HomeIcon },
   { id: "settings", label: "Settings", href: "/settings", icon: SettingsIcon }
 ];
 
@@ -38,37 +32,65 @@ export default function Sidebar({
   const pathname = usePathname();
   const collapsed = !isOpen;
 
-  // normaliza pathname para bater com href sem barra final
+  const [animating, setAnimating] = useState(false);
+  const lastCollapsedRef = useRef<boolean>(collapsed);
+
+  const beginToggle = useCallback(() => {
+    if (animating) return; // evita duplo-toggle durante a transição
+    setAnimating(true);
+    onToggle();
+  }, [animating, onToggle]);
+
+  const handleTransitionEnd = (e: React.TransitionEvent<HTMLElement>) => {
+    if (e.currentTarget !== e.target) return; // apenas a própria .sidebar
+    if (e.propertyName !== "width") return;
+    lastCollapsedRef.current = collapsed;
+    setAnimating(false);
+  };
+
   const activePath = useMemo(() => {
     if (!pathname) return "/";
-    if (pathname !== "/" && pathname.endsWith("/")) return pathname.slice(0, -1);
-    return pathname;
+    return pathname.endsWith("/") && pathname !== "/" ? pathname.slice(0, -1) : pathname;
   }, [pathname]);
 
+  const handleRootClick = () => {
+    if (collapsed) beginToggle();
+  };
+  const handleRootKeyDown = (e: React.KeyboardEvent) => {
+    if (!collapsed) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      beginToggle();
+    }
+  };
+  const handleLinkClickWhenCollapsed = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (collapsed) {
+      e.preventDefault();
+      beginToggle();
+    }
+  };
+
   return (
-    // o data-collapsed controla os estilos colapsados via CSS
-    <div data-collapsed={collapsed ? "true" : "false"}>
-      <aside className={clsx(styles.sidebar, className)} aria-label="Main navigation">
-        {/* neblina/gradient opcional no rodapé da sidebar */}
-        <div className={styles.sidebarFog} />
-
+    <div
+      data-collapsed={collapsed ? "true" : "false"}
+      data-animating={animating ? "true" : "false"}
+    >
+      <aside
+        className={clsx(styles.sidebar, className)}
+        aria-label="Main navigation"
+        data-clickable={collapsed ? "true" : undefined}
+        role={collapsed ? "button" : undefined}
+        aria-expanded={!collapsed}
+        tabIndex={collapsed ? 0 : -1}
+        onClick={handleRootClick}
+        onKeyDown={handleRootKeyDown}
+        onTransitionEnd={handleTransitionEnd}
+      >
         <div className={styles.sidebarInner}>
-          {/* Chevron “meio a meio”, sem tooltip, acima de tudo */}
-          <div className={styles.edgeToggle}>
-            <button
-              type="button"
-              aria-label={isOpen ? "Collapse navigation" : "Expand navigation"}
-              onClick={onToggle}
-              className={styles.toggleButton}
-            >
-              {isOpen ? <NavigationChevronLeft size={16} /> : <NavigationChevronRight size={16} />}
-            </button>
-          </div>
-
-          {/* Navegação */}
           <nav className={styles.nav} role="navigation" aria-label="Sidebar">
             {ITEMS.map(({ id, label, href, icon: Icon }) => {
-              const isActive = activePath === href || (href !== "/" && activePath.startsWith(href));
+              const isActive =
+                activePath === href || (href !== "/" && activePath.startsWith(href));
               return (
                 <Link
                   key={id}
@@ -76,6 +98,7 @@ export default function Sidebar({
                   className={styles.navItem}
                   aria-current={isActive ? "page" : undefined}
                   data-selected={isActive ? "true" : undefined}
+                  onClick={handleLinkClickWhenCollapsed}
                 >
                   <span className={styles.navIcon} aria-hidden>
                     <Icon size={18} />

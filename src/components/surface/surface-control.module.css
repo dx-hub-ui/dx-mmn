@@ -1,0 +1,36 @@
+/* Cor da película / surface control (versão compatível com CSS Modules) */
+
+/* Faixa fixa da topbar por cima de tudo (não bloqueia cliques) */
+.surfaceTopbar {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: var(--dx-top-bar-height);
+  pointer-events: none;
+  z-index: 10050; /* acima do conteúdo e do Topbar real */
+  background: var(--dx-surface-control-bg);
+  transition: background .2s ease;
+}
+
+/* Coluna fixa na esquerda (halo da sidebar), segue --sidebar-current */
+.surfaceSidebar {
+  position: fixed;
+  top: var(--dx-top-bar-height);
+  left: 0;
+  width: var(--sidebar-current, var(--dx-sidebar-width, 272px));
+  height: calc(100dvh - var(--dx-top-bar-height));
+  pointer-events: none;
+  z-index: 10040; /* abaixo do surfaceTopbar, acima do conteúdo */
+  background: var(--dx-surface-control-bg);
+
+  /* só o topo esquerdo arredondado */
+  border-radius: var(--dx-radius-lg, 12px) 0 0 0;
+
+  /* leve fade pra “sumir” sob o canvas */
+  -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent 100%);
+          mask-image: linear-gradient(180deg, #000 60%, transparent 100%);
+
+  /* anima largura quando a sidebar expande/colapsa */
+  transition:
+    width .3s cubic-bezier(.4, 0, .2, 1),
+    background .2s ease;
+}
