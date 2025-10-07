@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@vibe/core": "^3.69.1",
+    "@supabase/ssr": "^0.4.0",
     "@vibe/icons": "^1.11.0",
     "clsx": "^2.1.1",
     "monday-ui-style": "^0.26.0",

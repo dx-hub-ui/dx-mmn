@@ -1,36 +1,125 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Plataforma B2B2C com Supabase e Next.js
 
-## Getting Started
+Este repositório contém a base de uma aplicação Next.js 14 (App Router) integrada ao Supabase com autenticação, multi-tenancy e controle de papéis (org, leader, rep) para um CRM de marketing multinível.
 
-First, run the development server:
+## Pré-requisitos
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- [Supabase CLI](https://supabase.com/docs/guides/cli) 1.158+.
+- Node.js 18+ com pnpm (ou npm/yarn/bun, adapte os comandos conforme necessário).
+- Variáveis de ambiente configuradas no arquivo `.env.local` do Next.js e em `.env` das Edge Functions (ver seção [Variáveis de ambiente](#variáveis-de-ambiente)).
+
+## Como rodar localmente
+
+1. Inicie os serviços do Supabase:
+   ```bash
+   supabase start
+   ```
+2. Aplique as migrações e seeds de desenvolvimento:
+   ```bash
+   supabase db reset --use-migra --seed supabase/seed.sql
+   ```
+   > O reset executa todas as migrações e popula dados demo (organização ACME, um líder e dois representantes).
+3. Opcional: sirva as Edge Functions localmente para testes integrados:
+   ```bash
+   supabase functions serve
+   ```
+4. Instale dependências do projeto e inicie o Next.js:
+   ```bash
+   pnpm install
+   pnpm dev
+   ```
+5. A aplicação ficará disponível em `http://localhost:3000`.
+
+## Configuração de autenticação (Email OTP / Magic Link)
+
+1. No [dashboard do Supabase](https://app.supabase.com/), acesse **Authentication > Providers**.
+2. Habilite **Email** e selecione **Magic Link** ou **OTP** conforme desejado.
+3. Configure o domínio de envio de e-mails ou utilize o serviço padrão do Supabase em ambiente de desenvolvimento.
+4. Atualize as variáveis `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` com os valores do projeto.
+5. Para testar localmente, crie usuários via Magic Link ou usando o seed incluído (com emails `owner@example.com`, `leader@example.com`, etc.).
+
+## Login via Magic Link
+
+1. Acesse `http://localhost:3000/` (a tela de login também está disponível em `/sign-in` para links diretos) e, opcionalmente, informe `redirectTo` para personalizar o destino após o login (por padrão `/dashboard`).
+2. Informe o email associado ao seu usuário e envie o formulário para receber um link mágico.
+3. O Supabase validará o token e redirecionará para `/auth/callback`, onde a sessão é persistida e você é levado ao caminho definido em `redirectTo` (padrão `/dashboard`).
+4. Se precisar reenviar o link, basta repetir o processo; a tela exibirá o status da solicitação e qualquer erro retornado pelo Supabase.
+
+> **Dica:** durante o desenvolvimento, configure `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` com os valores do projeto para que o formulário fique ativo. Em ambientes de review, a interface informa quando as variáveis não estão configuradas.
+
+## Dashboard protegido
+
+- Após a autenticação, os usuários são direcionados para `/dashboard`, página inicial da área logada.
+- A tela lista os dados básicos do usuário logado (nome, email e UUID) para facilitar depuração.
+- Também apresenta todos os vínculos (`memberships`) do usuário com as organizações, destacando o papel (`org`, `leader`, `rep`) e o status de cada associação para validar cenários de permissão.
+- Utilize esta visualização para testar rapidamente como o conteúdo deverá variar conforme o papel em futuras implementações.
+
+## Variáveis de ambiente
+
+### Next.js (`.env.local`)
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=...        # URL do projeto Supabase
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...   # Chave pública (anon)
+SUPABASE_URL=...                    # Mesma URL para chamadas a Edge Functions
+SUPABASE_SERVICE_ROLE_KEY=...       # Chave service role (mantida somente no servidor)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+> **Atenção:** `SUPABASE_SERVICE_ROLE_KEY` nunca deve ser exposta ao cliente. Ela é utilizada exclusivamente em rotas servidoras para chamar Edge Functions.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Edge Functions (`supabase/functions/.env` ou variáveis de deploy)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+SUPABASE_URL=...
+SUPABASE_SERVICE_ROLE_KEY=...
+```
 
-## Learn More
+Quando publicar, configure as mesmas variáveis no Supabase para cada função.
 
-To learn more about Next.js, take a look at the following resources:
+## Fluxo funcional
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Login seguro** (`/` ou `/sign-in` + `/auth/callback` + `/dashboard`):
+   - Usuários solicitam um link mágico de acesso na landing inicial da aplicação.
+   - Após confirmar o link recebido por email, o browser é redirecionado para `/auth/callback`, que registra a sessão antes de seguir para o dashboard protegido (padrão `/dashboard`).
+2. **Criação de organização** (`POST /api/orgs/create`):
+   - Usuário autenticado chama a rota.
+   - Route handler contata a Edge Function `create_org`, que valida o slug, cria a organização e um membership `org` para o usuário.
+3. **Geração de convite** (`POST /api/invites/generate`):
+   - Somente `org` e `leader` ativos podem gerar convites para `leader` ou `rep`.
+   - Pode-se amarrar um novo `rep` a um líder específico (hierarquia) através de `parentLeaderId`.
+   - Edge Function `generate_invite` retorna apenas o token do convite; combine com sua URL pública para compartilhar.
+4. **Resgate de convite** (`POST /api/invites/redeem`):
+   - Usuário autenticado envia o token.
+   - Edge Function `redeem_invite` valida uso/expiração, cria (ou ajusta) o membership e incrementa `used_count`.
+   - A rota Next.js redireciona para `/app/:slug` da organização correspondente.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Cenários de teste de RLS
 
-## Deploy on Vercel
+Os dados seedados permitem validar a visibilidade no CRM (`public.contacts`):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Representante (rep1@example.com):**
+   - Faça login como rep1 e tente listar contatos (`SELECT * FROM public.contacts`).
+   - Resultado esperado: apenas contatos com `owner_membership_id = cccc3333-cccc-3333-cccc-333333333333`.
+   - Tentar atualizar um contato pertencente a outro rep deve falhar (violação de política RLS).
+2. **Líder (leader@example.com):**
+   - Deve conseguir ver os próprios contatos (`owner_membership_id = bbbb2222-...`) e os contatos de seus reps subordinados (`cccc...` e `dddd...`).
+   - Inserir um novo contato para um rep subordinado é permitido desde que `owner_membership_id` pertença à subárvore.
+3. **Org owner (owner@example.com):**
+   - Consegue visualizar e inserir contatos para qualquer membership da organização.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Use o Supabase Studio com a opção **JWT override** ou tokens gerados via CLI (`supabase auth sign-in --email ...`) para simular cada usuário.
+
+## Boas práticas e segurança
+
+- Todas as mutações sensíveis (criação de organização, geração e resgate de convites) passam por Edge Functions com Service Role e validações de negócios.
+- RLS está habilitado em `memberships`, `contacts` e `invite_links`. Apenas leituras necessárias são liberadas aos usuários autenticados.
+- Função SQL `visible_membership_ids` calcula dinamicamente a subárvore de visibilidade, garantindo isolamento entre organizações e hierarquias.
+- Não exponha a Service Role key no cliente; somente rotas servidoras ou funções no backend devem utilizá-la.
+- Utilize HTTPS e configure domínios confiáveis de redirecionamento no Supabase para evitar abuso em convites.
+
+## Referências úteis
+
+- [Documentação do Supabase Auth](https://supabase.com/docs/guides/auth)
+- [RLS no Supabase](https://supabase.com/docs/guides/auth/row-level-security)
+- [Edge Functions](https://supabase.com/docs/guides/functions)
+- [Next.js App Router](https://nextjs.org/docs/app)

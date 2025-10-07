@@ -1,0 +1,29 @@
+.root {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: clamp(24px, 4vw, 72px);
+  background: var(--dx-bg, var(--application-surface-color));
+}
+
+.panel {
+  width: min(100%, 360px);
+  display: grid;
+  gap: 20px;
+  padding: clamp(24px, 5vw, 36px);
+  background: var(--dx-surface, var(--primary-background-color));
+  border: 1px solid var(--dx-border, var(--layout-border-color));
+  border-radius: var(--dx-radius-lg, 16px);
+  box-shadow: var(--shadow-md, 0 16px 32px -24px rgba(15, 23, 42, 0.35));
+  text-align: center;
+  color: var(--dx-text, var(--primary-text-color));
+}
+
+.message {
+  display: grid;
+  gap: 12px;
+}
+
+.errorText {
+  color: var(--negative-color, #d83a52);
+}
