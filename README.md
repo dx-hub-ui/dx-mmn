@@ -40,12 +40,19 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 
 ## Login via Magic Link
 
-1. Acesse `http://localhost:3000/sign-in` (ou `/sign-in?redirectTo=/app/acme` para redirecionar após o login).
+1. Acesse `http://localhost:3000/` (a tela de login também está disponível em `/sign-in` para links diretos) e, opcionalmente, informe `redirectTo` para personalizar o destino após o login (por padrão `/dashboard`).
 2. Informe o email associado ao seu usuário e envie o formulário para receber um link mágico.
-3. O Supabase validará o token e redirecionará para `/auth/callback`, onde a sessão é persistida e você é levado ao caminho definido em `redirectTo` (padrão `/app`).
+3. O Supabase validará o token e redirecionará para `/auth/callback`, onde a sessão é persistida e você é levado ao caminho definido em `redirectTo` (padrão `/dashboard`).
 4. Se precisar reenviar o link, basta repetir o processo; a tela exibirá o status da solicitação e qualquer erro retornado pelo Supabase.
 
 > **Dica:** durante o desenvolvimento, configure `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` com os valores do projeto para que o formulário fique ativo. Em ambientes de review, a interface informa quando as variáveis não estão configuradas.
+
+## Dashboard protegido
+
+- Após a autenticação, os usuários são direcionados para `/dashboard`, página inicial da área logada.
+- A tela lista os dados básicos do usuário logado (nome, email e UUID) para facilitar depuração.
+- Também apresenta todos os vínculos (`memberships`) do usuário com as organizações, destacando o papel (`org`, `leader`, `rep`) e o status de cada associação para validar cenários de permissão.
+- Utilize esta visualização para testar rapidamente como o conteúdo deverá variar conforme o papel em futuras implementações.
 
 ## Variáveis de ambiente
 
@@ -71,9 +78,9 @@ Quando publicar, configure as mesmas variáveis no Supabase para cada função.
 
 ## Fluxo funcional
 
-1. **Login seguro** (`/sign-in` + `/auth/callback`):
-   - Usuários solicitam um link mágico de acesso.
-   - Após confirmar o link recebido por email, o browser é redirecionado para `/auth/callback`, que registra a sessão antes de seguir para o segmento protegido.
+1. **Login seguro** (`/` ou `/sign-in` + `/auth/callback` + `/dashboard`):
+   - Usuários solicitam um link mágico de acesso na landing inicial da aplicação.
+   - Após confirmar o link recebido por email, o browser é redirecionado para `/auth/callback`, que registra a sessão antes de seguir para o dashboard protegido (padrão `/dashboard`).
 2. **Criação de organização** (`POST /api/orgs/create`):
    - Usuário autenticado chama a rota.
    - Route handler contata a Edge Function `create_org`, que valida o slug, cria a organização e um membership `org` para o usuário.

@@ -11,7 +11,7 @@ export default function AuthCallbackPage() {
   const searchParams = useSearchParams();
   const searchParamsString = searchParams.toString();
   const redirectParam = searchParams.get("redirectTo");
-  const normalizedRedirect = redirectParam && redirectParam.startsWith("/") ? redirectParam : "/app";
+  const normalizedRedirect = redirectParam && redirectParam.startsWith("/") ? redirectParam : "/dashboard";
   const hasSupabaseEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
   const supabase = useMemo(() => {

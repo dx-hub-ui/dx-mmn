@@ -1,0 +1,83 @@
+.page {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: calc(100dvh - var(--dx-top-bar-height));
+  background: var(--dx-bg, var(--application-surface-color));
+}
+
+.pageHeader {
+  padding: clamp(20px, 5vw, 32px);
+  border-bottom: 1px solid var(--dx-border, var(--layout-border-color));
+  background: var(--dx-surface, var(--primary-background-color));
+}
+
+.pageBody {
+  padding: clamp(24px, 5vw, 40px);
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+
+.cards {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.card {
+  background: var(--dx-surface, var(--primary-background-color));
+  border: 1px solid var(--dx-border, var(--layout-border-color));
+  border-radius: var(--dx-radius-lg, 16px);
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+  box-shadow: var(--shadow-sm, 0 8px 20px -18px rgba(15, 23, 42, 0.45));
+}
+
+.cardSection {
+  display: grid;
+  gap: 12px;
+}
+
+.membershipList {
+  display: grid;
+  gap: 16px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.membershipItem {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--dx-radius-md, 12px);
+  border: 1px solid var(--dx-border, var(--layout-border-color));
+  background: var(--dx-elevated, rgba(15, 23, 42, 0.02));
+}
+
+.membershipHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.metaGrid {
+  display: grid;
+  gap: 4px;
+  font-size: 0.875rem;
+  color: var(--secondary-text-color, #676879);
+}
+
+.emptyState {
+  padding: 16px;
+  border-radius: var(--dx-radius-md, 12px);
+  border: 1px dashed var(--dx-border, var(--layout-border-color));
+  background: rgba(15, 23, 42, 0.02);
+}
+
+.userId {
+  overflow-wrap: anywhere;
+}

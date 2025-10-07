@@ -10,7 +10,7 @@ export default function SignInPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const redirectParam = searchParams.get("redirectTo");
-  const redirectFallback = redirectParam && redirectParam.startsWith("/") ? redirectParam : "/app";
+  const redirectFallback = redirectParam && redirectParam.startsWith("/") ? redirectParam : "/dashboard";
   const [email, setEmail] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -38,7 +38,7 @@ export default function SignInPage() {
       setErrorMessage(null);
       setStatusMessage(null);
 
-      const normalizedRedirect = redirectFallback.startsWith("/") ? redirectFallback : "/app";
+      const normalizedRedirect = redirectFallback.startsWith("/") ? redirectFallback : "/dashboard";
       const origin = window.location.origin;
       const emailRedirectTo = `${origin}/auth/callback?redirectTo=${encodeURIComponent(normalizedRedirect)}`;
 
