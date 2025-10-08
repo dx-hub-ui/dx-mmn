@@ -1,4 +1,4 @@
-name: Run SQL Migrations (basic)
+name: Run SQL Migrations (tracked)
 
 on:
   workflow_dispatch: {}
@@ -10,13 +10,63 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Apply all .sql (alphabetical)
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }} # use 5432 host do banco com ?sslmode=require
+
+      - name: Install psql
         run: |
-          set -e
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Ensure schema_migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }} # use pooler :6543 + ?sslmode=require
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          create table if not exists public.schema_migrations (
+            id bigserial primary key,
+            filename text not null unique,
+            checksum text not null,
+            applied_at timestamptz not null default now(),
+            git_sha text
+          );
+          SQL
+
+      - name: Apply pending .sql (by filename)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(supabase/migrations/*.sql)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No migrations found."; exit 0
+          fi
+
           for f in $(ls -1 supabase/migrations/*.sql | sort); do
-            echo "Applying $f"
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
+            fname="$(basename "$f")"
+
+            applied="$(psql "$DATABASE_URL" -Atqc \
+              "select 1 from public.schema_migrations where filename='${fname}'")"
+
+            if [ "$applied" = "1" ]; then
+              echo "Skip (already applied): $fname"
+              continue
+            fi
+
+            echo "Applying: $fname"
+            checksum="$(sha256sum "$f" | awk '{print $1}')"
+
+            # Wrap em transação (-1). Remova -1 se houver comandos não-transacionáveis.
+            PGOPTIONS="--client-min-messages=warning" \
+              psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f "$f"
+
+            safe_fname="$(printf "%s" "$fname" | sed "s/'/''/g")"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+              "insert into public.schema_migrations (filename, checksum, git_sha)
+               values ('${safe_fname}', '${checksum}', '${GIT_SHA}')"
+
+            echo "OK: $fname"
           done
+
+          echo "Done."
