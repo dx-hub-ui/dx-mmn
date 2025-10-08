@@ -1,5 +1,16 @@
 # Changelog
 
+# 2025-11-01
+
+### Fixed
+- Corrigimos o callback `/auth/callback` para priorizar `verifyOtp` com `token`/`token_hash`, sincronizar cookies apenas após uma sessão válida e limpar o hash da URL antes de redirecionar, evitando erros de "link expirado".
+
+### Added
+- Automatizamos a criação de organizações e memberships com papel `org` para novos usuários através do gatilho `handle_new_user`, além de remover perfis órfãos com o novo gatilho `handle_deleted_user`.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` atualizados com o fluxo revisado do callback, a atribuição automática de organizações e as regras para remoção de perfis quando usuários são excluídos.
+
 # 2025-10-31
 
 ### Fixed

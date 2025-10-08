@@ -3,32 +3,38 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Flex, Loader, Text } from "@vibe/core";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function AuthCallbackPage() {
-  const sp = useSearchParams();
-  const redirectTo = sp.get("redirectTo")?.startsWith("/") ? sp.get("redirectTo")! : "/dashboard";
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirectTo")?.startsWith("/") ? searchParams.get("redirectTo")! : "/dashboard";
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [err, setErr] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
+    const surfaceError = (message: string) => {
+      if (!cancelled) {
+        setErr(message);
+        setProcessing(false);
+      }
+    };
+
     const run = async () => {
       try {
         const url = new URL(window.location.href);
-        const searchParams = url.searchParams;
-        const hashParams = new URLSearchParams(url.hash.slice(1));
+        const search = url.searchParams;
+        const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
+        const pickParam = (key: string) => search.get(key) ?? hash.get(key);
 
-        const errorDescription = searchParams.get("error_description") ?? hashParams.get("error_description");
+        const errorDescription = pickParam("error_description") ?? pickParam("error");
         if (errorDescription) {
-          if (!cancelled) setErr(errorDescription);
+          surfaceError(errorDescription);
           return;
         }
-
-        await supabase.auth.initialize().catch((initError) => {
-          console.error("Supabase auth initialization failed", initError);
-        });
 
         let {
           data: { session },
@@ -36,18 +42,18 @@ export default function AuthCallbackPage() {
         } = await supabase.auth.getSession();
 
         if (sessionError) {
-          if (!cancelled) setErr(sessionError.message);
+          surfaceError(sessionError.message);
           return;
         }
 
-        const safeSetSession = (maybeSession: typeof session) => {
+        const captureSession = (maybeSession: typeof session) => {
           if (maybeSession) {
             session = maybeSession;
           }
         };
 
         if (!session) {
-          const code = searchParams.get("code") ?? hashParams.get("code");
+          const code = pickParam("code");
           if (code) {
             const { data, error } = await supabase.auth.exchangeCodeForSession(code);
             if (error) {
@@ -55,85 +61,94 @@ export default function AuthCallbackPage() {
               if (/code verifier/i.test(message) || /invalid request/i.test(message)) {
                 console.warn("Supabase PKCE fallback:", message);
               } else {
-                if (!cancelled) setErr(message);
+                surfaceError(message);
                 return;
               }
             } else {
-              safeSetSession(data.session);
+              captureSession(data.session);
             }
           }
         }
 
         if (!session) {
-          const token_hash = searchParams.get("token_hash") ?? hashParams.get("token_hash");
-          if (token_hash) {
-            const typeParam = searchParams.get("type") ?? hashParams.get("type") ?? "magiclink";
-            const emailParam = searchParams.get("email") ?? hashParams.get("email") ?? undefined;
+          const token = pickParam("token");
+          const tokenHash = pickParam("token_hash");
+          if (token || tokenHash) {
+            const typeParam = (pickParam("type") ?? "magiclink") as Parameters<typeof supabase.auth.verifyOtp>[0]["type"];
+            const emailParam = pickParam("email") ?? undefined;
+
             const verifyPayload: Parameters<typeof supabase.auth.verifyOtp>[0] = {
-              type: typeParam as Parameters<typeof supabase.auth.verifyOtp>[0]["type"],
-              token_hash,
+              type: typeParam,
             } as Parameters<typeof supabase.auth.verifyOtp>[0];
+
+            if (token) {
+              (verifyPayload as { token: string }).token = token;
+            } else if (tokenHash) {
+              (verifyPayload as { token_hash: string }).token_hash = tokenHash;
+            }
+
             if (emailParam) {
               (verifyPayload as { email?: string }).email = emailParam;
             }
+
             const { data, error } = await supabase.auth.verifyOtp(verifyPayload);
             if (error) {
-              if (!cancelled) setErr(error.message);
+              surfaceError(error.message);
               return;
             }
-            safeSetSession(data.session);
+            captureSession(data.session);
           }
         }
 
         if (!session) {
-          const access_token = hashParams.get("access_token");
-          const refresh_token = hashParams.get("refresh_token") ?? searchParams.get("refresh_token");
-          if (access_token && refresh_token) {
-            const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+          const accessToken = pickParam("access_token");
+          const refreshToken = pickParam("refresh_token");
+          if (accessToken && refreshToken) {
+            const { data, error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
             if (error) {
-              if (!cancelled) setErr(error.message);
+              surfaceError(error.message);
               return;
             }
-            safeSetSession(data.session);
+            captureSession(data.session);
           }
         }
 
         if (!session) {
-          if (!cancelled) setErr("Link inválido ou expirado.");
+          surfaceError("Link inválido ou expirado.");
           return;
         }
 
-        const at = session.access_token;
-        const rt = session.refresh_token;
-        if (!at || !rt) {
-          if (!cancelled) setErr("Link inválido ou expirado.");
+        const accessToken = session.access_token;
+        const refreshToken = session.refresh_token;
+        if (!accessToken || !refreshToken) {
+          surfaceError("Link inválido ou expirado.");
           return;
         }
 
         const syncResponse = await fetch("/auth/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ access_token: at, refresh_token: rt }),
+          body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken }),
           cache: "no-store",
         });
 
         if (!syncResponse.ok) {
           const bodyText = await syncResponse.text().catch(() => "Falha ao sincronizar.");
-          if (!cancelled) setErr(bodyText || "Falha ao sincronizar.");
+          surfaceError(bodyText || "Falha ao sincronizar.");
           return;
         }
 
-        const cleanUrl = new URL(window.location.href);
-        cleanUrl.hash = "";
-        cleanUrl.search = "";
-        cleanUrl.searchParams.set("redirectTo", redirectTo);
-        window.history.replaceState({}, "", cleanUrl.toString());
+        const clean = new URL(window.location.href);
+        clean.hash = "";
+        clean.search = "";
+        clean.pathname = "/auth/callback";
+        window.history.replaceState({}, "", clean.toString());
 
         window.location.replace(redirectTo);
       } catch (error) {
         console.error("Erro ao processar callback de autenticação", error);
         const message = error instanceof Error ? error.message : "Erro desconhecido.";
-        if (!cancelled) setErr(message);
+        surfaceError(message);
       }
     };
 
@@ -144,5 +159,28 @@ export default function AuthCallbackPage() {
     };
   }, [redirectTo, supabase]);
 
-  return err ? <pre style={{ padding: 16 }}>Erro de autenticação: {err}</pre> : null;
+  return (
+    <Flex
+      direction={Flex.directions.COLUMN}
+      align={Flex.align.CENTER}
+      justify={Flex.justify.CENTER}
+      gap={12}
+      style={{ minHeight: "100vh", padding: 24 }}
+    >
+      {processing && !err ? (
+        <>
+          <Loader size={Loader.sizes.SMALL} />
+          <Text type={Text.types.TEXT2} weight={Text.weights.BOLD}>
+            Confirmando seu acesso...
+          </Text>
+        </>
+      ) : null}
+
+      {err ? (
+        <Text type={Text.types.TEXT3} color={Text.colors.NEGATIVE} align={Text.align.CENTER}>
+          Erro de autenticação: {err}
+        </Text>
+      ) : null}
+    </Flex>
+  );
 }
