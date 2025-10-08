@@ -1,146 +1,94 @@
 "use client";
-
-import { useCallback, useMemo, useState } from "react";
-import { Button, Divider, Flex, Text, TextField } from "@vibe/core";
+import { useEffect, useMemo, useState } from "react";
+import { Button, Flex, Loader, Text } from "@vibe/core";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import styles from "./sign-in.module.css";
+import styles from "./callback.module.css";
 
-export default function SignInPage() {
-  const searchParams = useSearchParams();
+export default function AuthCallbackPage() {
   const router = useRouter();
-  const redirectParam = searchParams.get("redirectTo");
-  const redirectFallback = redirectParam && redirectParam.startsWith("/") ? redirectParam : "/dashboard";
-  const [email, setEmail] = useState("");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const hasSupabaseEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const sp = useSearchParams();
+  const redirectParam = sp.get("redirectTo");
+  const normalizedRedirect = redirectParam?.startsWith("/") ? redirectParam : "/dashboard";
+  const hasEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
-  const supabase = useMemo(() => {
-    if (!hasSupabaseEnv) {
-      return null;
+  const supabase = useMemo(() => (hasEnv ? createSupabaseBrowserClient() : null), [hasEnv]);
+  const [status, setStatus] = useState<"loading" | "error" | "success">("loading");
+  const [message, setMessage] = useState("Conectando à sua conta...");
+
+  useEffect(() => {
+    if (!supabase) {
+      if (!hasEnv) { setStatus("error"); setMessage("Variáveis de ambiente do Supabase não configuradas."); }
+      return;
     }
+    let mounted = true;
+    const run = async () => {
+      const url = new URL(window.location.href);
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const qp = url.searchParams;
 
-    return createSupabaseBrowserClient();
-  }, [hasSupabaseEnv]);
+      const err =
+        hash.get("error_description") || hash.get("error") || qp.get("error_description") || qp.get("error");
+      if (err) { setStatus("error"); setMessage(err); return; }
 
-  const handleSubmit = useCallback(
-    async (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
+      // 1) PKCE exchange (preferred)
+      if (qp.get("code") || hash.get("code")) {
+        const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
+        if (!mounted) return;
+        if (!error) { setStatus("success"); setMessage("Tudo pronto! Redirecionando..."); router.replace(normalizedRedirect); return; }
 
-      if (!supabase) {
-        setErrorMessage("Supabase não está configurado. Verifique as variáveis de ambiente.");
-        return;
+        // Specific PKCE failure -> try token-hash fallback
+        if (error.message.includes("code verifier") || error.message.includes("code_verifier")) {
+          // 2) Token-hash fallback (works across devices)
+          const token_hash = qp.get("token_hash") || hash.get("token_hash");
+          if (token_hash) {
+            const { error: vErr } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash });
+            if (!mounted) return;
+            if (!vErr) { setStatus("success"); setMessage("Tudo pronto! Redirecionando..."); router.replace(normalizedRedirect); return; }
+            setStatus("error"); setMessage(vErr.message); return;
+          }
+        }
+        setStatus("error"); setMessage(error.message); return;
       }
 
-      setIsLoading(true);
-      setErrorMessage(null);
-      setStatusMessage(null);
-
-      const normalizedRedirect = redirectFallback.startsWith("/") ? redirectFallback : "/dashboard";
-      const origin = window.location.origin;
-      const emailRedirectTo = `${origin}/auth/callback?redirectTo=${encodeURIComponent(normalizedRedirect)}`;
-
-      const normalizedEmail = email.trim().toLowerCase();
-
-      const { error } = await supabase.auth.signInWithOtp({
-        email: normalizedEmail,
-        options: {
-          emailRedirectTo,
-          shouldCreateUser: true,
-        },
-      });
-
-      if (error) {
-        setErrorMessage(error.message);
-      } else {
-        setStatusMessage("Enviamos um link mágico para o seu email. Abra o link para continuar.");
+      // 3) Legacy implicit fallback
+      const at = hash.get("access_token") || qp.get("access_token");
+      const rt = hash.get("refresh_token") || qp.get("refresh_token");
+      if (at && rt) {
+        const { error } = await supabase.auth.setSession({ access_token: at, refresh_token: rt });
+        if (!mounted) return;
+        if (!error) { setStatus("success"); setMessage("Tudo pronto! Redirecionando..."); router.replace(normalizedRedirect); return; }
+        setStatus("error"); setMessage(error.message); return;
       }
 
-      setIsLoading(false);
-    },
-    [supabase, email, redirectFallback],
-  );
+      setStatus("error"); setMessage("Não foi possível validar o link de autenticação.");
+    };
+    void run();
+    return () => { mounted = false; };
+  }, [supabase, router, normalizedRedirect, hasEnv]);
 
-  const handleBackToHome = useCallback(() => {
-    router.push("/");
-  }, [router]);
+  const back = () => router.replace(`/sign-in?redirectTo=${encodeURIComponent(normalizedRedirect)}`);
 
   return (
     <main className={styles.root}>
-      <section className={styles.panel} aria-labelledby="sign-in-title">
-        <div className={styles.logoArea}>
-          <Text type={Text.types.TEXT2} weight={Text.weights.BOLD} id="sign-in-title">
-            Entrar na plataforma
+      <section className={styles.panel} aria-live="polite">
+        <div className={styles.message}>
+          {status === "loading" ? <Loader size={Loader.sizes.SMALL} /> : null}
+          <Text type={Text.types.TEXT2} weight={Text.weights.BOLD}>
+            {status === "success" ? "Login confirmado" : status === "error" ? "Falha na autenticação" : "Validando link"}
           </Text>
-          <Text type={Text.types.TEXT3} color={Text.colors.SECONDARY} className={styles.helperText}>
-            Use o email cadastrado para receber um link mágico de acesso.
+          <Text type={Text.types.TEXT3} color={status === "error" ? Text.colors.NEGATIVE : Text.colors.SECONDARY}
+            className={status === "error" ? styles.errorText : undefined}>
+            {message}
           </Text>
         </div>
-
-        <Divider />
-
-        <form className={styles.form} onSubmit={handleSubmit} noValidate>
-          <TextField
-            title="Email"
-            placeholder="nome@empresa.com"
-            type="email"
-            autoComplete="email"
-            autoFocus
-            required
-            value={email}
-            onChange={(value) => setEmail(value)}
-          />
-
-          <div className={styles.actions}>
-            <Button
-              kind={Button.kinds.PRIMARY}
-              size={Button.sizes.LARGE}
-              type={Button.types.SUBMIT}
-              disabled={!email.trim() || isLoading}
-              loading={isLoading}
-            >
-              Enviar link de acesso
+        {status === "error" ? (
+          <Flex justify={Flex.justify.CENTER}>
+            <Button kind={Button.kinds.PRIMARY} type={Button.types.BUTTON} onClick={back}>
+              Voltar para o login
             </Button>
-            <Button kind={Button.kinds.SECONDARY} type={Button.types.BUTTON} onClick={handleBackToHome} disabled={isLoading}>
-              Voltar para a home
-            </Button>
-          </div>
-        </form>
-
-        {statusMessage ? (
-          <div className={styles.statusMessage} role="status">
-            <Text type={Text.types.TEXT3}>{statusMessage}</Text>
-          </div>
+          </Flex>
         ) : null}
-
-        {errorMessage ? (
-          <div className={styles.errorMessage} role="alert">
-            <Text type={Text.types.TEXT3} color={Text.colors.NEGATIVE}>
-              {errorMessage}
-            </Text>
-          </div>
-        ) : null}
-
-        <Text type={Text.types.TEXT3} className={styles.redirectHint}>
-          Após confirmar o login, você será direcionado para {redirectFallback}.
-        </Text>
-
-        {!hasSupabaseEnv ? (
-          <Text type={Text.types.TEXT3} color={Text.colors.NEGATIVE} className={styles.helperText}>
-            Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY para habilitar o login.
-          </Text>
-        ) : null}
-
-        <Flex gap={8} justify={Flex.justify.CENTER} className={styles.helperText}>
-          <Text type={Text.types.TEXT3} color={Text.colors.SECONDARY}>
-            Sem convite?
-          </Text>
-          <Text type={Text.types.TEXT3} weight={Text.weights.BOLD}>
-            Peça ao administrador da sua organização.
-          </Text>
-        </Flex>
       </section>
     </main>
   );
