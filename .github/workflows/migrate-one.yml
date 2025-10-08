@@ -1,0 +1,74 @@
+name: Apply One SQL (tracking by filename)
+
+on:
+  workflow_dispatch:
+    inputs:
+      sql_url:
+        description: "Raw URL OU path local do .sql (ex: https://... ou supabase/migrations/006.sql)"
+        required: true
+        type: string
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install psql
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Ensure schema_migrations (exact schema)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          create table if not exists public.schema_migrations (
+            id bigserial not null,
+            filename text not null,
+            checksum text not null,
+            applied_at timestamptz not null default now(),
+            git_sha text null,
+            constraint schema_migrations_pkey primary key (id),
+            constraint schema_migrations_filename_key unique (filename)
+          );
+          SQL
+
+      - name: Apply if not applied (by filename)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SQL_URL: ${{ inputs.sql_url }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Baixa se for URL; senão usa arquivo local
+          if [[ "$SQL_URL" =~ ^https?:// ]]; then
+            curl -fsSL "$SQL_URL" -o /tmp/migration.sql
+            FILENAME="$(basename "$SQL_URL")"
+          else
+            [ -f "$SQL_URL" ] || { echo "Arquivo não encontrado: $SQL_URL"; exit 1; }
+            cp "$SQL_URL" /tmp/migration.sql
+            FILENAME="$(basename "$SQL_URL")"
+          fi
+
+          # Se já aplicada pelo filename, pula
+          APPLIED="$(psql "$DATABASE_URL" -Atqc "select 1 from public.schema_migrations where filename='${FILENAME}'")"
+          if [ "$APPLIED" = "1" ]; then
+            echo "Já aplicada: $FILENAME"
+            exit 0
+          fi
+
+          CHECKSUM="$(sha256sum /tmp/migration.sql | awk '{print $1}')"
+
+          # Aplica (transação única). Remova -1 se houver comandos não-transacionáveis.
+          PGOPTIONS="--client-min-messages=warning" psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f /tmp/migration.sql
+
+          # Insere registro (escapa filename)
+          SAFE_FILENAME="$(printf "%s" "$FILENAME" | sed "s/'/''/g")"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+            "insert into public.schema_migrations (filename, checksum, git_sha) values ('${SAFE_FILENAME}', '${CHECKSUM}', '${GIT_SHA}')"
+
+          echo "✅ OK: $FILENAME"

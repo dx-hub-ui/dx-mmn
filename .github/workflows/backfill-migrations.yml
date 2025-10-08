@@ -1,0 +1,61 @@
+name: Backfill migrations (mark done)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install psql
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Ensure schema_migrations (exact schema)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          create table if not exists public.schema_migrations (
+            id bigserial not null,
+            filename text not null,
+            checksum text not null,
+            applied_at timestamptz not null default now(),
+            git_sha text null,
+            constraint schema_migrations_pkey primary key (id),
+            constraint schema_migrations_filename_key unique (filename)
+          );
+          SQL
+
+      - name: Mark all current files as applied (NO execution)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(supabase/migrations/*.sql)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No .sql found."; exit 0
+          fi
+          for f in $(ls -1 supabase/migrations/*.sql | sort); do
+            fname="$(basename "$f")"
+            sum="$(sha256sum "$f" | awk '{print $1}')"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+              "insert into public.schema_migrations (filename, checksum, git_sha)
+               values ('${fname//\'/\'\'}', '${sum}', '${GIT_SHA}')
+               on conflict (filename)
+               do update set checksum=excluded.checksum, git_sha=excluded.git_sha, applied_at=now();"
+            echo "Marked: $fname"
+          done
+
+      - name: Show summary
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          psql "$DATABASE_URL" -Atc "select count(*) as total from public.schema_migrations;"
+          psql "$DATABASE_URL" -Atc "select filename, applied_at from public.schema_migrations order by applied_at desc limit 10;"

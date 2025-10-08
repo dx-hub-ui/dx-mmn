@@ -25,6 +25,7 @@ type DashboardMembership = {
 type DashboardClientProps = {
   user: DashboardUser;
   memberships: DashboardMembership[];
+  membershipsError?: string | null;
 };
 
 const roleDescriptions: Record<DashboardMembership["role"], string> = {
@@ -33,7 +34,11 @@ const roleDescriptions: Record<DashboardMembership["role"], string> = {
   rep: "Representante",
 };
 
-export default function DashboardClient({ user, memberships }: DashboardClientProps) {
+export default function DashboardClient({
+  user,
+  memberships,
+  membershipsError,
+}: DashboardClientProps) {
   const displayName = user.fullName?.trim() || user.email || "Usuário sem nome";
 
   return (
@@ -101,7 +106,13 @@ export default function DashboardClient({ user, memberships }: DashboardClientPr
 
             <Divider />
 
-            {memberships.length === 0 ? (
+            {membershipsError ? (
+              <div className={styles.errorState} role="status">
+                <Text type={Text.types.TEXT3} color={Text.colors.NEGATIVE}>
+                  {membershipsError}
+                </Text>
+              </div>
+            ) : memberships.length === 0 ? (
               <div className={styles.emptyState}>
                 <Text type={Text.types.TEXT3}>
                   Nenhuma organização vinculada ao seu usuário. Solicite um convite para começar.
