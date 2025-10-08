@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { CheckList as CheckListIcon, Home as HomeIcon, Settings as SettingsIcon } from "@vibe/icons";
+import { CheckList as CheckListIcon, Home as HomeIcon, Settings as SettingsIcon, Team as TeamIcon, Baseline as BaselineIcon } from "@vibe/icons";
 import styles from "./sidebar.module.css";
 
 type Item = {
@@ -16,8 +16,9 @@ type Item = {
 
 const ITEMS: Item[] = [
   { id: "home", label: "Início", href: "/", icon: HomeIcon },
-  { id: "sequences", label: "Sequências", href: "/sequences", icon: ActivityIcon },
+  { id: "sequences", label: "Sequências", href: "/sequences", icon: BaselineIcon },
   { id: "my-tasks", label: "Minhas tarefas", href: "/tasks/my", icon: CheckListIcon },
+  { id: "crm", label: "Meus Contatos", href: "/crm", icon: TeamIcon },
   { id: "settings", label: "Configurações", href: "/settings", icon: SettingsIcon },
 ];
 
