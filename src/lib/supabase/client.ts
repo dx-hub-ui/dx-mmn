@@ -5,7 +5,12 @@ export function createSupabaseBrowserClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    // PKCE is default in supabase-js v2; keep explicit for clarity
-    { auth: { flowType: "pkce", detectSessionInUrl: false } }
+    {
+      // Force magic-link implicit flow. No PKCE.
+      auth: {
+        flowType: "implicit",
+        detectSessionInUrl: true, // auto-reads #access_token on callback
+      },
+    }
   );
 }
