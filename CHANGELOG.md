@@ -76,3 +76,8 @@
 
 ### Documentation
 - README atualizado com instruções para configurar e testar o fluxo de login via Magic Link.
+## 2025-10-15
+
+### Fixed
+- Corrigimos a troca de código PKCE em `/auth/callback` para usar a assinatura correta de `exchangeCodeForSession`, evitando falhas de build no fluxo de login por Magic Link.
+
