@@ -8,7 +8,7 @@ export function createSupabaseBrowserClient() {
     {
       auth: {
         flowType: "pkce",          // suporta links magic e troca de código
-        detectSessionInUrl: true,  // lê #access_token no callback e persiste no client
+        detectSessionInUrl: false, // o callback processa manualmente os parâmetros da URL
       },
     }
   );

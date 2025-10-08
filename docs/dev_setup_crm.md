@@ -30,7 +30,9 @@ pnpm install
 pnpm dev
 ```
 A aplicação fica disponível em `http://localhost:3000`. Usuários seed: `owner@example.com`, `leader@example.com`, `rep1@example.com`, `rep2@example.com` (login via magic link/OTP).
-> **Fluxo de login:** o callback `/auth/callback` aguarda `supabase.auth.initialize()` detectar a sessão PKCE/implicit, consulta `getSession()` e, se necessário, usa `verifyOtp` com `token_hash` legado antes de sincronizar os cookies via `/auth/sync`. O middleware (`src/middleware.ts`) agora delega a validação ao `createServerClient`, preservando os cookies emitidos pelo Supabase.
+> **Fluxo de login:** o callback `/auth/callback` tenta primeiro `verifyOtp` com `token`/`token_hash`; quando há `code_verifier` salvo executa `exchangeCodeForSession(code)` e, em último caso, aceita `setSession` com `access_token`/`refresh_token` encontrados no hash. Só depois sincroniza os cookies via `/auth/sync`. O middleware (`src/middleware.ts`) segue delegando a validação ao `createServerClient`, preservando os cookies emitidos pelo Supabase.
+
+> **Onboarding automático:** o gatilho SQL `handle_new_user` cria uma organização padrão e um membership `org` para cada usuário novo, além de espelhar os metadados em `public.profiles`. Ao remover um usuário em `auth.users`, o gatilho `handle_deleted_user` limpa o respectivo perfil.
 
 ## 5. Scripts úteis
 | Script | Descrição |
