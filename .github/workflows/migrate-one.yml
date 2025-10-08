@@ -1,9 +1,10 @@
 name: Apply One SQL (URL + track)
+
 on:
   workflow_dispatch:
     inputs:
       sql_url:
-        description: 'raw URL do .sql'
+        description: "raw URL do .sql"
         required: true
         type: string
 
@@ -11,10 +12,16 @@ jobs:
   migrate:
     runs-on: ubuntu-latest
     steps:
-      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Ensure tracking table
-        env: { DATABASE_URL: ${{ secrets.DATABASE_URL }} }
+      - name: Install psql
         run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Ensure tracking table
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -e
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
           create table if not exists public.schema_migrations(
             id bigserial primary key,
@@ -23,6 +30,7 @@ jobs:
             applied_at timestamptz not null default now()
           );
           SQL
+
       - name: Apply if not applied
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -33,7 +41,8 @@ jobs:
           sum="$(sha256sum /tmp/migration.sql | awk '{print $1}')"
           exists=$(psql "$DATABASE_URL" -Atqc "select 1 from public.schema_migrations where checksum='${sum}'")
           if [ "$exists" = "1" ]; then
-            echo "Já aplicada (checksum)."; exit 0;
+            echo "Já aplicada (checksum)."
+            exit 0
           fi
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /tmp/migration.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
