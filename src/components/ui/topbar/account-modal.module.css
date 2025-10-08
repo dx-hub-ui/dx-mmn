@@ -1,0 +1,60 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dx-space-4);
+}
+
+.sectionTitle {
+  font: var(--dx-font-body-strong, 600 14px/20px var(--font-family));
+  color: var(--primary-text-color);
+  margin-bottom: var(--dx-space-2);
+}
+
+.avatarRow {
+  display: flex;
+  align-items: center;
+  gap: var(--dx-space-4);
+}
+
+.avatarActions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.errorText {
+  color: var(--negative-color);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.formGrid {
+  display: grid;
+  gap: var(--dx-space-4);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.overviewGrid {
+  display: grid;
+  gap: var(--dx-space-3);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.feedback {
+  color: var(--negative-color);
+  font-size: 13px;
+}
+
+.footerActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dx-space-3);
+}
