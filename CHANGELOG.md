@@ -1,5 +1,14 @@
 # Changelog
 
+# 2025-11-07
+
+### Fixed
+- Dashboard passa a priorizar `supabase.auth.getUser()` antes de `getSession`, eliminando os avisos de segurança ao carregar `/dashboard` e garantindo que o usuário autenticado seja validado diretamente com o Supabase.
+- Recriamos a função `can_access_membership` com o parâmetro `target_membership_id` via migração `008_fix_dashboard_memberships.sql`, evitando o erro `42702 column reference "membership_id" is ambiguous` nas políticas ao listar memberships do dashboard.
+
+### Documentation
+- `docs/dev_setup_crm.md` atualizado com a observação sobre a nova migração que elimina a ambiguidade de `membership_id`.
+
 # 2025-11-06
 
 ### Fixed
