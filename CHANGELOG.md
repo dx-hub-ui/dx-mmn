@@ -7,6 +7,11 @@
 
 ### Documentation
 - `docs/sequences_module.md` atualizado com uma nota revisada descrevendo o endurecimento de `can_access_membership` contra ambiguidades em RLS.
+- Dashboard passa a priorizar `supabase.auth.getUser()` antes de `getSession`, eliminando os avisos de segurança ao carregar `/dashboard` e garantindo que o usuário autenticado seja validado diretamente com o Supabase.
+- Recriamos a função `can_access_membership` com o parâmetro `target_membership_id` via migração `008_fix_dashboard_memberships.sql`, agora derrubando explicitamente a versão anterior antes de recriá-la, evitando o erro `42702 column reference "membership_id" is ambiguous` nas políticas ao listar memberships do dashboard e falhas ao aplicar a migração.
+
+### Documentation
+- `docs/dev_setup_crm.md` atualizado com a observação sobre a nova migração que elimina a ambiguidade de `membership_id`.
 
 # 2025-11-06
 
