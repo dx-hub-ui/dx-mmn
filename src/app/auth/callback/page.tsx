@@ -6,6 +6,20 @@ import { useSearchParams } from "next/navigation";
 import { Flex, Loader, Text } from "@vibe/core";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
+const EMAIL_OTP_TYPES = [
+  "magiclink",
+  "signup",
+  "invite",
+  "recovery",
+  "email",
+  "email_change",
+] as const;
+
+type EmailOtpTypeCandidate = (typeof EMAIL_OTP_TYPES)[number];
+
+const isEmailOtpType = (value: string | null | undefined): value is EmailOtpTypeCandidate =>
+  Boolean(value) && (EMAIL_OTP_TYPES as ReadonlyArray<string>).includes(value!);
+
 export default function AuthCallbackPage() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo")?.startsWith("/") ? searchParams.get("redirectTo")! : "/dashboard";
@@ -70,17 +84,11 @@ export default function AuthCallbackPage() {
         const emailParam = pickParam("email") ?? pickParam("user_email") ?? undefined;
         const rawType = pickParam("type")?.toLowerCase() ?? undefined;
         const otpTypeCandidates = Array.from(
-          new Set(
-            [
-              rawType,
-              rawType === "recovery" ? "recovery" : null,
-              rawType === "signup" ? "signup" : null,
-              rawType === "invite" ? "invite" : null,
-              "magiclink",
-              "email",
-            ].filter(Boolean) as string[],
-          ),
-        ) as Array<Parameters<typeof supabase.auth.verifyOtp>[0]["type"]>;
+          new Set<EmailOtpTypeCandidate>([
+            ...(isEmailOtpType(rawType) ? [rawType] : []),
+            ...EMAIL_OTP_TYPES,
+          ]),
+        );
 
         if (!session && code) {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
@@ -99,48 +107,59 @@ export default function AuthCallbackPage() {
         const canUseToken = Boolean(token && emailParam);
 
         if (!session && (canUseTokenHash || canUseToken) && otpTypeCandidates.length > 0) {
-          const verifyVariants: Array<{
-            type: Parameters<typeof supabase.auth.verifyOtp>[0]["type"];
-            kind: "hash" | "token";
-          }> = [];
-
-          if (canUseTokenHash) {
-            verifyVariants.push(
-              ...otpTypeCandidates.map((typeCandidate) => ({ type: typeCandidate, kind: "hash" as const })),
-            );
-          }
-
-          if (canUseToken) {
-            verifyVariants.push(
-              ...otpTypeCandidates.map((typeCandidate) => ({ type: typeCandidate, kind: "token" as const })),
-            );
-          }
-
+          type VerifyResult = "success" | "retry" | "fatal";
           let lastError: string | null = null;
-          for (const variant of verifyVariants) {
-            const verifyPayload =
-              variant.kind === "hash"
-                ? ({
-                    type: variant.type,
-                    token_hash: tokenHash!,
-                  } satisfies Parameters<typeof supabase.auth.verifyOtp>[0])
-                : ({
-                    type: variant.type,
-                    token: token!,
-                    email: emailParam!,
-                  } satisfies Parameters<typeof supabase.auth.verifyOtp>[0]);
 
-            const { data, error } = await supabase.auth.verifyOtp(verifyPayload);
+          const attemptVerify = async (
+            payload: Parameters<typeof supabase.auth.verifyOtp>[0],
+          ): Promise<VerifyResult> => {
+            const { data, error } = await supabase.auth.verifyOtp(payload);
             if (error) {
               lastError = error.message;
-              if (!/token (?:not found|has expired)/i.test(error.message)) {
-                break;
+              if (/token (?:not found|has expired)/i.test(error.message)) {
+                return "retry";
               }
-              continue;
+              surfaceError(error.message);
+              return "fatal";
             }
             captureSession(data.session);
             lastError = null;
-            break;
+            return "success";
+          };
+
+          if (canUseTokenHash) {
+            for (const typeCandidate of otpTypeCandidates) {
+              const result = await attemptVerify({
+                type: typeCandidate,
+                token_hash: tokenHash!,
+              });
+
+              if (result === "success") {
+                break;
+              }
+
+              if (result === "fatal") {
+                return;
+              }
+            }
+          }
+
+          if (!session && canUseToken) {
+            for (const typeCandidate of otpTypeCandidates) {
+              const result = await attemptVerify({
+                type: typeCandidate,
+                token: token!,
+                email: emailParam!,
+              });
+
+              if (result === "success") {
+                break;
+              }
+
+              if (result === "fatal") {
+                return;
+              }
+            }
           }
 
           if (!session && lastError) {
