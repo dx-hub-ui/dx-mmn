@@ -5,6 +5,11 @@ export function createSupabaseBrowserClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { flowType: "pkce", detectSessionInUrl: false } }
+    {
+      auth: {
+        flowType: "implicit",        // somente magic link
+        detectSessionInUrl: true,    // lê #access_token no callback e persiste a sessão no cliente
+      },
+    }
   );
 }
