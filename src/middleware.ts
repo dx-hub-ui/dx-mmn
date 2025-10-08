@@ -1,4 +1,4 @@
-// middleware.ts — proteja só telas de app; não intercepte "/" nem "/auth/*" nem "/sign-in"
+// middleware.ts
 import { NextRequest, NextResponse } from "next/server";
 
 async function validate(token: string, url: string, anon: string) {
@@ -13,7 +13,6 @@ async function validate(token: string, url: string, anon: string) {
 
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
-
   if (pathname.startsWith("/auth/") || pathname === "/sign-in" || pathname === "/") {
     return NextResponse.next();
   }
@@ -29,11 +28,10 @@ export async function middleware(req: NextRequest) {
     to.searchParams.set("redirectTo", pathname + search || "/dashboard");
     return NextResponse.redirect(to);
   }
-
   return NextResponse.next();
 }
 
-// src/app/(app)/dashboard → path é /dashboard
+// /src/app/(app)/dashboard => path público /dashboard
 export const config = {
   matcher: ["/dashboard/:path*", "/settings/:path*", "/tables/:path*", "/app/:path*"],
 };
