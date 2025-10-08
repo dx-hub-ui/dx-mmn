@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { Dashboard as DashboardIcon, Settings as SettingsIcon, Table as TableIcon } from "@vibe/icons";
+import { Activity as ActivityIcon, CheckList as CheckListIcon, Home as HomeIcon, Settings as SettingsIcon } from "@vibe/icons";
 import styles from "./sidebar.module.css";
 
 type Item = {
@@ -15,9 +15,10 @@ type Item = {
 };
 
 const ITEMS: Item[] = [
-  { id: "dashboard", label: "Dashboard", href: "/dashboard", icon: DashboardIcon },
-  { id: "tables", label: "Tables", href: "/tables", icon: TableIcon },
-  { id: "settings", label: "Settings", href: "/settings", icon: SettingsIcon }
+  { id: "home", label: "Início", href: "/", icon: HomeIcon },
+  { id: "sequences", label: "Sequências", href: "/sequences", icon: ActivityIcon },
+  { id: "my-tasks", label: "Minhas tarefas", href: "/tasks/my", icon: CheckListIcon },
+  { id: "settings", label: "Configurações", href: "/settings", icon: SettingsIcon },
 ];
 
 export default function Sidebar({

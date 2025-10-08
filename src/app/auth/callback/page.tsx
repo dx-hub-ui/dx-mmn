@@ -61,10 +61,12 @@ export default function AuthCallbackPage() {
           return true;
         };
 
-        let {
-          data: { session },
+        const {
+          data: { session: initialSession },
           error: sessionError,
         } = await supabase.auth.getSession();
+
+        let session = initialSession;
 
         if (sessionError && shouldStopDueTo(sessionError)) {
           return;

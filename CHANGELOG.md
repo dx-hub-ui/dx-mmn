@@ -2,29 +2,43 @@
 
 # 2025-11-05
 
-### Fixed
-- `can_access_membership` renomeia o parâmetro interno para `target_membership_id`, eliminando o erro `42702 column reference "membership_id" is ambiguous` ao carregar páginas protegidas que dependem das políticas de RLS.
+### Added
+- Função edge `supabase/functions/sequences_engine` processando inscrições ativas, gerando assignments com clamp de janela de
+  trabalho, notificações (`assignment_created`, `due_today`, `overdue`) e concluindo inscrições automaticamente.
+- Ações de servidor para tarefas (`completeAssignmentAction`, `snoozeAssignmentAction`) com telemetria PostHog, breadcrumbs do
+  Sentry e notificações `assignment_snoozed`.
+- Modal de detalhes em "Minhas tarefas" com adiar/ concluir, atualizações otimistas e banner de erros acessível.
+- Migração `007_sequences_engine.sql` atualizando a view `v_my_tasks` com metadados de passo e gatilho para notificar mudanças de
+  status nas inscrições.
 
 ### Documentation
-- README documenta a atualização do parâmetro `target_membership_id` e o motivo do ajuste para evitar ambiguidades no Postgres.
+- `docs/sequences_module.md` atualizado com o relatório da Sprint 3, cobrindo motor de assignments, notificações e melhorias de
+  UX em tarefas.
 
 # 2025-11-04
 
-### Changed
-- Sidebar principal substitui o item "Home" por **Dashboard** e aponta diretamente para `/dashboard`, alinhando a navegação com a nova página inicial autenticada.
+### Added
+- Editor de Sequências (Sprint 2) com páginas `/sequences/new` e `/sequences/[id]`, drag-and-drop de passos, modal completo,
+  configuração de regras, inscrições manuais e publicação de versões com telemetria PostHog/Sentry.
+- Server actions centralizadas (`src/app/(app)/sequences/actions.ts`) cobrindo criação de rascunhos, CRUD de passos, reordenação,
+  duplicação, publicação e gestão de inscrições.
+- Helpers do editor (`normalize`, `dates`) e testes Vitest para normalização de dados e cálculo de due-date com clamp.
+- Sidebar atualizada para destacar "Sequências" e "Minhas tarefas", além de spec Playwright (`sequences-editor.spec.ts`) como
+  placeholder para o fluxo do editor.
 
 ### Documentation
-- README atualizado para destacar o Dashboard como entrada principal da sidebar após o login.
+- `docs/sequences_module.md` ampliado com o relatório da Sprint 2, detalhando entregas, qualidade e próximos passos.
 
 # 2025-11-03
 
-### Fixed
-- `/auth/callback` agora força `supabase.auth.setSession` no browser, sincroniza cookies via `/auth/sync` com `credentials: "include"` e respeita `persistSession`/`autoRefreshToken`, garantindo que o login por magic link continue válido após fechar e reabrir o navegador.
-- Middleware (`src/middleware.ts`) passou a tentar `getSession` + `refreshSession` antes de redirecionar, preservando sessões válidas ao acessar `/dashboard` ou demais rotas protegidas.
-- `/dashboard` agora força renderização dinâmica e usa `auth.getSession` antes do fallback `getUser`, assegurando que a sessão autenticada seja lida corretamente nos carregamentos subsequentes.
+### Added
+- Módulo de Sequências (Sprint 1) com migrations `006_sequences_fundamentos.sql`, enums dedicadas, tabelas, views `v_sequence_manager`/`v_my_tasks` e políticas de RLS por organização.
+- Páginas `/sequences` e `/tasks/my` consumindo as novas views, com filtros, ações em lote desabilitadas, estados vazios e telemetria PostHog + breadcrumbs Sentry.
+- Testes Vitest para normalizadores/filtros de sequências e tarefas, além de smoke tests Playwright (`sequences-manager`, `my-tasks`).
+- Inicialização de PostHog e Sentry via providers/configs (`PostHogProvider`, `sentry.*.config.ts`) e helpers de telemetria server-side.
 
 ### Documentation
-- README e `docs/dev_setup_crm.md` explicam a persistência da sessão (setSession no browser + `/auth/sync` com credenciais) e o comportamento do middleware ao renovar tokens antes de redirecionar.
+- Novo guia `docs/sequences_module.md` descrevendo as entregas da Sprint 1 e próximos passos.
 
 # 2025-11-02
 

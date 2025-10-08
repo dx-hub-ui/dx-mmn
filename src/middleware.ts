@@ -8,7 +8,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  let response = NextResponse.next();
+  const response = NextResponse.next();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
