@@ -1,13 +1,18 @@
 // src/app/sign-in/page.tsx
 "use client";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button, Flex, Loader, Text } from "@vibe/core";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import styles from "./sign-in.module.css";
 
 export default function SignInPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
-  const REDIRECT = "/dashboard";
+  const searchParams = useSearchParams();
+  const redirectTo = useMemo(() => {
+    const raw = searchParams.get("redirectTo");
+    return raw && raw.startsWith("/") ? raw : "/dashboard";
+  }, [searchParams]);
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle"|"loading"|"sent"|"error">("idle");
   const [msg, setMsg] = useState<string | null>(null);
@@ -16,7 +21,8 @@ export default function SignInPage() {
     e.preventDefault();
     setStatus("loading"); setMsg(null);
 
-    const emailRedirectTo = `https://app.dxhub.com.br/auth/callback?redirectTo=${encodeURIComponent(REDIRECT)}`;
+    const origin = (process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin).replace(/\/$/, "");
+    const emailRedirectTo = `${origin}/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`;
     const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo } });
 
     if (error) { setStatus("error"); setMsg(error.message); return; }
