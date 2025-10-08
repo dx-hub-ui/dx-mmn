@@ -2,6 +2,8 @@ SET search_path = public, pg_temp;
 
 DROP POLICY IF EXISTS memberships_select_visible ON public.memberships;
 
+DROP FUNCTION IF EXISTS public.can_access_membership(uuid, uuid);
+
 CREATE OR REPLACE FUNCTION public.can_access_membership(org_id uuid, target_membership_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
