@@ -1,5 +1,10 @@
 # Changelog
 
+# 2025-11-06
+
+### Fixed
+- `/api/invites/generate` agora aceita `NEXT_PUBLIC_SUPABASE_URL` (além de `SUPABASE_URL`) e normaliza o sufixo da URL antes de chamar a função edge `generate_invite`, evitando o erro "Server configuration missing" que bloqueava a criação de convites.
+
 # 2025-11-05
 
 ### Added
