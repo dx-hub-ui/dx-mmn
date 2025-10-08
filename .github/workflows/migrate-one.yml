@@ -1,0 +1,42 @@
+name: Run ONE migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      file:
+        description: 'Path da migração (ex: supabase/migrations/003_fix.sql)'
+        required: true
+        type: string
+
+jobs:
+  migrate-one:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Apply one migration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GIT_SHA: ${{ github.sha }}
+          FILE: ${{ inputs.file }}
+        run: |
+          set -euo pipefail
+          [ -f "$FILE" ] || { echo "Arquivo não existe: $FILE"; exit 1; }
+
+          base="$(basename "$FILE")"
+          sum="$(sha256sum "$FILE" | awk '{print $1}')"
+
+          # Se já marcada como aplicada, não reaplica (ou apague o registro antes se quiser forçar)
+          applied=$(psql "$DATABASE_URL" -Atqc "select 1 from public.schema_migrations where filename='${base}'")
+          if [ "$applied" = "1" ]; then
+            echo "Já aplicada em schema_migrations: $base"
+            exit 0
+          fi
+
+          # Envolva em transação (-1). Remova -1 se usar CREATE INDEX CONCURRENTLY etc.
+          PGOPTIONS="--client-min-messages=warning" psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f "$FILE"
+
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
+            "insert into public.schema_migrations (filename, checksum, git_sha) values ('${base}', '${sum}', '${GIT_SHA}');"
+
+          echo "✅ OK: $base"
