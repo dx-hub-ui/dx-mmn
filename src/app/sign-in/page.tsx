@@ -10,36 +10,29 @@ import styles from "./sign-in.module.css";
 export default function SignInPage() {
   const router = useRouter();
   const sp = useSearchParams();
-  const redirectParam = sp.get("redirectTo");
-  const normalizedRedirect = redirectParam?.startsWith("/") ? redirectParam : "/dashboard";
+  const redirectTo = sp.get("redirectTo")?.startsWith("/") ? sp.get("redirectTo")! : "/dashboard";
 
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
+  const [status, setStatus] = useState<"idle"|"loading"|"sent"|"error">("idle");
   const [msg, setMsg] = useState<string | null>(null);
 
-  const submit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("loading");
     setMsg(null);
 
-// src/app/sign-in/page.tsx (unchanged except this line)
-const emailRedirectTo = `https://app.dxhub.com.br/auth/callback?redirectTo=${encodeURIComponent(normalizedRedirect)}`;
-await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo } });
-
+    const emailRedirectTo =
+      `https://app.dxhub.com.br/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`;
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo }, // PKCE magic-link. Must open in same browser.
+      options: { emailRedirectTo }, // will deliver #access_token on callback
     });
 
-    if (error) {
-      setStatus("error");
-      setMsg(error.message);
-      return;
-    }
+    if (error) { setStatus("error"); setMsg(error.message); return; }
     setStatus("sent");
-    setMsg("Enviamos um link de acesso. Abra no mesmo navegador.");
+    setMsg("Link enviado. Abra em qualquer dispositivo.");
   };
 
   return (
@@ -58,21 +51,16 @@ await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo } });
         </div>
 
         {status !== "sent" ? (
-          <form onSubmit={submit} className={styles.form}>
+          <form onSubmit={onSubmit} className={styles.form}>
             <label htmlFor="email" className={styles.label}>Email *</label>
             <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={styles.input}
-              autoComplete="email"
-              inputMode="email"
+              id="email" type="email" required
+              value={email} onChange={(e) => setEmail(e.target.value)}
+              className={styles.input} autoComplete="email" inputMode="email"
               disabled={status === "loading"}
             />
             <Flex justify={Flex.justify.CENTER} gap={8}>
-              <Button kind={Button.kinds.PRIMARY} type={Button.types.SUBMIT} disabled={!email || status === "loading"}>
+              <Button kind={Button.kinds.PRIMARY} type={Button.types.SUBMIT} disabled={!email || status==="loading"}>
                 Enviar link
               </Button>
             </Flex>
@@ -80,9 +68,8 @@ await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo } });
         ) : (
           <Flex direction={Flex.directions.COLUMN} gap={8} className={styles.actions}>
             <Button
-              kind={Button.kinds.SECONDARY}
-              type={Button.types.BUTTON}
-              onClick={() => router.replace(`/auth/callback?redirectTo=${encodeURIComponent(normalizedRedirect)}`)}
+              kind={Button.kinds.SECONDARY} type={Button.types.BUTTON}
+              onClick={() => router.replace(`/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`)}
             >
               Já cliquei no link
             </Button>
