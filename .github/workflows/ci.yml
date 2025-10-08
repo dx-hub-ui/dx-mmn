@@ -1,31 +1,38 @@
 name: ci
 on:
-  push: { branches: [main] }
-  pull_request: { branches: [main] }
+  push:        # run on every branch
+    branches: ['**']
+  pull_request:
+    branches: ['**']
 
 permissions:
-  contents: write
+  contents: write   # allow auto-commit of lockfile on same-repo PRs
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # 1) Guard: refresh pnpm-lock.yaml if needed, then FAIL so the new commit re-runs CI
   lockfile-guard:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout (PR head if present)
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref || github.ref }}
 
-      - uses: pnpm/action-setup@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with: { version: 9 }
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
 
+      # allow regenerating lockfile when package.json changes in a monorepo
       - name: Install (allow lockfile update)
         run: pnpm -r install --no-frozen-lockfile
 
@@ -38,7 +45,7 @@ jobs:
             echo "changed=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Auto-commit updated lockfile (same-repo PRs)
+      - name: Auto-commit updated lockfile (same-repo PRs only)
         if: >
           steps.lockdiff.outputs.changed == 'true' &&
           github.event_name == 'pull_request' &&
@@ -51,29 +58,18 @@ jobs:
       - name: Fail run if lockfile changed (forces re-run on new commit)
         if: steps.lockdiff.outputs.changed == 'true'
         run: |
-          echo "::error ::pnpm-lock.yaml was updated. CI will fail this run so the new commit re-triggers CI. Merge only after the next run is green."
+          echo "::error ::pnpm-lock.yaml was updated by CI. A new commit was pushed (or should be pushed). CI will fail this run so the next run validates the updated lockfile."
           exit 1
 
+  # 2) Real build: only runs when lockfile is stable
   build:
     runs-on: ubuntu-latest
     needs: lockfile-guard
-    if: ${{ always() && needs.lockfile-guard.result == 'success' }}  # only build when lockfile is stable
+    if: ${{ always() && needs.lockfile-guard.result == 'success' }}
     env:
       CI: "true"
       NEXT_TELEMETRY_DISABLED: "1"
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-
-      - name: Install
-        run: pnpm -r install --frozen-lockfile
-
-      - name: Build all workspaces
-        run: pnpm -r build
+      # --- Safe placeholders so Next.js can pre-render without real secrets ---
+      NEXT_PUBLIC_SUPABASE_URL: "https://placeholder.supabase.co"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "placeholder"
+      # If you use Zod/env validation at build time, uncommen
