@@ -4,9 +4,11 @@
 
 ### Fixed
 - Ajustamos a tela `/sign-in` para acompanhar a tipagem atual do Supabase Auth ao inscrever `onAuthStateChange`, eliminando a falha de build causada pela tentativa de ler `error` na resposta.
+- `/sign-in` agora valida a sessão persistida sincronizando cookies via `/auth/sync` antes de redirecionar, evitando loops entre `/dashboard` e `/sign-in` quando os tokens existem apenas no `localStorage`.
 
 ### Documentation
-- README atualizado para reforçar que `/sign-in` reconhece sessões persistidas com `getSession` + `onAuthStateChange`, evitando o loop de "Confirmando seu acesso...".
+- README atualizado para reforçar que `/sign-in` sincroniza cookies via `/auth/sync` antes de redirecionar usuários com sessão persistida.
+- `docs/dev_setup_crm.md` atualizado com o mesmo comportamento de sincronização para garantir que o middleware reconheça a sessão recuperada.
 
 # 2025-11-06
 

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Flex, Loader, Text } from "@vibe/core";
+import type { Session } from "@supabase/supabase-js";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import styles from "./sign-in.module.css";
 
@@ -30,24 +31,73 @@ export default function SignInPage() {
       router.replace(redirectTo);
     };
 
-    const checkSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
+    const syncSessionAndRedirect = async (incomingSession?: Session | null) => {
+      let session = incomingSession ?? null;
 
-      if (error) {
-        console.warn("Falha ao recuperar sessão persistida", error.message);
+      if (!session) {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.warn("Falha ao recuperar sessão persistida", error.message);
+          return;
+        }
+
+        session = data.session;
+      }
+
+      if (!session?.user) {
         return;
       }
 
-      if (data.session?.user) {
+      if (!session.access_token || !session.refresh_token) {
+        console.warn("Sessão sem tokens suficientes para sincronizar cookies. Solicitando novo login.");
+        await supabase.auth.signOut();
+        if (active) {
+          setStatus("idle");
+          setMsg(null);
+        }
+        return;
+      }
+
+      if (!active || redirected) {
+        return;
+      }
+
+      setStatus("loading");
+      setMsg("Confirmando sua sessão...");
+
+      try {
+        const response = await fetch("/auth/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+          }),
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(text || `Falha ao sincronizar sessão (${response.status})`);
+        }
+
         redirectAuthenticatedUser();
+      } catch (syncError) {
+        console.warn("Não foi possível sincronizar a sessão persistida", syncError);
+        await supabase.auth.signOut();
+        if (active) {
+          setStatus("idle");
+          setMsg("Sua sessão expirou. Solicite um novo link para continuar.");
+        }
       }
     };
 
-    checkSession();
+    void syncSessionAndRedirect();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session?.user) {
-        redirectAuthenticatedUser();
+        void syncSessionAndRedirect(session);
       }
     });
 
