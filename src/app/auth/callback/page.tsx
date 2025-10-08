@@ -9,103 +9,101 @@ import styles from "./callback.module.css";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectParam = searchParams.get("redirectTo");
-  const normalizedRedirect =
-    redirectParam && redirectParam.startsWith("/") ? redirectParam : "/dashboard";
-  const hasSupabaseEnv = Boolean(
+  const sp = useSearchParams();
+  const redirectParam = sp.get("redirectTo");
+  const normalizedRedirect = redirectParam?.startsWith("/") ? redirectParam : "/dashboard";
+  const hasEnv = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
 
-  const supabase = useMemo(() => {
-    if (!hasSupabaseEnv) return null;
-    return createSupabaseBrowserClient();
-  }, [hasSupabaseEnv]);
-
+  const supabase = useMemo(() => (hasEnv ? createSupabaseBrowserClient() : null), [hasEnv]);
   const [status, setStatus] = useState<"loading" | "error" | "success">("loading");
   const [message, setMessage] = useState("Conectando à sua conta...");
 
   useEffect(() => {
     if (!supabase) {
-      if (!hasSupabaseEnv) {
+      if (!hasEnv) {
         setStatus("error");
         setMessage("Variáveis de ambiente do Supabase não configuradas.");
       }
       return;
     }
-
-    let isMounted = true;
+    let mounted = true;
 
     const run = async () => {
-      // Parse both hash and query for compatibility
-      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
       const url = new URL(window.location.href);
-      const queryParams = url.searchParams;
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const qp = url.searchParams;
 
-      const errorDescription =
-        hashParams.get("error_description") ||
-        hashParams.get("error") ||
-        queryParams.get("error_description") ||
-        queryParams.get("error");
-
-      if (errorDescription) {
-        if (!isMounted) return;
+      const err =
+        hash.get("error_description") || hash.get("error") || qp.get("error_description") || qp.get("error");
+      if (err) {
         setStatus("error");
-        setMessage(errorDescription);
+        setMessage(err);
         return;
       }
 
-      // 1) PKCE code flow (recommended, current default)
-      const pkceCode = queryParams.get("code") || hashParams.get("code");
-      if (pkceCode) {
+      // PKCE (preferred)
+      if (qp.get("code") || hash.get("code")) {
         const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
-        if (!isMounted) return;
-        if (error) {
-          setStatus("error");
-          setMessage(error.message);
+        if (!mounted) return;
+        if (!error) {
+          setStatus("success");
+          setMessage("Tudo pronto! Redirecionando...");
+          router.replace(normalizedRedirect);
           return;
         }
-        setStatus("success");
-        setMessage("Tudo pronto! Redirecionando...");
-        router.replace(normalizedRedirect);
+
+        // PKCE failed → try token_hash magiclink verify
+        if (error.message.includes("code verifier") || error.message.includes("code_verifier")) {
+          const token_hash = qp.get("token_hash") || hash.get("token_hash");
+          if (token_hash) {
+            const { error: vErr } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash });
+            if (!mounted) return;
+            if (!vErr) {
+              setStatus("success");
+              setMessage("Tudo pronto! Redirecionando...");
+              router.replace(normalizedRedirect);
+              return;
+            }
+            setStatus("error");
+            setMessage(vErr.message);
+            return;
+          }
+        }
+        setStatus("error");
+        setMessage(error.message);
         return;
       }
 
-      // 2) Legacy implicit flow fallback (access_token in URL)
-      const accessToken = hashParams.get("access_token") || queryParams.get("access_token");
-      const refreshToken = hashParams.get("refresh_token") || queryParams.get("refresh_token");
-
-      if (accessToken && refreshToken) {
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-        if (!isMounted) return;
-        if (error) {
-          setStatus("error");
-          setMessage(error.message);
+      // Legacy implicit fallback
+      const at = hash.get("access_token") || qp.get("access_token");
+      const rt = hash.get("refresh_token") || qp.get("refresh_token");
+      if (at && rt) {
+        const { error } = await supabase.auth.setSession({ access_token: at, refresh_token: rt });
+        if (!mounted) return;
+        if (!error) {
+          setStatus("success");
+          setMessage("Tudo pronto! Redirecionando...");
+          router.replace(normalizedRedirect);
           return;
         }
-        setStatus("success");
-        setMessage("Tudo pronto! Redirecionando...");
-        router.replace(normalizedRedirect);
+        setStatus("error");
+        setMessage(error.message);
         return;
       }
 
-      if (!isMounted) return;
       setStatus("error");
       setMessage("Não foi possível validar o link de autenticação.");
     };
 
     void run();
     return () => {
-      isMounted = false;
+      mounted = false;
     };
-  }, [supabase, router, normalizedRedirect, hasSupabaseEnv]);
+  }, [supabase, router, normalizedRedirect, hasEnv]);
 
-  const handleBackToSignIn = () => {
-    router.replace(`/sign-in?redirectTo=${encodeURIComponent(normalizedRedirect)}`);
-  };
+  const back = () => router.replace(`/sign-in?redirectTo=${encodeURIComponent(normalizedRedirect)}`);
 
   return (
     <main className={styles.root}>
@@ -113,11 +111,7 @@ export default function AuthCallbackPage() {
         <div className={styles.message}>
           {status === "loading" ? <Loader size={Loader.sizes.SMALL} /> : null}
           <Text type={Text.types.TEXT2} weight={Text.weights.BOLD}>
-            {status === "success"
-              ? "Login confirmado"
-              : status === "error"
-              ? "Falha na autenticação"
-              : "Validando link"}
+            {status === "success" ? "Login confirmado" : status === "error" ? "Falha na autenticação" : "Validando link"}
           </Text>
           <Text
             type={Text.types.TEXT3}
@@ -130,7 +124,7 @@ export default function AuthCallbackPage() {
 
         {status === "error" ? (
           <Flex justify={Flex.justify.CENTER}>
-            <Button kind={Button.kinds.PRIMARY} type={Button.types.BUTTON} onClick={handleBackToSignIn}>
+            <Button kind={Button.kinds.PRIMARY} type={Button.types.BUTTON} onClick={back}>
               Voltar para o login
             </Button>
           </Flex>
