@@ -21,40 +21,53 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      let exchanged = false;
-      const code = url.searchParams.get("code");
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) {
-          const normalized = error.message.toLowerCase();
-          const isPkceMismatch = normalized.includes("code verifier");
-          if (!isPkceMismatch) {
+      const hashParams = new URLSearchParams(url.hash.slice(1));
+
+      await supabase.auth.initialize().catch((initError) => {
+        console.error("Supabase auth initialization failed", initError);
+      });
+
+      let {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+      if (sessionError) {
+        setErr(sessionError.message);
+        return;
+      }
+
+      if (!session) {
+        const token_hash = url.searchParams.get("token_hash") ?? hashParams.get("token_hash");
+        if (token_hash) {
+          const typeParam = url.searchParams.get("type") ?? hashParams.get("type") ?? "magiclink";
+          const emailParam = url.searchParams.get("email") ?? hashParams.get("email") ?? undefined;
+          const verifyPayload: Parameters<typeof supabase.auth.verifyOtp>[0] = {
+            type: typeParam as Parameters<typeof supabase.auth.verifyOtp>[0]["type"],
+            token_hash,
+          } as Parameters<typeof supabase.auth.verifyOtp>[0];
+          if (emailParam) {
+            (verifyPayload as { email?: string }).email = emailParam;
+          }
+          const { data, error } = await supabase.auth.verifyOtp(verifyPayload);
+          if (error) {
             setErr(error.message);
             return;
           }
-        } else {
-          exchanged = true;
-        }
-      } else {
-        // 1) implicit: detectSessionInUrl=true salva sessão se veio #access_token
-        await supabase.auth.getSession();
-      }
-
-      // 2) fallback token_hash (alguns templates enviam magic link assim)
-      if (!exchanged) {
-        const hash = new URLSearchParams(location.hash.slice(1));
-        const token_hash = url.searchParams.get("token_hash") || hash.get("token_hash");
-        if (token_hash) {
-          const { error } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash });
-          if (error) { setErr(error.message); return; }
+          session = data.session;
         }
       }
 
-      // 3) sincroniza cookies HTTP-only p/ middleware
-      const { data } = await supabase.auth.getSession();
-      const at = data.session?.access_token;
-      const rt = data.session?.refresh_token;
-      if (!at || !rt) { setErr("Link inválido."); return; }
+      if (!session) {
+        setErr("Link inválido ou expirado.");
+        return;
+      }
+
+      const at = session.access_token;
+      const rt = session.refresh_token;
+      if (!at || !rt) {
+        setErr("Link inválido ou expirado.");
+        return;
+      }
 
       const r = await fetch("/auth/sync", {
         method: "POST",

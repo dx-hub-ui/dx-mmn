@@ -43,7 +43,7 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 
 1. Acesse `http://localhost:3000/` (a tela de login também está disponível em `/sign-in` para links diretos) e, opcionalmente, informe `redirectTo` para personalizar o destino após o login (por padrão `/dashboard`).
 2. Informe o email associado ao seu usuário e envie o formulário para receber um link mágico.
-3. O Supabase validará o token e redirecionará para `/auth/callback`, que tenta a troca de código PKCE via `exchangeCodeForSession(code)`. Quando o dispositivo não tiver o `code_verifier` (ex.: abriu o e-mail em outro browser), o callback ignora o erro "code verifier" e valida o `token_hash` legado antes de sincronizar os cookies HTTP-only. Em seguida, você é levado ao caminho definido em `redirectTo` (padrão `/dashboard`).
+3. O Supabase validará o token e redirecionará para `/auth/callback`. A página aguarda `supabase.auth.initialize()` concluir a detecção automática de sessão (PKCE ou implicit), consulta `getSession()` e, se necessário, usa `verifyOtp` com `token_hash` legado + email/tipo informados na URL. Em seguida sincroniza os cookies HTTP-only via `/auth/sync` e leva você ao caminho definido em `redirectTo` (padrão `/dashboard`).
 4. Se precisar reenviar o link, basta repetir o processo; a tela exibirá o status da solicitação e qualquer erro retornado pelo Supabase.
 
 > **Dica:** durante o desenvolvimento, configure `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` com os valores do projeto para que o formulário fique ativo. Em ambientes de review, a interface informa quando as variáveis não estão configuradas.

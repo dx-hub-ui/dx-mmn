@@ -30,6 +30,7 @@ pnpm install
 pnpm dev
 ```
 A aplicação fica disponível em `http://localhost:3000`. Usuários seed: `owner@example.com`, `leader@example.com`, `rep1@example.com`, `rep2@example.com` (login via magic link/OTP).
+> **Fluxo de login:** o callback `/auth/callback` aguarda `supabase.auth.initialize()` detectar a sessão PKCE/implicit, consulta `getSession()` e, se necessário, usa `verifyOtp` com `token_hash` legado antes de sincronizar os cookies via `/auth/sync`. O middleware (`src/middleware.ts`) agora delega a validação ao `createServerClient`, preservando os cookies emitidos pelo Supabase.
 
 ## 5. Scripts úteis
 | Script | Descrição |

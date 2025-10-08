@@ -1,5 +1,16 @@
 # Changelog
 
+# 2025-10-30
+
+### Fixed
+- Corrigimos o callback de autenticação para aguardar `supabase.auth.initialize()`, reaproveitar a sessão detectada automaticamente e validar tokens legados com `verifyOtp`, eliminando o erro "code verifier" e os loops de retorno ao `/sign-in`.
+
+### Changed
+- Middleware agora usa `createServerClient` para validar usuários autenticados e propagar cookies do Supabase, substituindo o fetch manual que ignorava os cookies PKCE.
+
+### Documentation
+- Atualizamos o guia de login para detalhar a ordem do callback (inicialização, validação de sessão, fallback `token_hash`, sincronização) e registrar o novo middleware baseado no cliente do Supabase.
+
 # 2025-10-29
 
 ### Fixed
