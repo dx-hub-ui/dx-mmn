@@ -1,5 +1,14 @@
 # Changelog
 
+# 2025-11-07
+
+### Fixed
+- `/api/user/profile` passa a ignorar erros de permissão (`PGRST301`/`42501`) ao consultar memberships, registrando o incidente em
+  telemetria e retornando o perfil mesmo sem vínculo ativo, evitando o erro 500 exibido no menu do usuário.
+
+### Documentation
+- `docs/crm_readme.md` atualizado com a nota de correção sobre o fallback do membership na rota de perfil.
+
 # 2025-11-06
 
 ### Fixed
