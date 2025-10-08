@@ -1,5 +1,13 @@
 # Changelog
 
+# 2025-11-06
+
+### Fixed
+- Dashboard passa a tratar falhas no carregamento de sessões/memberships com mensagens inline, evitando o erro genérico "Something went wrong" e mantendo a página acessível.
+
+### Documentation
+- README atualizado para mencionar o aviso amigável no dashboard quando a leitura de memberships falhar.
+
 # 2025-11-05
 
 ### Added
