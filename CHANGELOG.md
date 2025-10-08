@@ -5,6 +5,7 @@
 ### Fixed
 - Ajustamos a tela `/sign-in` para acompanhar a tipagem atual do Supabase Auth ao inscrever `onAuthStateChange`, eliminando a falha de build causada pela tentativa de ler `error` na resposta.
 - `/sign-in` agora valida a sessão persistida sincronizando cookies via `/auth/sync` antes de redirecionar, evitando loops entre `/dashboard` e `/sign-in` quando os tokens existem apenas no `localStorage`.
+- Atualizamos a tipagem da sessão persistida para derivar diretamente do cliente Supabase criado em runtime, evitando depender de `@supabase/supabase-js` no bundle do Edge sem perder autocompletes ou validações de TypeScript.
 
 ### Documentation
 - README atualizado para reforçar que `/sign-in` sincroniza cookies via `/auth/sync` antes de redirecionar usuários com sessão persistida.

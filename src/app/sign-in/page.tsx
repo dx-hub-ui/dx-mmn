@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Flex, Loader, Text } from "@vibe/core";
-import type { Session } from "@supabase/supabase-js";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import styles from "./sign-in.module.css";
+
+type SupabaseBrowserClient = ReturnType<typeof createSupabaseBrowserClient>;
+type AuthSession = Awaited<ReturnType<SupabaseBrowserClient["auth"]["getSession"]>>["data"]["session"];
 
 export default function SignInPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
@@ -31,7 +33,7 @@ export default function SignInPage() {
       router.replace(redirectTo);
     };
 
-    const syncSessionAndRedirect = async (incomingSession?: Session | null) => {
+    const syncSessionAndRedirect = async (incomingSession?: AuthSession | null) => {
       let session = incomingSession ?? null;
 
       if (!session) {
