@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { Button } from "@vibe/core";
@@ -42,6 +43,7 @@ function formatDate(value: string | null) {
 }
 
 export default function SequenceManagerPage({ sequences, orgId, organizationName, membershipRole }: SequenceManagerPageProps) {
+  const router = useRouter();
   const [filters, setFilters] = useState<SequenceManagerFilters>({
     search: "",
     status: "todos",
@@ -209,7 +211,7 @@ export default function SequenceManagerPage({ sequences, orgId, organizationName
             <div className={styles.emptyState}>
               <span className={styles.emptyTitle}>Nenhuma sequência encontrada</span>
               <p>Revise os filtros ou crie uma nova sequência para começar.</p>
-              <Button kind={Button.kinds.PRIMARY} disabled>
+              <Button kind={Button.kinds.PRIMARY} onClick={() => router.push("/sequences/new")}>
                 Nova sequência
               </Button>
             </div>

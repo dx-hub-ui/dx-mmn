@@ -16,8 +16,30 @@ A Sprint 1 estabelece as fundações do módulo de **Sequências de tarefas** no
 - Acessibilidade com navegação por teclado (tabs, checkboxes, aria-labels) e textos de apoio claros.
 - Todos os textos apresentados ao usuário estão em português brasileiro.
 
-## Próximos passos (Sprints futuras)
+## Sprint 2 — Editor, inscrições e ações
 
-- Editor completo de passos com drag-and-drop e modal de configuração.
-- Server actions para CRUD, publicação de versões e inscrição manual.
-- Motor de assignments e notificações in-app conectados ao Supabase.
+A segunda etapa entrega o editor visual completo, inscrições manuais e as server actions necessárias para publicar versões e
+operar a sequência sem sair do DX Hub.
+
+### Principais entregas
+
+- **Editor de passos** `/sequences/[id]` com drag-and-drop, duplicação, ativação/desativação, modal rico e preview de due-date
+  conforme janela de trabalho.
+- **Regras & janela** configuráveis (fuso, dias úteis, início/fim, cooldown, estratégia de publicação e notas) com persistência via
+  server action.
+- **Inscrições manuais** com tabela administrativa, ações de pausar/retomar/encerrar e formulário rápido por tipo de alvo.
+- **Server actions** para criar rascunhos, salvar passos, reordenar, publicar versões e gerenciar inscrições, com telemetria PostHog
+  e breadcrumbs Sentry.
+- **Sidebar atualizada** incluindo acessos diretos a “Sequências” e “Minhas tarefas”.
+
+### Qualidade e testes
+
+- Novos testes unitários para normalização do editor e cálculo de due-date com clamp.
+- Spec E2E placeholder para o editor (skipado até configurarmos Supabase de testes).
+- Documentação e changelog atualizados para acompanhar o avanço da sprint.
+
+## Próximos passos (Sprint 3)
+
+- Motor de assignments, notificações in-app e reassignment automático conectados ao Supabase/Edge Functions.
+- Modal de detalhes em Minhas Tarefas com ações de concluir e adiar (snooze).
+- Integração total de telemetria de notificações, eventos de overdue e reassignment.

@@ -1,5 +1,19 @@
 # Changelog
 
+# 2025-11-04
+
+### Added
+- Editor de Sequências (Sprint 2) com páginas `/sequences/new` e `/sequences/[id]`, drag-and-drop de passos, modal completo,
+  configuração de regras, inscrições manuais e publicação de versões com telemetria PostHog/Sentry.
+- Server actions centralizadas (`src/app/(app)/sequences/actions.ts`) cobrindo criação de rascunhos, CRUD de passos, reordenação,
+  duplicação, publicação e gestão de inscrições.
+- Helpers do editor (`normalize`, `dates`) e testes Vitest para normalização de dados e cálculo de due-date com clamp.
+- Sidebar atualizada para destacar "Sequências" e "Minhas tarefas", além de spec Playwright (`sequences-editor.spec.ts`) como
+  placeholder para o fluxo do editor.
+
+### Documentation
+- `docs/sequences_module.md` ampliado com o relatório da Sprint 2, detalhando entregas, qualidade e próximos passos.
+
 # 2025-11-03
 
 ### Added
