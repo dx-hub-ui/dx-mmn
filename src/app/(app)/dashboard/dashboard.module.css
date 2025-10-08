@@ -78,6 +78,13 @@
   background: rgba(15, 23, 42, 0.02);
 }
 
+.errorState {
+  padding: 16px;
+  border-radius: var(--dx-radius-md, 12px);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  background: rgba(220, 38, 38, 0.08);
+}
+
 .userId {
   overflow-wrap: anywhere;
 }
