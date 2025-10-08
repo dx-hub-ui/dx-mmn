@@ -24,6 +24,9 @@ Isso aplica todas as migrações (`000_*.sql`, `001_crm_contacts_extensions.sql`
 ```bash
 pnpm install
 ```
+> Certifique-se de que o pacote `@supabase/supabase-js` seja instalado localmente. Ele é requerido tanto pelos clients edge/funções
+> quanto pelos componentes React que importam tipos (`User`, `Session`). Se o build apontar erro de módulo ausente, rode novamente
+> `pnpm install` para atualizar o `pnpm-lock.yaml` e sincronizar com o `package.json`.
 
 ## 4. Rodar a aplicação
 ```bash
