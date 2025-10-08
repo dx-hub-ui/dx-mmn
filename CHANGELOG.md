@@ -1,5 +1,77 @@
 # Changelog
 
+# 2025-11-04
+
+### Changed
+- Sidebar principal substitui o item "Home" por **Dashboard** e aponta diretamente para `/dashboard`, alinhando a navegação com a nova página inicial autenticada.
+
+### Documentation
+- README atualizado para destacar o Dashboard como entrada principal da sidebar após o login.
+
+# 2025-11-03
+
+### Fixed
+- `/auth/callback` agora força `supabase.auth.setSession` no browser, sincroniza cookies via `/auth/sync` com `credentials: "include"` e respeita `persistSession`/`autoRefreshToken`, garantindo que o login por magic link continue válido após fechar e reabrir o navegador.
+- Middleware (`src/middleware.ts`) passou a tentar `getSession` + `refreshSession` antes de redirecionar, preservando sessões válidas ao acessar `/dashboard` ou demais rotas protegidas.
+- `/dashboard` agora força renderização dinâmica e usa `auth.getSession` antes do fallback `getUser`, assegurando que a sessão autenticada seja lida corretamente nos carregamentos subsequentes.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` explicam a persistência da sessão (setSession no browser + `/auth/sync` com credenciais) e o comportamento do middleware ao renovar tokens antes de redirecionar.
+
+# 2025-11-02
+
+### Fixed
+- `/auth/callback` agora troca códigos PKCE via `exchangeCodeForSession`, ignora erros de `code_verifier` em links abertos em outro dispositivo, usa `verifyOtp` tolerante a `token_hash`/`token` (magic link, signup, invite, recovery, email) e só recorre a `setSession` com `access_token`/`refresh_token` ao final, eliminando o erro "Link inválido ou expirado" após login ou cadastro.
+- Ajustamos o fallback `verifyOtp` para limitar-se aos tipos de OTP por email (magiclink, signup, invite, recovery, email, email_change), evitando tentativas inválidas que geravam erros de compilação durante o build e garantindo que o magic link continue funcionando mesmo sem `code_verifier`.
+- `can_access_membership` (security definer) passou a desativar temporariamente o RLS enquanto consulta `visible_membership_ids`, removendo o erro `42P17 infinite recursion detected in policy for relation "memberships"` ao carregar o dashboard.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` atualizados com o fluxo revisado (`exchangeCodeForSession` + fallback OTP) e com a observação sobre a desativação temporária de RLS em `can_access_membership`.
+
+# 2025-11-01
+
+### Fixed
+- Corrigimos o callback `/auth/callback` para priorizar `verifyOtp` com `token`/`token_hash`, sincronizar cookies apenas após uma sessão válida e limpar o hash da URL antes de redirecionar, evitando erros de "link expirado".
+
+### Added
+- Automatizamos a criação de organizações e memberships com papel `org` para novos usuários através do gatilho `handle_new_user`, além de remover perfis órfãos com o novo gatilho `handle_deleted_user`.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` atualizados com o fluxo revisado do callback, a atribuição automática de organizações e as regras para remoção de perfis quando usuários são excluídos.
+
+# 2025-10-31
+
+### Fixed
+- Reestruturamos `/auth/callback` para processar manualmente `code`, `token_hash` e tokens `access/refresh`, tolerando erros de PKCE e impedindo que o magic link expire ao chegar ao usuário.
+
+### Changed
+- O cliente Supabase no browser agora mantém `detectSessionInUrl` desativado, entregando ao callback o tratamento dos parâmetros e evitando que o SDK consuma o token antes da sincronização de cookies.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` atualizados com o passo a passo do callback manual, incluindo fallback PKCE/OTP e dicas de troubleshooting para links abertos em outro dispositivo.
+
+# 2025-10-30
+
+### Fixed
+- Corrigimos o callback de autenticação para aguardar `supabase.auth.initialize()`, reaproveitar a sessão detectada automaticamente e validar tokens legados com `verifyOtp`, eliminando o erro "code verifier" e os loops de retorno ao `/sign-in`.
+
+### Changed
+- Middleware agora usa `createServerClient` para validar usuários autenticados e propagar cookies do Supabase, substituindo o fetch manual que ignorava os cookies PKCE.
+
+### Documentation
+- Atualizamos o guia de login para detalhar a ordem do callback (inicialização, validação de sessão, fallback `token_hash`, sincronização) e registrar o novo middleware baseado no cliente do Supabase.
+
+# 2025-10-29
+
+### Fixed
+- Fluxo de callback do Supabase realiza `exchangeCodeForSession` ao receber `code` de PKCE e mantém o fallback de `token_hash`, evitando que os usuários sejam redirecionados de volta para `/sign-in` após clicar no magic link.
+
+### Changed
+- Formulário de login respeita o parâmetro `redirectTo` recebido via query string e gera `emailRedirectTo` usando `NEXT_PUBLIC_SITE_URL`, suportando múltiplos ambientes sem alterar o código.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` atualizados com a variável `NEXT_PUBLIC_SITE_URL` e a descrição do fluxo de troca PKCE no callback.
+
 # 2025-10-28
 
 ### Added
@@ -65,3 +137,9 @@
 
 ### Documentation
 - README atualizado com instruções para configurar e testar o fluxo de login via Magic Link.
+## 2025-10-15
+
+### Fixed
+- Corrigimos a troca de código PKCE em `/auth/callback` para usar a assinatura correta de `exchangeCodeForSession`, evitando falhas de build no fluxo de login por Magic Link.
+- Quando o Supabase não encontra `code_verifier` (ex.: link aberto em outro dispositivo), o callback agora ignora o erro e cai no `token_hash`, evitando o loop de autenticação ao validar magic links.
+

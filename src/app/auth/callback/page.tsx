@@ -3,46 +3,266 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { Flex, Loader, Text } from "@vibe/core";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
+const EMAIL_OTP_TYPES = [
+  "magiclink",
+  "signup",
+  "invite",
+  "recovery",
+  "email",
+  "email_change",
+] as const;
+
+type EmailOtpTypeCandidate = (typeof EMAIL_OTP_TYPES)[number];
+
+const isEmailOtpType = (value: string | null | undefined): value is EmailOtpTypeCandidate =>
+  Boolean(value) && (EMAIL_OTP_TYPES as ReadonlyArray<string>).includes(value!);
+
 export default function AuthCallbackPage() {
-  const sp = useSearchParams();
-  const redirectTo = sp.get("redirectTo")?.startsWith("/") ? sp.get("redirectTo")! : "/dashboard";
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirectTo")?.startsWith("/") ? searchParams.get("redirectTo")! : "/dashboard";
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [err, setErr] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(true);
 
   useEffect(() => {
-    const run = async () => {
-      // 1) implicit: detectSessionInUrl=true salva sessão se veio #access_token
-      await supabase.auth.getSession();
+    let cancelled = false;
 
-      // 2) fallback token_hash (alguns templates enviam magic link assim)
-      const u = new URL(window.location.href);
-      const hash = new URLSearchParams(location.hash.slice(1));
-      const token_hash = u.searchParams.get("token_hash") || hash.get("token_hash");
-      if (token_hash) {
-        const { error } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash });
-        if (error) { setErr(error.message); return; }
+    const surfaceError = (message: string) => {
+      if (!cancelled) {
+        setErr(message);
+        setProcessing(false);
       }
-
-      // 3) sincroniza cookies HTTP-only p/ middleware
-      const { data } = await supabase.auth.getSession();
-      const at = data.session?.access_token;
-      const rt = data.session?.refresh_token;
-      if (!at || !rt) { setErr("Link inválido."); return; }
-
-      const r = await fetch("/auth/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ access_token: at, refresh_token: rt }),
-        cache: "no-store",
-      });
-      if (!r.ok) { setErr(await r.text().catch(()=> "Falha ao sincronizar.")); return; }
-
-      window.location.replace(redirectTo);
     };
+
+    const run = async () => {
+      try {
+        const url = new URL(window.location.href);
+        const search = url.searchParams;
+        const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
+        const pickParam = (key: string) => search.get(key) ?? hash.get(key);
+
+        const errorDescription = pickParam("error_description") ?? pickParam("error");
+        if (errorDescription) {
+          surfaceError(errorDescription);
+          return;
+        }
+
+        const shouldStopDueTo = (maybeError: Error | null | undefined) => {
+          if (!maybeError) return false;
+          const message = maybeError.message ?? "Erro ao recuperar sessão.";
+          if (/code verifier/i.test(message) || /invalid request/i.test(message)) {
+            console.warn("Supabase PKCE fallback:", message);
+            return false;
+          }
+          surfaceError(message);
+          return true;
+        };
+
+        let {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError && shouldStopDueTo(sessionError)) {
+          return;
+        }
+
+        const captureSession = (maybeSession: typeof session) => {
+          if (maybeSession) {
+            session = maybeSession;
+          }
+        };
+
+        const code = pickParam("code");
+        const token = pickParam("token");
+        const tokenHash = pickParam("token_hash");
+        const accessTokenParam = pickParam("access_token");
+        const refreshTokenParam = pickParam("refresh_token");
+        const emailParam = pickParam("email") ?? pickParam("user_email") ?? undefined;
+        const rawType = pickParam("type")?.toLowerCase() ?? undefined;
+        const otpTypeCandidates = Array.from(
+          new Set<EmailOtpTypeCandidate>([
+            ...(isEmailOtpType(rawType) ? [rawType] : []),
+            ...EMAIL_OTP_TYPES,
+          ]),
+        );
+
+        if (!session && code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            if (shouldStopDueTo(error)) {
+              // tenta fallback com tokens
+            } else {
+              return;
+            }
+          } else {
+            captureSession(data.session);
+          }
+        }
+
+        const canUseTokenHash = Boolean(tokenHash);
+        const canUseToken = Boolean(token && emailParam);
+
+        if (!session && (canUseTokenHash || canUseToken) && otpTypeCandidates.length > 0) {
+          type VerifyResult = "success" | "retry" | "fatal";
+          let lastError: string | null = null;
+
+          const attemptVerify = async (
+            payload: Parameters<typeof supabase.auth.verifyOtp>[0],
+          ): Promise<VerifyResult> => {
+            const { data, error } = await supabase.auth.verifyOtp(payload);
+            if (error) {
+              lastError = error.message;
+              if (/token (?:not found|has expired)/i.test(error.message)) {
+                return "retry";
+              }
+              surfaceError(error.message);
+              return "fatal";
+            }
+            captureSession(data.session);
+            lastError = null;
+            return "success";
+          };
+
+          if (canUseTokenHash) {
+            for (const typeCandidate of otpTypeCandidates) {
+              const result = await attemptVerify({
+                type: typeCandidate,
+                token_hash: tokenHash!,
+              });
+
+              if (result === "success") {
+                break;
+              }
+
+              if (result === "fatal") {
+                return;
+              }
+            }
+          }
+
+          if (!session && canUseToken) {
+            for (const typeCandidate of otpTypeCandidates) {
+              const result = await attemptVerify({
+                type: typeCandidate,
+                token: token!,
+                email: emailParam!,
+              });
+
+              if (result === "success") {
+                break;
+              }
+
+              if (result === "fatal") {
+                return;
+              }
+            }
+          }
+
+          if (!session && lastError) {
+            surfaceError(lastError);
+            return;
+          }
+        }
+
+        if (!session && accessTokenParam && refreshTokenParam) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessTokenParam,
+            refresh_token: refreshTokenParam,
+          });
+          if (error) {
+            surfaceError(error.message);
+            return;
+          }
+          captureSession(data.session);
+        }
+
+        if (!session) {
+          surfaceError("Link inválido ou expirado.");
+          return;
+        }
+
+        const accessToken = session.access_token;
+        const refreshToken = session.refresh_token;
+        if (!accessToken || !refreshToken) {
+          surfaceError("Link inválido ou expirado.");
+          return;
+        }
+
+        const {
+          data: clientSessionData,
+          error: clientSessionError,
+        } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (clientSessionError && shouldStopDueTo(clientSessionError)) {
+          return;
+        }
+
+        captureSession(clientSessionData?.session ?? session);
+
+        const syncResponse = await fetch("/auth/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken }),
+          cache: "no-store",
+          credentials: "include",
+        });
+
+        if (!syncResponse.ok) {
+          const bodyText = await syncResponse.text().catch(() => "Falha ao sincronizar.");
+          surfaceError(bodyText || "Falha ao sincronizar.");
+          return;
+        }
+
+        const clean = new URL(window.location.href);
+        clean.hash = "";
+        clean.search = "";
+        clean.pathname = "/auth/callback";
+        window.history.replaceState({}, "", clean.toString());
+
+        window.location.replace(redirectTo);
+      } catch (error) {
+        console.error("Erro ao processar callback de autenticação", error);
+        const message = error instanceof Error ? error.message : "Erro desconhecido.";
+        surfaceError(message);
+      }
+    };
+
     run();
+
+    return () => {
+      cancelled = true;
+    };
   }, [redirectTo, supabase]);
 
-  return err ? <pre style={{ padding: 16 }}>Erro de autenticação: {err}</pre> : null;
+  return (
+    <Flex
+      direction={Flex.directions.COLUMN}
+      align={Flex.align.CENTER}
+      justify={Flex.justify.CENTER}
+      gap={12}
+      style={{ minHeight: "100vh", padding: 24 }}
+    >
+      {processing && !err ? (
+        <>
+          <Loader size={Loader.sizes.SMALL} />
+          <Text type={Text.types.TEXT2} weight={Text.weights.BOLD}>
+            Confirmando seu acesso...
+          </Text>
+        </>
+      ) : null}
+
+      {err ? (
+        <Text type={Text.types.TEXT3} color={Text.colors.NEGATIVE} align={Text.align.CENTER}>
+          Erro de autenticação: {err}
+        </Text>
+      ) : null}
+    </Flex>
+  );
 }

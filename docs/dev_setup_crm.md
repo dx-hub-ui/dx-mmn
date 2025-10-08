@@ -7,6 +7,7 @@
   ```env
   NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+  NEXT_PUBLIC_SITE_URL=http://localhost:3000
   SUPABASE_URL=http://127.0.0.1:54321
   SUPABASE_SERVICE_ROLE_KEY=...
   ```
@@ -29,6 +30,11 @@ pnpm install
 pnpm dev
 ```
 A aplicação fica disponível em `http://localhost:3000`. Usuários seed: `owner@example.com`, `leader@example.com`, `rep1@example.com`, `rep2@example.com` (login via magic link/OTP).
+> **Fluxo de login:** o callback `/auth/callback` usa `exchangeCodeForSession` para trocar códigos PKCE, tenta `verifyOtp` com `token_hash` ou `token` apenas para tipos de OTP por email (`magiclink`, `signup`, `invite`, `recovery`, `email`, `email_change`) e, em último caso, aceita `setSession` com `access_token`/`refresh_token`. Após obter a sessão, o browser força `supabase.auth.setSession` (com `persistSession` + `autoRefreshToken`) e sincroniza cookies via `/auth/sync` com `credentials: "include"`, garantindo que o usuário permaneça autenticado mesmo após fechar o navegador. O middleware (`src/middleware.ts`) continua delegando a validação ao `createServerClient`, tenta renovar a sessão (`getSession` + `refreshSession`) antes de redirecionar e ignora erros de `code_verifier` provenientes de links abertos em outro dispositivo.
+
+> **Políticas RLS:** a função `can_access_membership` (security definer) desativa temporariamente o RLS enquanto consulta `visible_membership_ids`, permitindo que `memberships_select_visible` calcule visibilidade sem disparar o erro `42P17` de recursão infinita.
+
+> **Onboarding automático:** o gatilho SQL `handle_new_user` cria uma organização padrão e um membership `org` para cada usuário novo, além de espelhar os metadados em `public.profiles`. Ao remover um usuário em `auth.users`, o gatilho `handle_deleted_user` limpa o respectivo perfil.
 
 ## 5. Scripts úteis
 | Script | Descrição |
