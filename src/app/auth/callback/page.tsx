@@ -1,34 +1,41 @@
-// src/app/auth/callback/page.tsx
+// src/app/auth/callback/page.tsx — set session, then hard-redirect to /dashboard
 "use client";
-
-import { useEffect, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function AuthCallbackPage() {
-  const router = useRouter();
   const sp = useSearchParams();
-  const redirectTo = sp.get("redirectTo")?.startsWith("/") ? sp.get("redirectTo")! : "/dashboard";
+  const DEFAULT = "/dashboard";
+  const redirectTo = sp.get("redirectTo")?.startsWith("/") ? sp.get("redirectTo")! : DEFAULT;
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     const run = async () => {
-      // implicit: detectSessionInUrl=true will parse #access_token and set cookies
-      await supabase.auth.getSession();
-
-      // also support token_hash emails (verifyOtp)
       const href = window.location.href;
       const u = new URL(href);
       const hash = new URLSearchParams(location.hash.slice(1));
+
       const token_hash = u.searchParams.get("token_hash") || hash.get("token_hash");
       if (token_hash) {
-        await supabase.auth.verifyOtp({ type: "magiclink", token_hash });
+        const { error } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash });
+        if (error) { setErr(error.message); return; }
+        window.location.replace(redirectTo); return;
       }
 
-      router.replace(redirectTo);
+      const access_token = u.searchParams.get("access_token") || hash.get("access_token");
+      const refresh_token = u.searchParams.get("refresh_token") || hash.get("refresh_token");
+      if (access_token && refresh_token) {
+        const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+        if (error) { setErr(error.message); return; }
+        window.location.replace(redirectTo); return;
+      }
+
+      setErr("Link inválido.");
     };
     run();
-  }, [router, redirectTo, supabase]);
+  }, [redirectTo, supabase]);
 
-  return null;
+  return err ? <pre style={{ padding: 16 }}>Erro de autenticação: {err}</pre> : null;
 }
