@@ -4,7 +4,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 const allowedRoles = new Set(["leader", "rep"]);
 
 export async function POST(request: NextRequest) {
-  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? null;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
@@ -71,7 +72,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "generatedByMembershipId must match the caller membership" }, { status: 403 });
   }
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/generate_invite`, {
+  const baseUrl = supabaseUrl.replace(/\/$/, "");
+  const response = await fetch(`${baseUrl}/functions/v1/generate_invite`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
