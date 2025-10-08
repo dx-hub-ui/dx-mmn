@@ -62,3 +62,11 @@ das reps via "Minhas tarefas".
 - Novos testes Vitest (`validation.test.ts`) para a sanitização de datas de adiamento e ajustes nas specs de normalização.
 - Atualização dos testes existentes para refletir os campos adicionais em `MyTaskItem`.
 - Execução dos jobs de lint, typecheck e unit tests garantindo que os fluxos adicionados não quebram o build.
+
+## Novembro/2025 — Refinos de UI/UX
+
+- **Lista de sequências** remodelada para o padrão Monday.com com breadcrumbs, cards de métricas instantâneas (total, status por categoria), filtros usando `Search`/`Select` do `@vibe/core` e tabela responsiva com badges de status e alvo padrão.
+- **Editor atualizado** com cabeçalho contextual, avatar inicial, tabs alinhadas ao Vibe e workspace em duas colunas: lista ordenável de passos à esquerda e painel detalhado com meta-informações, descrição e ações rápidas à direita.
+- **Templates de passo** apresentados em cards reutilizáveis (“Tarefa geral”, “Tarefa de ligação”), facilitando a criação do primeiro passo e reforçando a arquitetura multicanal.
+- **Formulário de regras & notificações** reorganizado em grid, com campos agrupados por contexto (janela de trabalho, cooldown, estratégia de publicação) e CTA fixo de salvar.
+- **Inscrições** com estado vazio ilustrado (`EmptyState` do Vibe), formulário compacto e tabela com ações inline (pausar/retomar/encerrar) mantendo consistência visual com o manager.

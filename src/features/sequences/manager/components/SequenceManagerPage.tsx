@@ -3,7 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
-import { Button } from "@vibe/core";
+import {
+  BreadcrumbItem,
+  BreadcrumbsBar,
+  Button,
+  Label,
+  Search,
+} from "@vibe/core";
 import { trackEvent } from "@/lib/telemetry";
 import { useSentrySequenceScope } from "@/lib/observability/sentryClient";
 import { filterSequences } from "../normalize";
@@ -74,6 +80,19 @@ export default function SequenceManagerPage({ sequences, orgId, organizationName
 
   const filtered = useMemo(() => filterSequences(sequences, filters), [sequences, filters]);
 
+  const statusTotals = useMemo(
+    () =>
+      sequences.reduce<Record<SequenceStatus | "total", number>>(
+        (acc, item) => {
+          acc.total += 1;
+          acc[item.status] += 1;
+          return acc;
+        },
+        { total: 0, active: 0, paused: 0, draft: 0, archived: 0 }
+      ),
+    [sequences]
+  );
+
   const allSelected = filtered.length > 0 && filtered.every((item) => selection.has(item.id));
   const selectionCount = selection.size;
 
@@ -126,70 +145,119 @@ export default function SequenceManagerPage({ sequences, orgId, organizationName
   return (
     <section className={styles.page} aria-labelledby="sequence-manager-title">
       <header className={styles.pageHeader}>
-        <h1 id="sequence-manager-title" className={styles.pageTitle}>
-          Sequências de Tarefas
-        </h1>
-        <p className={styles.pageSubtitle}>
-          Organize e monitore todas as automações da organização {organizationName}.
-        </p>
+        <BreadcrumbsBar type={BreadcrumbsBar.types.NAVIGATION} className={styles.breadcrumbs}>
+          <BreadcrumbItem text="Workspaces" />
+          <BreadcrumbItem text={organizationName} />
+          <BreadcrumbItem text="Sequências" isCurrent />
+        </BreadcrumbsBar>
+
+        <div className={styles.headerContent}>
+          <div className={styles.headerText}>
+            <div className={styles.titleRow}>
+              <h1 id="sequence-manager-title">Sequências</h1>
+              <Label kind={Label.kinds.FILL} color={Label.colors.PRIMARY} className={styles.betaLabel}>
+                Beta
+              </Label>
+            </div>
+            <p>
+              Crie cadências multicanal e acompanhe o progresso das automações da organização {organizationName}.
+            </p>
+          </div>
+
+          <dl className={styles.metrics} aria-label="Resumo das sequências">
+            <div>
+              <dt>Total</dt>
+              <dd>{statusTotals.total}</dd>
+            </div>
+            <div>
+              <dt>Ativas</dt>
+              <dd>{statusTotals.active}</dd>
+            </div>
+            <div>
+              <dt>Pausadas</dt>
+              <dd>{statusTotals.paused}</dd>
+            </div>
+            <div>
+              <dt>Rascunhos</dt>
+              <dd>{statusTotals.draft}</dd>
+            </div>
+            <div>
+              <dt>Arquivadas</dt>
+              <dd>{statusTotals.archived}</dd>
+            </div>
+          </dl>
+        </div>
       </header>
 
       <div className={styles.pageBody}>
-        <div className={styles.filters} role="toolbar" aria-label="Filtros da lista de sequências">
-          <label className="sr-only" htmlFor="sequence-search">
-            Buscar sequência
-          </label>
-          <input
-            id="sequence-search"
-            className={styles.searchInput}
-            placeholder="Buscar por nome, status ou tipo de alvo"
-            value={filters.search}
-            onChange={(event) => setFilters((prev) => ({ ...prev, search: event.target.value }))}
-          />
+        <div className={styles.toolbar} role="toolbar" aria-label="Controles de sequências">
+          <div className={styles.toolbarPrimary}>
+            <Button
+              kind={Button.kinds.PRIMARY}
+              leftIcon="Add"
+              onClick={() => router.push("/sequences/new")}
+            >
+              Nova sequência
+            </Button>
+            <Button kind={Button.kinds.SECONDARY} leftIcon="Filter" disabled>
+              Filtrar
+            </Button>
+          </div>
 
-          <label className="sr-only" htmlFor="sequence-status-filter">
-            Filtrar por status
-          </label>
-          <select
-            id="sequence-status-filter"
-            className={styles.select}
-            value={filters.status}
-            onChange={(event) =>
-              setFilters((prev) => ({ ...prev, status: event.target.value as SequenceStatus | "todos" }))
-            }
-          >
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option === "todos"
-                  ? "Todos os status"
-                  : `Status: ${statusLabel[option as SequenceStatus]}`}
-              </option>
-            ))}
-          </select>
+          <div className={styles.toolbarFilters}>
+            <label className={styles.filterLabel} htmlFor="sequence-status-filter">
+              Status
+            </label>
+            <select
+              id="sequence-status-filter"
+              className={styles.select}
+              value={filters.status}
+              onChange={(event) =>
+                setFilters((prev) => ({ ...prev, status: event.target.value as SequenceStatus | "todos" }))
+              }
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option === "todos"
+                    ? "Todos"
+                    : statusLabel[option as SequenceStatus]}
+                </option>
+              ))}
+            </select>
 
-          <label className="sr-only" htmlFor="sequence-target-filter">
-            Filtrar por tipo de alvo
-          </label>
-          <select
-            id="sequence-target-filter"
-            className={styles.select}
-            value={filters.targetType}
-            onChange={(event) =>
-              setFilters((prev) => ({ ...prev, targetType: event.target.value as SequenceTargetType | "todos" }))
-            }
-          >
-            {TARGET_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option === "todos" ? "Todos os alvos" : `Alvo: ${targetLabel[option as SequenceTargetType]}`}
-              </option>
-            ))}
-          </select>
+            <label className={styles.filterLabel} htmlFor="sequence-target-filter">
+              Alvo
+            </label>
+            <select
+              id="sequence-target-filter"
+              className={styles.select}
+              value={filters.targetType}
+              onChange={(event) =>
+                setFilters((prev) => ({ ...prev, targetType: event.target.value as SequenceTargetType | "todos" }))
+              }
+            >
+              {TARGET_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option === "todos" ? "Todos" : targetLabel[option as SequenceTargetType]}
+                </option>
+              ))}
+            </select>
+
+            <Search
+              value={filters.search}
+              placeholder="Buscar por sequência, status ou tipo"
+              onChange={(value) => setFilters((prev) => ({ ...prev, search: value }))}
+              className={styles.search}
+            />
+          </div>
         </div>
 
         {selectionCount > 0 ? (
-          <div className={styles.selectionBar} role="status" aria-live="polite">
-            <span className={styles.selectionInfo}>{selectionCount} sequências selecionadas</span>
-            <div className={styles.actionsRow}>
+          <div className={styles.selectionBanner} role="status" aria-live="polite">
+            <div className={styles.selectionInfo}>
+              <span>{selectionCount} sequência(s) selecionada(s)</span>
+            </div>
+            <div className={styles.selectionActions}>
               <Button kind={Button.kinds.PRIMARY} disabled>
                 Ativar
               </Button>
@@ -206,7 +274,7 @@ export default function SequenceManagerPage({ sequences, orgId, organizationName
           </div>
         ) : null}
 
-        <div className={styles.tableWrapper} role="region" aria-live="polite">
+        <div className={styles.tableCard} role="region" aria-live="polite">
           {filtered.length === 0 ? (
             <div className={styles.emptyState}>
               <span className={styles.emptyTitle}>Nenhuma sequência encontrada</span>
@@ -219,7 +287,7 @@ export default function SequenceManagerPage({ sequences, orgId, organizationName
             <table className={styles.table} role="grid" aria-labelledby="sequence-manager-title">
               <thead>
                 <tr>
-                  <th className={clsx(styles.checkboxCell)} scope="col">
+                  <th className={styles.checkboxCell} scope="col">
                     <input
                       type="checkbox"
                       aria-label="Selecionar todas as sequências filtradas"
@@ -227,12 +295,12 @@ export default function SequenceManagerPage({ sequences, orgId, organizationName
                       onChange={toggleSelectAll}
                     />
                   </th>
-                  <th scope="col">Nome</th>
+                  <th scope="col">Sequência</th>
                   <th scope="col">Status</th>
-                  <th scope="col">Tipo</th>
-                  <th scope="col">Steps</th>
-                  <th scope="col">Inscritos ativos</th>
-                  <th scope="col">Conclusão %</th>
+                  <th scope="col">Alvo padrão</th>
+                  <th scope="col">Passos</th>
+                  <th scope="col">Inscrições ativas</th>
+                  <th scope="col">Conclusão</th>
                   <th scope="col">Última ativação</th>
                 </tr>
               </thead>
@@ -248,18 +316,18 @@ export default function SequenceManagerPage({ sequences, orgId, organizationName
                       />
                     </td>
                     <th scope="row" className={styles.nameCell}>
-                      <span>{item.name}</span>
+                      <span className={styles.sequenceName}>{item.name}</span>
+                      <span className={styles.sequenceMeta}>Versão #{item.activeVersionNumber || 1}</span>
                     </th>
                     <td>
                       <span className={clsx(styles.badge, badgeClass[item.status])}>{statusLabel[item.status]}</span>
                     </td>
                     <td className={styles.metaCell}>
                       <span>{targetLabel[item.targetType]}</span>
-                      <span>Versão #{item.activeVersionNumber || 1}</span>
                     </td>
                     <td>{item.stepsTotal}</td>
                     <td>{item.activeEnrollments}</td>
-                    <td>{item.completionRate.toFixed(2)}%</td>
+                    <td>{item.completionRate.toFixed(1)}%</td>
                     <td>{formatDate(item.lastActivationAt)}</td>
                   </tr>
                 ))}

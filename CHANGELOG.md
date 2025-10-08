@@ -1,5 +1,14 @@
 # Changelog
 
+# 2025-11-08
+
+### Changed
+- Página `/sequences` remodelada para o layout Monday-like com breadcrumbs, cartões de métricas, filtros via `@vibe/core` e tabela com badges de status e resumo do alvo padrão.
+- Editor de sequências atualizado com cabeçalho contextual, experiência em duas colunas para passos, painel de detalhes enriquecido, formulários de regras reorganizados e estado vazio de inscrições alinhado ao Vibe.
+
+### Documentation
+- `docs/sequences_module.md` revisto com a nova hierarquia visual do manager e editor, destacando navegação por abas, templates de passos e resumo de métricas.
+
 # 2025-11-07
 
 ### Fixed
