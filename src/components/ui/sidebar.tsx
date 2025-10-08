@@ -4,7 +4,7 @@ import { useMemo, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
-import { Activity as ActivityIcon, CheckList as CheckListIcon, Home as HomeIcon, Settings as SettingsIcon } from "@vibe/icons";
+import { CheckList as CheckListIcon, Home as HomeIcon, Settings as SettingsIcon } from "@vibe/icons";
 import styles from "./sidebar.module.css";
 
 type Item = {
