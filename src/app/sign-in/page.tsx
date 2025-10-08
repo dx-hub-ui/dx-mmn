@@ -1,38 +1,25 @@
-// src/app/sign-in/page.tsx
+// src/app/sign-in/page.tsx — always redirect to /dashboard
 "use client";
-
 import { useMemo, useState } from "react";
 import { Button, Flex, Loader, Text } from "@vibe/core";
-import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import styles from "./sign-in.module.css";
 
 export default function SignInPage() {
-  const router = useRouter();
-  const sp = useSearchParams();
-  const redirectTo = sp.get("redirectTo")?.startsWith("/") ? sp.get("redirectTo")! : "/dashboard";
-
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const REDIRECT = "/dashboard";
+
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle"|"loading"|"sent"|"error">("idle");
   const [msg, setMsg] = useState<string | null>(null);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStatus("loading");
-    setMsg(null);
-
-    const emailRedirectTo =
-      `https://app.dxhub.com.br/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`;
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo }, // will deliver #access_token on callback
-    });
-
+    setStatus("loading"); setMsg(null);
+    const emailRedirectTo = `https://app.dxhub.com.br/auth/callback?redirectTo=${encodeURIComponent(REDIRECT)}`;
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo } });
     if (error) { setStatus("error"); setMsg(error.message); return; }
-    setStatus("sent");
-    setMsg("Link enviado. Abra em qualquer dispositivo.");
+    setStatus("sent"); setMsg("Link enviado. Abra o e-mail.");
   };
 
   return (
@@ -43,38 +30,21 @@ export default function SignInPage() {
           <Text type={Text.types.TEXT2} weight={Text.weights.BOLD}>
             {status === "sent" ? "Verifique seu e-mail" : "Entrar na plataforma"}
           </Text>
-          {msg ? (
-            <Text type={Text.types.TEXT3} color={status === "error" ? Text.colors.NEGATIVE : Text.colors.SECONDARY}>
-              {msg}
-            </Text>
-          ) : null}
+          {msg ? <Text type={Text.types.TEXT3} color={status==="error"?Text.colors.NEGATIVE:Text.colors.SECONDARY}>{msg}</Text> : null}
         </div>
-
         {status !== "sent" ? (
           <form onSubmit={onSubmit} className={styles.form}>
             <label htmlFor="email" className={styles.label}>Email *</label>
-            <input
-              id="email" type="email" required
-              value={email} onChange={(e) => setEmail(e.target.value)}
-              className={styles.input} autoComplete="email" inputMode="email"
-              disabled={status === "loading"}
-            />
+            <input id="email" type="email" required value={email}
+              onChange={(e)=>setEmail(e.target.value)} className={styles.input}
+              autoComplete="email" inputMode="email" disabled={status==="loading"} />
             <Flex justify={Flex.justify.CENTER} gap={8}>
               <Button kind={Button.kinds.PRIMARY} type={Button.types.SUBMIT} disabled={!email || status==="loading"}>
                 Enviar link
               </Button>
             </Flex>
           </form>
-        ) : (
-          <Flex direction={Flex.directions.COLUMN} gap={8} className={styles.actions}>
-            <Button
-              kind={Button.kinds.SECONDARY} type={Button.types.BUTTON}
-              onClick={() => router.replace(`/auth/callback?redirectTo=${encodeURIComponent(redirectTo)}`)}
-            >
-              Já cliquei no link
-            </Button>
-          </Flex>
-        )}
+        ) : null}
       </section>
     </main>
   );
