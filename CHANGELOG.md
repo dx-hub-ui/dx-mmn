@@ -1,5 +1,11 @@
 # Changelog
 
+# 2025-11-03
+
+### Documentation
+- Criamos `docs/monday_design_guide.md` com diretrizes completas para reproduzir a experiência visual e de interação do monday.com (páginas, modais, formulários, boards, feedback e tokens compartilhados).
+- README atualizado com link direto para o novo guia de design.
+
 # 2025-11-02
 
 ### Fixed

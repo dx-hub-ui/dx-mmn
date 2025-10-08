@@ -126,3 +126,4 @@ Use o Supabase Studio com a opção **JWT override** ou tokens gerados via CLI (
 - [RLS no Supabase](https://supabase.com/docs/guides/auth/row-level-security)
 - [Edge Functions](https://supabase.com/docs/guides/functions)
 - [Next.js App Router](https://nextjs.org/docs/app)
+- [Guia de design Monday-like da plataforma](docs/monday_design_guide.md)
