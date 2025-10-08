@@ -13,6 +13,7 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@sentry/nextjs": "^7.112.0",
     "@vibe/core": "^3.69.1",
     "@supabase/ssr": "^0.4.0",
     "@vibe/icons": "^1.11.0",
@@ -23,6 +24,8 @@
     "clsx": "^2.1.1",
     "monday-ui-style": "^0.26.0",
     "next": "14.2.4",
+    "posthog-js": "^1.136.0",
+    "posthog-node": "^3.5.2",
     "react": "18.2.0",
     "react-dom": "18.2.0"
   },

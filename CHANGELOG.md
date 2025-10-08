@@ -1,5 +1,16 @@
 # Changelog
 
+# 2025-11-03
+
+### Added
+- Módulo de Sequências (Sprint 1) com migrations `006_sequences_fundamentos.sql`, enums dedicadas, tabelas, views `v_sequence_manager`/`v_my_tasks` e políticas de RLS por organização.
+- Páginas `/sequences` e `/tasks/my` consumindo as novas views, com filtros, ações em lote desabilitadas, estados vazios e telemetria PostHog + breadcrumbs Sentry.
+- Testes Vitest para normalizadores/filtros de sequências e tarefas, além de smoke tests Playwright (`sequences-manager`, `my-tasks`).
+- Inicialização de PostHog e Sentry via providers/configs (`PostHogProvider`, `sentry.*.config.ts`) e helpers de telemetria server-side.
+
+### Documentation
+- Novo guia `docs/sequences_module.md` descrevendo as entregas da Sprint 1 e próximos passos.
+
 # 2025-11-02
 
 ### Fixed
