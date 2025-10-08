@@ -1,4 +1,4 @@
-// src/app/sign-in/page.tsx — always redirect to /dashboard
+// src/app/sign-in/page.tsx
 "use client";
 import { useMemo, useState } from "react";
 import { Button, Flex, Loader, Text } from "@vibe/core";
@@ -16,10 +16,13 @@ export default function SignInPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setStatus("loading"); setMsg(null);
+
     const emailRedirectTo = `https://app.dxhub.com.br/auth/callback?redirectTo=${encodeURIComponent(REDIRECT)}`;
     const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo } });
+
     if (error) { setStatus("error"); setMsg(error.message); return; }
-    setStatus("sent"); setMsg("Link enviado. Abra o e-mail.");
+    setStatus("sent");
+    setMsg("Link enviado. Abra no mesmo navegador onde você solicitou o login.");
   };
 
   return (
@@ -32,6 +35,7 @@ export default function SignInPage() {
           </Text>
           {msg ? <Text type={Text.types.TEXT3} color={status==="error"?Text.colors.NEGATIVE:Text.colors.SECONDARY}>{msg}</Text> : null}
         </div>
+
         {status !== "sent" ? (
           <form onSubmit={onSubmit} className={styles.form}>
             <label htmlFor="email" className={styles.label}>Email *</label>
