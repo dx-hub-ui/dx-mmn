@@ -65,6 +65,6 @@ das reps via "Minhas tarefas".
 
 ## Notas de manutenção
 
-- A migração `008_membership_rls_ambiguous_fix.sql` recria `can_access_membership(org_id, target_membership_id)` para remover a
-  ambiguidade da coluna `membership_id` detectada durante a consulta à view `v_sequence_manager`, liberando o carregamento da
-  página `/sequences` com RLS ativo.
+- A migração `008_membership_rls_ambiguous_fix.sql` agora reforça `can_access_membership(p_org_id, p_target_membership_id)` com
+  parâmetros prefixados, guarda/restauração de RLS e comparação explícita `visible.membership_id = p_target_membership_id`,
+  evitando definitivamente a ambiguidade detectada ao consultar `v_sequence_manager` e garantindo `/sequences` com RLS ativo.

@@ -1,7 +1,7 @@
 SET search_path = public, pg_temp;
 
--- Ensure can_access_membership no longer references an ambiguous column name
-CREATE OR REPLACE FUNCTION public.can_access_membership(org_id uuid, target_membership_id uuid)
+-- Harden can_access_membership to avoid ambiguous references when called from RLS
+CREATE OR REPLACE FUNCTION public.can_access_membership(p_org_id uuid, p_target_membership_id uuid)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -11,12 +11,16 @@ DECLARE
     v_previous text := current_setting('row_security', true);
     v_result boolean := false;
 BEGIN
+    IF p_org_id IS NULL OR p_target_membership_id IS NULL THEN
+        RETURN false;
+    END IF;
+
     PERFORM set_config('row_security', 'off', true);
 
     SELECT EXISTS (
         SELECT 1
-        FROM public.visible_membership_ids(org_id) v
-        WHERE v.membership_id = target_membership_id
+        FROM public.visible_membership_ids(p_org_id) visible
+        WHERE visible.membership_id = p_target_membership_id
     )
     INTO v_result;
 
