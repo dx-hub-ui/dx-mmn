@@ -1,5 +1,21 @@
 # Changelog
 
+# 2025-11-06
+
+### Fixed
+- Corrigimos o fluxo de login para aproveitar sessões persistidas tanto no cliente quanto no servidor.
+  O usuário agora é redirecionado automaticamente para `/dashboard` após confirmar o magic link, eliminando o estado infinito de "Confirmando seu acesso...".
+
+### Changed
+- `/` deixou de ser estático e passou a verificar a sessão Supabase com `getSession` + `refreshSession`. Isso evita respostas em
+  cache sem autenticação e garante a detecção de sessões persistidas ao reabrir o navegador.
+- A tela `/sign-in` agora observa o `onAuthStateChange` do Supabase e utiliza o roteador do Next.js para concluir o login sem ne
+  cessitar um novo link mágico quando tokens válidos já existem.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` atualizados para destacar o redirecionamento automático para `/dashboard` quando tokens de s
+  essão são encontrados.
+
 # 2025-11-05
 
 ### Added

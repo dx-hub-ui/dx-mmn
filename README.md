@@ -41,7 +41,7 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 
 ## Login via Magic Link
 
-1. Acesse `http://localhost:3000/` (a tela de login também está disponível em `/sign-in` para links diretos) e, opcionalmente, informe `redirectTo` para personalizar o destino após o login (por padrão `/dashboard`).
+1. Acesse `http://localhost:3000/` (a tela de login também está disponível em `/sign-in` para links diretos) e, opcionalmente, informe `redirectTo` para personalizar o destino após o login (por padrão `/dashboard`). Caso já exista uma sessão válida (cookies + storage gravados pelo Supabase), essas rotas redirecionam automaticamente para `/dashboard`, inclusive após fechar e reabrir o navegador.
 2. Informe o email associado ao seu usuário e envie o formulário para receber um link mágico.
 3. O Supabase redirecionará para `/auth/callback`. O callback chama `exchangeCodeForSession` para trocar códigos PKCE, tenta `verifyOtp` com `token_hash` ou `token` limitando-se aos tipos de OTP por email (`magiclink`, `signup`, `invite`, `recovery`, `email`, `email_change`) e, se necessário, aceita `setSession` com `access_token`/`refresh_token` encontrados no fragmento. Ao confirmar a sessão, forçamos `supabase.auth.setSession` no browser para persistir os tokens (com `persistSession` + `autoRefreshToken`) e só então sincronizamos os cookies HTTP-only via `/auth/sync` (requisição com `credentials: "include"`) antes de seguir para o destino `redirectTo` (padrão `/dashboard`). Esse fluxo ignora com segurança erros de `code_verifier` quando o link é aberto em outro dispositivo.
 4. Se precisar reenviar o link, basta repetir o processo; a tela exibirá o status da solicitação e qualquer erro retornado pelo Supabase.
