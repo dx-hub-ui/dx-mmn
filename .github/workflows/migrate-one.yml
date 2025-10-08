@@ -1,42 +1,40 @@
-name: Run ONE migration
-
+name: Apply One SQL (URL + track)
 on:
   workflow_dispatch:
     inputs:
-      file:
-        description: 'Path da migração (ex: supabase/migrations/003_fix.sql)'
+      sql_url:
+        description: 'raw URL do .sql'
         required: true
         type: string
 
 jobs:
-  migrate-one:
+  migrate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Apply one migration
+      - name: Ensure tracking table
+        env: { DATABASE_URL: ${{ secrets.DATABASE_URL }} }
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          create table if not exists public.schema_migrations(
+            id bigserial primary key,
+            file_url text not null,
+            checksum text not null unique,
+            applied_at timestamptz not null default now()
+          );
+          SQL
+      - name: Apply if not applied
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GIT_SHA: ${{ github.sha }}
-          FILE: ${{ inputs.file }}
+          SQL_URL: ${{ inputs.sql_url }}
         run: |
-          set -euo pipefail
-          [ -f "$FILE" ] || { echo "Arquivo não existe: $FILE"; exit 1; }
-
-          base="$(basename "$FILE")"
-          sum="$(sha256sum "$FILE" | awk '{print $1}')"
-
-          # Se já marcada como aplicada, não reaplica (ou apague o registro antes se quiser forçar)
-          applied=$(psql "$DATABASE_URL" -Atqc "select 1 from public.schema_migrations where filename='${base}'")
-          if [ "$applied" = "1" ]; then
-            echo "Já aplicada em schema_migrations: $base"
-            exit 0
+          set -e
+          curl -fsSL "$SQL_URL" -o /tmp/migration.sql
+          sum="$(sha256sum /tmp/migration.sql | awk '{print $1}')"
+          exists=$(psql "$DATABASE_URL" -Atqc "select 1 from public.schema_migrations where checksum='${sum}'")
+          if [ "$exists" = "1" ]; then
+            echo "Já aplicada (checksum)."; exit 0;
           fi
-
-          # Envolva em transação (-1). Remova -1 se usar CREATE INDEX CONCURRENTLY etc.
-          PGOPTIONS="--client-min-messages=warning" psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f "$FILE"
-
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /tmp/migration.sql
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
-            "insert into public.schema_migrations (filename, checksum, git_sha) values ('${base}', '${sum}', '${GIT_SHA}');"
-
-          echo "✅ OK: $base"
+            "insert into public.schema_migrations(file_url, checksum) values ('${SQL_URL}','${sum}')"
