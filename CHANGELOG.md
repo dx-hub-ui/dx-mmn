@@ -3,19 +3,29 @@
 # 2025-11-07
 
 ### Fixed
-- Corrigida a build do dashboard adicionando a dependência explícita de `@supabase/supabase-js`, garantindo que o tipo `User` seja
-  resolvido durante o `next build`.
+- Ajustamos a tela `/sign-in` para acompanhar a tipagem atual do Supabase Auth ao inscrever `onAuthStateChange`, eliminando a falha de build causada pela tentativa de ler `error` na resposta.
+- `/sign-in` agora valida a sessão persistida sincronizando cookies via `/auth/sync` antes de redirecionar, evitando loops entre `/dashboard` e `/sign-in` quando os tokens existem apenas no `localStorage`.
+- Atualizamos a tipagem da sessão persistida para derivar diretamente do cliente Supabase criado em runtime, evitando depender de `@supabase/supabase-js` no bundle do Edge sem perder autocompletes ou validações de TypeScript.
 
 ### Documentation
-- README atualizado com nota sobre o uso do cliente oficial do Supabase para tipagem na página de dashboard.
+- README atualizado para reforçar que `/sign-in` sincroniza cookies via `/auth/sync` antes de redirecionar usuários com sessão persistida.
+- `docs/dev_setup_crm.md` atualizado com o mesmo comportamento de sincronização para garantir que o middleware reconheça a sessão recuperada.
 
 # 2025-11-06
 
 ### Fixed
-- Dashboard passa a tratar falhas no carregamento de sessões/memberships com mensagens inline, evitando o erro genérico "Something went wrong" e mantendo a página acessível.
+- Corrigimos o fluxo de login para aproveitar sessões persistidas tanto no cliente quanto no servidor.
+  O usuário agora é redirecionado automaticamente para `/dashboard` após confirmar o magic link, eliminando o estado infinito de "Confirmando seu acesso...".
+
+### Changed
+- `/` deixou de ser estático e passou a verificar a sessão Supabase com `getSession` + `refreshSession`. Isso evita respostas em
+  cache sem autenticação e garante a detecção de sessões persistidas ao reabrir o navegador.
+- A tela `/sign-in` agora observa o `onAuthStateChange` do Supabase e utiliza o roteador do Next.js para concluir o login sem ne
+  cessitar um novo link mágico quando tokens válidos já existem.
 
 ### Documentation
-- README atualizado para mencionar o aviso amigável no dashboard quando a leitura de memberships falhar.
+- README e `docs/dev_setup_crm.md` atualizados para destacar o redirecionamento automático para `/dashboard` quando tokens de s
+  essão são encontrados.
 
 # 2025-11-05
 
