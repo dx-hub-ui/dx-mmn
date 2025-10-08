@@ -1,5 +1,13 @@
 # Changelog
 
+# 2025-11-07
+
+### Fixed
+- Ajustamos a tela `/sign-in` para acompanhar a tipagem atual do Supabase Auth ao inscrever `onAuthStateChange`, eliminando a falha de build causada pela tentativa de ler `error` na resposta.
+
+### Documentation
+- README atualizado para reforçar que `/sign-in` reconhece sessões persistidas com `getSession` + `onAuthStateChange`, evitando o loop de "Confirmando seu acesso...".
+
 # 2025-11-06
 
 ### Fixed

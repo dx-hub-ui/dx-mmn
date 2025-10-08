@@ -45,15 +45,11 @@ export default function SignInPage() {
 
     checkSession();
 
-    const { data: authListener, error: listenerError } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session?.user) {
         redirectAuthenticatedUser();
       }
     });
-
-    if (listenerError) {
-      console.warn("Falha ao observar mudanças de sessão", listenerError.message);
-    }
 
     return () => {
       active = false;
