@@ -1,5 +1,18 @@
 # Changelog
 
+# 2025-11-06
+
+### Added
+- Menu global do usuário na Topbar com avatar, submenu de tema (Claro/Escuro/Noite), modal "Minha conta" com edição completa de perfil e upload de avatar para o Vercel Blob, incluindo telemetria PostHog e integração com Supabase Auth.
+- API `GET/PUT /api/user/profile` com validação, persistência de preferências (tema, dados pessoais) e atualização do JSON de metadados em `public.profiles` respeitando o RLS existente.
+
+### Fixed
+- O menu global e a modal de conta agora registram falhas no Sentry, garantindo rastreabilidade quando carregamentos, troca de tema ou salvamento do perfil falham no cliente.
+- Corrigida a ausência da dependência `@supabase/supabase-js` no `package.json`, evitando falhas de build na página de dashboard e mantendo o lockfile sincronizado.
+
+### Documentation
+- `docs/page_design_guidelines.md` atualizado com orientações sobre o novo menu global, posicionamento do avatar e comportamento esperado do modal de conta.
+
 # 2025-11-05
 
 ### Added

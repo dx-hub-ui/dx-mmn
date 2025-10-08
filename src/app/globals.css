@@ -110,6 +110,7 @@
 /* =========================
    Light (default) theme
    ========================= */
+html.theme-light body#main,
 body#main.light-app-theme,
 body#main.default-app-theme {
   --topbar-background-color: #d3e6e8;
@@ -159,6 +160,7 @@ body#main.default-app-theme {
 /* =========================
    Dark / Black themes
    ========================= */
+html.theme-dark body#main,
 body#main.dark-app-theme,
 body#main.black-app-theme {
   --primary-color: #68e1fd;
@@ -166,6 +168,7 @@ body#main.black-app-theme {
   --primary-selected-color: #143241;
   --primary-selected-hover-color: #1a3e51;
   --primary-highlighted-color: #10222c;
+  --surface-color: #1f2846;
 
   --application-background-color: #181b34;
   --application-surface-color: #292f4c;
@@ -192,6 +195,42 @@ body#main.black-app-theme {
   --dx-app-canvas-top: #1a243e;
   --dx-app-canvas-mid: #1e2846;
   --dx-app-canvas-body: #202a49;
+}
+
+html.theme-night body#main,
+body#main.night-app-theme {
+  --primary-color: #7c6dfd;
+  --primary-hover-color: #6552f0;
+  --primary-selected-color: rgba(132, 122, 255, 0.24);
+  --primary-selected-hover-color: rgba(132, 122, 255, 0.32);
+  --primary-highlighted-color: #1f1b3d;
+  --surface-color: #241f3f;
+
+  --application-background-color: #161329;
+  --application-surface-color: #1f1a36;
+  --application-border-color: #3b3359;
+
+  --dx-bg: var(--application-surface-color);
+  --dx-surface: var(--surface-color);
+  --dx-border: var(--application-border-color);
+  --dx-text: #efefff;
+
+  --topbar-background-color: #221d3f;
+  --sidebar-background-color: #221d3f;
+  --primary-nav-bg-color: #221d3f;
+
+  --dx-topbar-bg: var(--primary-nav-bg-color);
+  --dx-sidebar-bg: var(--primary-nav-bg-color);
+
+  --primary-background-hover-color: rgba(239, 239, 255, 0.1);
+  --icon-color: #d0ccf5;
+
+  --dx-sidebar-overlay-start: #2a2448;
+  --dx-sidebar-overlay-end: #221d3f;
+
+  --dx-app-canvas-top: #2e264b;
+  --dx-app-canvas-mid: #332b54;
+  --dx-app-canvas-body: #352d5c;
 }
 
 /* ========= Base ========= */
