@@ -2,6 +2,7 @@
 
 import clsx from "clsx";
 import styles from "./topbar.module.css";
+import UserMenu from "./topbar/UserMenu";
 
 export type TopbarProps = { isSidebarOpen: boolean; className?: string };
 
@@ -14,7 +15,9 @@ export default function Topbar({ isSidebarOpen, className }: TopbarProps) {
           <span className={styles.productName}>monday-style Shell</span>
         </div>
         <div className={styles.middle} />
-        <nav className={styles.nav} aria-label="Topbar actions" />
+        <nav className={styles.nav} aria-label="Topbar actions">
+          <UserMenu />
+        </nav>
       </div>
     </header>
   );

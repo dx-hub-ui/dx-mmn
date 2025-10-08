@@ -1,0 +1,22 @@
+.menuButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.menuButton :global(.menu-button-component) {
+  border-radius: 9999px;
+  padding: 0;
+}
+
+.errorItem {
+  color: var(--negative-color);
+  cursor: default;
+}
+
+.menuTitle {
+  padding-inline: 12px;
+  padding-block: 8px;
+  font: var(--dx-font-body-strong, 600 14px/20px var(--font-family));
+  color: var(--secondary-text-color);
+}
