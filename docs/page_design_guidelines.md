@@ -5,6 +5,9 @@
 ## 1) Layout & Estrutura
 - **Use sempre o AppShell**: páginas devem ser renderizadas dentro de `src/app/(app)/layout.tsx` que injeta `<AppShell>...`.
 - **Não altere Topbar/Sidebar**: respeite as APIs expostas (ex.: `isSidebarOpen`) e evite CSS que vaze para esses componentes.
+- **Menu do usuário**: o avatar (32px) fica no canto direito da Topbar, renderizado via `@vibe/core` (`MenuButton`, `Avatar`, `MenuItem`). O menu expõe "Minha conta", "Mudar tema" (Claro/Escuro/Noite com estado selecionado) e "Logout"; teclas de navegação/ESC precisam funcionar.
+- **Modal "Minha conta"**: use `@vibe/core/Modal` com tabs "Visão geral" (IDs apenas leitura) e "Perfil" (inputs, textarea e upload de avatar). Valide client/server e emita telemetria (`profile/save_*`, `avatar/upload_*`).
+- **Temas suportados**: a `<html>` recebe classes `theme-light`, `theme-dark` ou `theme-night`; `body#main` combina com `light-app-theme`/`dark-app-theme`/`night-app-theme`. Sempre aplique alterações via helpers de `src/lib/theme.ts` para sincronizar `localStorage` e o Supabase.
 - **Main rolável**: todo conteúdo da página vive dentro de `.main > .canvas`.
 - **Canvas full-bleed**: o canvas deve ocupar 100% da largura/altura da área visível do main. Não adicione paddings externos ao `main`.
 
