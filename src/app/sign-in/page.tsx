@@ -8,7 +8,6 @@ import styles from "./sign-in.module.css";
 export default function SignInPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const REDIRECT = "/dashboard";
-
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle"|"loading"|"sent"|"error">("idle");
   const [msg, setMsg] = useState<string | null>(null);
@@ -17,13 +16,8 @@ export default function SignInPage() {
     e.preventDefault();
     setStatus("loading"); setMsg(null);
 
-    const emailRedirectTo =
-      `https://app.dxhub.com.br/auth/callback?redirectTo=${encodeURIComponent(REDIRECT)}`;
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo }, // magic link (implicit)
-    });
+    const emailRedirectTo = `https://app.dxhub.com.br/auth/callback?redirectTo=${encodeURIComponent(REDIRECT)}`;
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo } });
 
     if (error) { setStatus("error"); setMsg(error.message); return; }
     setStatus("sent"); setMsg("Link enviado. Abra o e-mail.");
