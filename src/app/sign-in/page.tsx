@@ -13,19 +13,21 @@ export default function SignInPage() {
   const redirectParam = sp.get("redirectTo");
   const normalizedRedirect = redirectParam?.startsWith("/") ? redirectParam : "/dashboard";
 
-  const hasEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const hasEnv = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
   const supabase = useMemo(() => (hasEnv ? createSupabaseBrowserClient() : null), [hasEnv]);
 
   type Status = "idle" | "loading" | "sent" | "error";
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [email, setEmail] = useState("");
-  const [cooldown, setCooldown] = useState(0); // seconds
+  const [cooldown, setCooldown] = useState(0);
   const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (status !== "sent") return;
-    setCooldown(45); // resend after 45s
+    setCooldown(45);
     timerRef.current = window.setInterval(() => {
       setCooldown((s) => {
         if (s <= 1) {
@@ -91,7 +93,7 @@ export default function SignInPage() {
     <main className={styles.root}>
       <section className={styles.panel} aria-live="polite">
         <div className={styles.message}>
-          {(status === "loading") ? <Loader size={Loader.sizes.SMALL} /> : null}
+          {status === "loading" ? <Loader size={Loader.sizes.SMALL} /> : null}
           <Text type={Text.types.TEXT2} weight={Text.weights.BOLD}>
             {status === "sent" ? "Verifique seu e-mail" : "Entrar na plataforma"}
           </Text>
@@ -112,7 +114,9 @@ export default function SignInPage() {
 
         {status !== "sent" ? (
           <form onSubmit={onSubmit} className={styles.form}>
-            <label htmlFor="email" className={styles.label}>Email *</label>
+            <label htmlFor="email" className={styles.label}>
+              Email *
+            </label>
             <input
               id="email"
               type="email"
@@ -126,7 +130,11 @@ export default function SignInPage() {
               disabled={status === "loading"}
             />
             <Flex justify={Flex.justify.CENTER} gap={8}>
-              <Button kind={Button.kinds.PRIMARY} type={Button.types.SUBMIT} disabled={status === "loading" || !email}>
+              <Button
+                kind={Button.kinds.PRIMARY}
+                type={Button.types.SUBMIT}
+                disabled={status === "loading" || !email}
+              >
                 Enviar link de acesso
               </Button>
               <Button kind={Button.kinds.SECONDARY} type={Button.types.BUTTON} onClick={goHome}>
@@ -159,7 +167,7 @@ export default function SignInPage() {
           </Flex>
         )}
 
-        <Text type={Text.types.TEXT4} color={Text.colors.SECONDARY} className={styles.footerNote}>
+        <Text type={Text.types.TEXT3} color={Text.colors.SECONDARY} className={styles.footerNote}>
           Após confirmar o login, você será direcionado para {normalizedRedirect}.
         </Text>
       </section>
