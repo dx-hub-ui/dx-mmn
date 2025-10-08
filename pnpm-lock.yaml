@@ -24,9 +24,6 @@ importers:
       '@supabase/ssr':
         specifier: ^0.4.0
         version: 0.4.1(@supabase/supabase-js@2.74.0)
-      '@supabase/supabase-js':
-        specifier: ^2.74.0
-        version: 2.74.0
       '@tanstack/react-table':
         specifier: ^8.15.0
         version: 8.21.3(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
