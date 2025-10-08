@@ -16,7 +16,19 @@ export default function SignInPage() {
   const hasEnv = Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
-  const supabase = useMemo(() => (hasEnv ? createSupabaseBrowserClient() : null), [hasEnv]);
+  const supabase = useMemo(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "undefined";
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "undefined";
+    // Log env fingerprint only
+    console.log("[sign-in] env", {
+      hasEnv,
+      supabaseUrlHost: (() => {
+        try { return new URL(url).host; } catch { return "invalid-url"; }
+      })(),
+      anonPrefix: anon?.slice(0, 8),
+    });
+    return hasEnv ? createSupabaseBrowserClient() : null;
+  }, [hasEnv]);
 
   type Status = "idle" | "loading" | "sent" | "error";
   const [status, setStatus] = useState<Status>("idle");
@@ -24,6 +36,10 @@ export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [cooldown, setCooldown] = useState(0);
   const timerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    console.log("[sign-in] mounted", { redirectParam, normalizedRedirect });
+  }, [redirectParam, normalizedRedirect]);
 
   useEffect(() => {
     if (status !== "sent") return;
@@ -48,6 +64,7 @@ export default function SignInPage() {
     if (!supabase) {
       setStatus("error");
       setMessage("Variáveis de ambiente do Supabase não configuradas.");
+      console.log("[sign-in] no supabase client");
       return;
     }
     setStatus("loading");
@@ -56,6 +73,7 @@ export default function SignInPage() {
     const emailRedirectTo = `https://app.dxhub.com.br/auth/callback?redirectTo=${encodeURIComponent(
       normalizedRedirect
     )}`;
+    console.log("[sign-in] sending magic link", { email, emailRedirectTo });
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -65,10 +83,12 @@ export default function SignInPage() {
     if (error) {
       setStatus("error");
       setMessage(error.message);
+      console.error("[sign-in] signInWithOtp error", { message: error.message, name: error.name });
       return;
     }
     setStatus("sent");
     setMessage("Enviamos um link mágico para o seu e-mail. Abra o link para continuar.");
+    console.log("[sign-in] link sent");
   };
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -77,7 +97,10 @@ export default function SignInPage() {
   };
 
   const resend = async () => {
-    if (cooldown > 0) return;
+    if (cooldown > 0) {
+      console.log("[sign-in] resend blocked by cooldown", { cooldown });
+      return;
+    }
     await sendLink();
   };
 
@@ -85,9 +108,13 @@ export default function SignInPage() {
     setStatus("idle");
     setMessage(null);
     setCooldown(0);
+    console.log("[sign-in] change email");
   };
 
-  const goHome = () => router.replace("/");
+  const goHome = () => {
+    console.log("[sign-in] go home");
+    router.replace("/");
+  };
 
   return (
     <main className={styles.root}>
