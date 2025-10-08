@@ -23,9 +23,10 @@ export default function SignInPage() {
     setStatus("loading");
     setMsg(null);
 
-    const emailRedirectTo = `https://app.dxhub.com.br/auth/callback?redirectTo=${encodeURIComponent(
-      normalizedRedirect
-    )}`;
+// src/app/sign-in/page.tsx (unchanged except this line)
+const emailRedirectTo = `https://app.dxhub.com.br/auth/callback?redirectTo=${encodeURIComponent(normalizedRedirect)}`;
+await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo } });
+
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
