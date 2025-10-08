@@ -1,81 +1,22 @@
-name: Apply Supabase Migrations
+name: Run SQL Migrations (basic)
 
 on:
   workflow_dispatch: {}
   push:
-    paths:
-      - 'supabase/migrations/*.sql'
-
-concurrency:
-  group: db-migrations-${{ github.ref }}
-  cancel-in-progress: false
+    paths: ['supabase/migrations/*.sql']
 
 jobs:
   migrate:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install PostgreSQL client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
-
-      - name: Ensure schema_migrations table
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Apply all .sql (alphabetical)
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }} # use 5432 host do banco com ?sslmode=require
         run: |
-          set -euo pipefail
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
-          create table if not exists public.schema_migrations (
-            id           bigserial primary key,
-            filename     text not null unique,
-            checksum     text not null,
-            applied_at   timestamptz not null default now(),
-            git_sha      text
-          );
-          SQL
-
-      - name: Apply migrations from supabase/migrations
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GIT_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-
-          shopt -s nullglob
-          files=(supabase/migrations/*.sql)
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "Nenhuma migração encontrada em supabase/migrations."
-            exit 0
-          fi
-
-          # Ordena para garantir aplicação previsível
-          IFS=$'\n' files_sorted=($(printf '%s\n' "${files[@]}" | sort))
-          unset IFS
-
-          for f in "${files_sorted[@]}"; do
-            base="$(basename "$f")"
-            sum="$(sha256sum "$f" | awk '{print $1}')"
-
-            # já aplicada?
-            already=$(psql "$DATABASE_URL" -Atqc "select 1 from public.schema_migrations where filename = '$base' limit 1")
-            if [ "$already" = "1" ]; then
-              echo "Skip: $base (já aplicada)."
-              continue
-            fi
-
-            echo "Aplicando: $base"
-            # aplica arquivo
-            PGOPTIONS="--client-min-messages=warning" psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
-
-            # registra como aplicada
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
-              "insert into public.schema_migrations (filename, checksum, git_sha) values ('$base', '$sum', '$GIT_SHA');"
-
-            echo "OK: $base"
+          set -e
+          for f in $(ls -1 supabase/migrations/*.sql | sort); do
+            echo "Applying $f"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
           done
-
-          echo " Todas as migrações pendentes foram aplicadas."

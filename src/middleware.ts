@@ -41,11 +41,36 @@ export async function middleware(req: NextRequest) {
   );
 
   const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
 
-  if (error || !user) {
+  let resolvedSession = session ?? null;
+
+  if (!resolvedSession) {
+    const { data, error: refreshError } = await supabase.auth.refreshSession();
+    if (!refreshError) {
+      resolvedSession = data.session;
+    }
+  }
+
+  let user = resolvedSession?.user ?? null;
+  let authError = sessionError ?? null;
+
+  if (!user) {
+    const {
+      data: { user: fetchedUser },
+      error: fetchUserError,
+    } = await supabase.auth.getUser();
+    authError = authError ?? fetchUserError ?? null;
+    user = fetchedUser ?? null;
+  }
+
+  if (authError && !user) {
+    console.warn("Supabase auth error in middleware", authError.message ?? authError.name ?? "unknown error");
+  }
+
+  if (!user) {
     const to = req.nextUrl.clone();
     to.pathname = "/sign-in";
     to.search = "";

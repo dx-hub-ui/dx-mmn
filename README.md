@@ -43,7 +43,7 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 
 1. Acesse `http://localhost:3000/` (a tela de login também está disponível em `/sign-in` para links diretos) e, opcionalmente, informe `redirectTo` para personalizar o destino após o login (por padrão `/dashboard`).
 2. Informe o email associado ao seu usuário e envie o formulário para receber um link mágico.
-3. O Supabase redirecionará para `/auth/callback`. O callback chama `exchangeCodeForSession` para trocar códigos PKCE, tenta `verifyOtp` com `token_hash` ou `token` limitando-se aos tipos de OTP por email (`magiclink`, `signup`, `invite`, `recovery`, `email`, `email_change`) e, se necessário, aceita `setSession` com `access_token`/`refresh_token` encontrados no fragmento. Só após confirmar uma sessão válida sincronizamos os cookies HTTP-only via `/auth/sync` e seguimos para o destino informado em `redirectTo` (padrão `/dashboard`), ignorando com segurança erros de `code_verifier` quando o link é aberto em outro dispositivo.
+3. O Supabase redirecionará para `/auth/callback`. O callback chama `exchangeCodeForSession` para trocar códigos PKCE, tenta `verifyOtp` com `token_hash` ou `token` limitando-se aos tipos de OTP por email (`magiclink`, `signup`, `invite`, `recovery`, `email`, `email_change`) e, se necessário, aceita `setSession` com `access_token`/`refresh_token` encontrados no fragmento. Ao confirmar a sessão, forçamos `supabase.auth.setSession` no browser para persistir os tokens (com `persistSession` + `autoRefreshToken`) e só então sincronizamos os cookies HTTP-only via `/auth/sync` (requisição com `credentials: "include"`) antes de seguir para o destino `redirectTo` (padrão `/dashboard`). Esse fluxo ignora com segurança erros de `code_verifier` quando o link é aberto em outro dispositivo.
 4. Se precisar reenviar o link, basta repetir o processo; a tela exibirá o status da solicitação e qualquer erro retornado pelo Supabase.
 
 > **Dica:** durante o desenvolvimento, configure `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` com os valores do projeto para que o formulário fique ativo. Em ambientes de review, a interface informa quando as variáveis não estão configuradas.
@@ -51,6 +51,7 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 ## Dashboard protegido
 
 - Após a autenticação, os usuários são direcionados para `/dashboard`, página inicial da área logada.
+- A sidebar fixa destaca a entrada **Dashboard** (antiga "Home") como atalho principal para essa visão inicial.
 - A tela lista os dados básicos do usuário logado (nome, email e UUID) para facilitar depuração.
 - Também apresenta todos os vínculos (`memberships`) do usuário com as organizações, destacando o papel (`org`, `leader`, `rep`) e o status de cada associação para validar cenários de permissão.
 - Utilize esta visualização para testar rapidamente como o conteúdo deverá variar conforme o papel em futuras implementações.
@@ -82,7 +83,7 @@ Quando publicar, configure as mesmas variáveis no Supabase para cada função.
 
 1. **Login seguro** (`/` ou `/sign-in` + `/auth/callback` + `/dashboard`):
    - Usuários solicitam um link mágico de acesso na landing inicial da aplicação.
-  - Após confirmar o link recebido por email, o browser é redirecionado para `/auth/callback`, que chama `exchangeCodeForSession` para trocar códigos PKCE, tenta `verifyOtp` com `token_hash`/`token` apenas para tipos de OTP por email (magic link, signup, invite, recovery, email, email_change) e, em último caso, aceita `access_token`/`refresh_token` antes de sincronizar cookies HTTP-only — tudo ignorando com segurança erros de `code_verifier` para links abertos em outro dispositivo.
+- Após confirmar o link recebido por email, o browser é redirecionado para `/auth/callback`, que chama `exchangeCodeForSession` para trocar códigos PKCE, tenta `verifyOtp` com `token_hash`/`token` apenas para tipos de OTP por email (magic link, signup, invite, recovery, email, email_change) e, em último caso, aceita `access_token`/`refresh_token`. Em seguida, forçamos `supabase.auth.setSession` para gravar a sessão persistente no browser e sincronizamos cookies HTTP-only via `/auth/sync` com `credentials: "include"`, garantindo que o usuário continue autenticado mesmo após fechar o navegador.
 2. **Criação automática de organização** (`handle_new_user` + `memberships`):
    - Assim que um usuário confirma o cadastro via Supabase, o gatilho `handle_new_user` cria uma organização padrão, gera o membership com papel `org` e espelha os metadados em `public.profiles`.
    - A rota `POST /api/orgs/create` continua disponível para permitir que o usuário cadastre organizações adicionais com slug personalizado quando necessário.
@@ -117,6 +118,7 @@ Use o Supabase Studio com a opção **JWT override** ou tokens gerados via CLI (
 - RLS está habilitado em `memberships`, `contacts` e `invite_links`. Apenas leituras necessárias são liberadas aos usuários autenticados.
 - Função SQL `visible_membership_ids` calcula dinamicamente a subárvore de visibilidade, garantindo isolamento entre organizações e hierarquias.
 - `public.profiles` permanece sincronizada com `auth.users` através dos gatilhos `handle_new_user` (espelhamento + criação da organização padrão) e `handle_deleted_user` (remoção automática de perfis órfãos). A política `memberships_select_visible` delega a verificação à função `can_access_membership` (security definer), que desativa temporariamente o RLS durante o cálculo para consultar `visible_membership_ids` sem provocar recursão.
+- Para evitar ambiguidades entre colunas e parâmetros PL/pgSQL, o segundo parâmetro da função `can_access_membership` foi renomeado para `target_membership_id`. Essa alteração elimina o erro `42702 column reference "membership_id" is ambiguous` observado ao consultar memberships a partir do dashboard.
 - Não exponha a Service Role key no cliente; somente rotas servidoras ou funções no backend devem utilizá-la.
 - Utilize HTTPS e configure domínios confiáveis de redirecionamento no Supabase para evitar abuso em convites.
 
@@ -126,3 +128,4 @@ Use o Supabase Studio com a opção **JWT override** ou tokens gerados via CLI (
 - [RLS no Supabase](https://supabase.com/docs/guides/auth/row-level-security)
 - [Edge Functions](https://supabase.com/docs/guides/functions)
 - [Next.js App Router](https://nextjs.org/docs/app)
+- [Guia de design Monday-like da plataforma](docs/monday_design_guide.md)
