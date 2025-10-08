@@ -8,7 +8,6 @@ import styles from "./sign-in.module.css";
 export default function SignInPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const REDIRECT = "/dashboard";
-
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle"|"loading"|"sent"|"error">("idle");
   const [msg, setMsg] = useState<string | null>(null);
@@ -18,15 +17,11 @@ export default function SignInPage() {
     setStatus("loading"); setMsg(null);
 
     const emailRedirectTo = `https://app.dxhub.com.br/auth/callback?redirectTo=${encodeURIComponent(REDIRECT)}`;
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo },
-    });
+    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo } });
 
     if (error) { setStatus("error"); setMsg(error.message); return; }
     setStatus("sent");
-    setMsg("Link enviado. Abra no mesmo navegador onde solicitou o login.");
+    setMsg("Link enviado. Abra no mesmo navegador.");
   };
 
   return (
@@ -43,16 +38,12 @@ export default function SignInPage() {
             </Text>
           ) : null}
         </div>
-
         {status !== "sent" ? (
           <form onSubmit={onSubmit} className={styles.form}>
             <label htmlFor="email" className={styles.label}>Email *</label>
-            <input
-              id="email" type="email" required
-              value={email} onChange={(e)=>setEmail(e.target.value)}
-              className={styles.input} autoComplete="email" inputMode="email"
-              disabled={status==="loading"}
-            />
+            <input id="email" type="email" required value={email}
+              onChange={(e)=>setEmail(e.target.value)} className={styles.input}
+              autoComplete="email" inputMode="email" disabled={status==="loading"} />
             <Flex justify={Flex.justify.CENTER} gap={8}>
               <Button kind={Button.kinds.PRIMARY} type={Button.types.SUBMIT} disabled={!email || status==="loading"}>
                 Enviar link
