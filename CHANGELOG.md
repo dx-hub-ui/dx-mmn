@@ -1,5 +1,14 @@
 # Changelog
 
+# 2025-11-07
+
+### Fixed
+- Recriamos a função `can_access_membership` com o parâmetro `target_membership_id` para evitar a ambiguidade da coluna
+  `membership_id` que bloqueava o carregamento de `/sequences` ao consultar `v_sequence_manager` com RLS habilitado.
+
+### Documentation
+- `docs/sequences_module.md` atualizado com nota de manutenção sobre a correção da ambiguidade na função `can_access_membership`.
+
 # 2025-11-06
 
 ### Fixed

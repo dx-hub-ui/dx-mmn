@@ -62,3 +62,9 @@ das reps via "Minhas tarefas".
 - Novos testes Vitest (`validation.test.ts`) para a sanitização de datas de adiamento e ajustes nas specs de normalização.
 - Atualização dos testes existentes para refletir os campos adicionais em `MyTaskItem`.
 - Execução dos jobs de lint, typecheck e unit tests garantindo que os fluxos adicionados não quebram o build.
+
+## Notas de manutenção
+
+- A migração `008_membership_rls_ambiguous_fix.sql` recria `can_access_membership(org_id, target_membership_id)` para remover a
+  ambiguidade da coluna `membership_id` detectada durante a consulta à view `v_sequence_manager`, liberando o carregamento da
+  página `/sequences` com RLS ativo.
