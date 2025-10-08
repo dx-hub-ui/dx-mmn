@@ -1,4 +1,3 @@
-// src/app/auth/sync/route.ts
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -16,21 +15,33 @@ export async function POST(req: Request) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      cookies: {
-        get() { return undefined; },
+      cookies: () => ({
+        get() {
+          return undefined;
+        },
         set(name, value, options) {
           res.cookies.set({
-            name, value, ...options,
-            path: "/", httpOnly: true, sameSite: "lax", secure: true,
+            name,
+            value,
+            ...options,
+            path: "/",
+            httpOnly: true,
+            sameSite: "lax",
+            secure: true,
           });
         },
         remove(name, options) {
           res.cookies.set({
-            name, value: "", ...options,
-            path: "/", httpOnly: true, sameSite: "lax", secure: true,
+            name,
+            value: "",
+            ...options,
+            path: "/",
+            httpOnly: true,
+            sameSite: "lax",
+            secure: true,
           });
         },
-      },
+      }),
     }
   );
 
