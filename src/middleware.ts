@@ -6,9 +6,7 @@ async function validate(token: string, url: string, anon: string) {
     headers: { Authorization: `Bearer ${token}`, apikey: anon },
     cache: "no-store",
   });
-  if (r.ok) return true;
-  if (r.status === 401 || r.status === 403) return false;
-  return false;
+  return r.ok;
 }
 
 export async function middleware(req: NextRequest) {
@@ -31,7 +29,6 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-// /src/app/(app)/dashboard => path público /dashboard
 export const config = {
   matcher: ["/dashboard/:path*", "/settings/:path*", "/tables/:path*", "/app/:path*"],
 };
