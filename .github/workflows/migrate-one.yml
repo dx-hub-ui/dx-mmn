@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       sql_url:
-        description: "raw URL do .sql"
+        description: "Raw URL OU path local do .sql (ex: https://... ou supabase/migrations/006.sql)"
         required: true
         type: string
 
@@ -12,6 +12,8 @@ jobs:
   migrate:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Install psql
         run: |
           sudo apt-get update
@@ -19,9 +21,11 @@ jobs:
 
       - name: Ensure tracking table
         env:
+          # Recomendado: use o pooler com SSL, ex:
+          # postgresql://postgres.<ref>:<pass>@aws-1-sa-east-1.pooler.supabase.com:6543/postgres?sslmode=require
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          set -e
+          set -euo pipefail
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
           create table if not exists public.schema_migrations(
             id bigserial primary key,
@@ -31,19 +35,35 @@ jobs:
           );
           SQL
 
-      - name: Apply if not applied
+      - name: Apply if not applied (URL ou path local)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SQL_URL: ${{ inputs.sql_url }}
         run: |
-          set -e
-          curl -fsSL "$SQL_URL" -o /tmp/migration.sql
+          set -euo pipefail
+
+          # Se for URL http(s), baixa; senão usa arquivo local do repo
+          if [[ "$SQL_URL" =~ ^https?:// ]]; then
+            curl -fsSL "$SQL_URL" -o /tmp/migration.sql
+          else
+            [ -f "$SQL_URL" ] || { echo "Arquivo não encontrado: $SQL_URL"; exit 1; }
+            cp "$SQL_URL" /tmp/migration.sql
+          fi
+
           sum="$(sha256sum /tmp/migration.sql | awk '{print $1}')"
-          exists=$(psql "$DATABASE_URL" -Atqc "select 1 from public.schema_migrations where checksum='${sum}'")
+          exists="$(psql "$DATABASE_URL" -Atqc "select 1 from public.schema_migrations where checksum='${sum}'")"
+
           if [ "$exists" = "1" ]; then
             echo "Já aplicada (checksum)."
             exit 0
           fi
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /tmp/migration.sql
+
+          # Aplica (wrap em transação). Remova -1 se usar comandos não transacionáveis (ex: CREATE INDEX CONCURRENTLY)
+          PGOPTIONS="--client-min-messages=warning" psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -1 -f /tmp/migration.sql
+
+          # Escapa aspas simples da URL antes de inserir
+          safe_url="$(printf "%s" "$SQL_URL" | sed "s/'/''/g")"
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c \
-            "insert into public.schema_migrations(file_url, checksum) values ('${SQL_URL}','${sum}')"
+            "insert into public.schema_migrations(file_url, checksum) values ('${safe_url}','${sum}')"
+
+          echo "✅ Migração aplicada."
