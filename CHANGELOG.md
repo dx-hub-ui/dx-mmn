@@ -1,5 +1,14 @@
 # Changelog
 
+# 2025-11-07
+
+### Fixed
+- Corrigida a build do dashboard adicionando a dependência explícita de `@supabase/supabase-js`, garantindo que o tipo `User` seja
+  resolvido durante o `next build`.
+
+### Documentation
+- README atualizado com nota sobre o uso do cliente oficial do Supabase para tipagem na página de dashboard.
+
 # 2025-11-06
 
 ### Fixed

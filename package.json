@@ -16,6 +16,7 @@
     "@sentry/nextjs": "^7.112.0",
     "@vibe/core": "^3.69.1",
     "@supabase/ssr": "^0.4.0",
+    "@supabase/supabase-js": "^2.74.0",
     "@vibe/icons": "^1.11.0",
     "@tanstack/react-table": "^8.15.0",
     "@tanstack/react-virtual": "^3.2.0",
