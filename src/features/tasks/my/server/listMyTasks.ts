@@ -10,7 +10,8 @@ export async function listMyTasks(orgId: string, membershipId: string): Promise<
     .select(
       `assignment_id, org_id, sequence_id, sequence_version_id, sequence_step_id, sequence_enrollment_id,
        assignee_membership_id, status, due_at, snoozed_until, done_at, overdue_at, blocked_reason,
-       is_overdue, is_snoozed, is_blocked, sequence_name, step_title, target_type, target_id, enrollment_status`
+       is_overdue, is_snoozed, is_blocked, sequence_name, step_title, step_short_description, step_priority, step_tags,
+       target_type, target_id, enrollment_status`
     )
     .eq("org_id", orgId)
     .eq("assignee_membership_id", membershipId)

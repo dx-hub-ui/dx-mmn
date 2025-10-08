@@ -1,5 +1,20 @@
 # Changelog
 
+# 2025-11-05
+
+### Added
+- Função edge `supabase/functions/sequences_engine` processando inscrições ativas, gerando assignments com clamp de janela de
+  trabalho, notificações (`assignment_created`, `due_today`, `overdue`) e concluindo inscrições automaticamente.
+- Ações de servidor para tarefas (`completeAssignmentAction`, `snoozeAssignmentAction`) com telemetria PostHog, breadcrumbs do
+  Sentry e notificações `assignment_snoozed`.
+- Modal de detalhes em "Minhas tarefas" com adiar/ concluir, atualizações otimistas e banner de erros acessível.
+- Migração `007_sequences_engine.sql` atualizando a view `v_my_tasks` com metadados de passo e gatilho para notificar mudanças de
+  status nas inscrições.
+
+### Documentation
+- `docs/sequences_module.md` atualizado com o relatório da Sprint 3, cobrindo motor de assignments, notificações e melhorias de
+  UX em tarefas.
+
 # 2025-11-04
 
 ### Added

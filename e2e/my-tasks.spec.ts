@@ -11,5 +11,6 @@ test.describe("My Tasks", () => {
     await expect(page.getByRole("tab", { name: "Todas" })).toBeVisible();
     await expect(page.getByRole("columnheader", { name: "Tarefa" })).toBeVisible();
     await expect(page.getByRole("columnheader", { name: "Ações rápidas" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Ver detalhes" })).toBeVisible();
   });
 });

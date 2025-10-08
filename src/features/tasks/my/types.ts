@@ -20,6 +20,9 @@ export type MyTaskRow = {
   is_blocked: boolean;
   sequence_name: string;
   step_title: string;
+  step_short_description: string | null;
+  step_priority: string | null;
+  step_tags: string[] | null;
   target_type: "contact" | "member";
   target_id: string;
   enrollment_status: string;
@@ -29,8 +32,14 @@ export type MyTaskItem = {
   id: string;
   orgId: string;
   sequenceId: string;
+  sequenceVersionId: string;
+  stepId: string;
+  enrollmentId: string;
   sequenceName: string;
   stepTitle: string;
+  stepDescription: string | null;
+  priority: string | null;
+  tags: string[];
   status: AssignmentStatus;
   dueAt: string | null;
   snoozedUntil: string | null;

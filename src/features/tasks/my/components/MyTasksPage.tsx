@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import clsx from "clsx";
 import { Button } from "@vibe/core";
+import { useRouter } from "next/navigation";
+import { completeAssignmentAction, snoozeAssignmentAction } from "@/app/(app)/tasks/actions";
 import { trackEvent } from "@/lib/telemetry";
 import { useSentrySequenceScope } from "@/lib/observability/sentryClient";
 import { filterTasks, statusLabel } from "../normalize";
 import type { AssignmentStatus, MyTaskItem, MyTasksFilter } from "../types";
 import styles from "./my-tasks.module.css";
+import TaskDetailsDialog from "./TaskDetailsDialog";
 
 const FILTERS: { id: MyTasksFilter; label: string }[] = [
   { id: "todos", label: "Todas" },
@@ -54,25 +57,133 @@ function statusClass(status: AssignmentStatus) {
 }
 
 export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageProps) {
+  const router = useRouter();
   const [filter, setFilter] = useState<MyTasksFilter>("todos");
+  const [items, setItems] = useState<MyTaskItem[]>(tasks);
+  const [selectedTask, setSelectedTask] = useState<MyTaskItem | null>(null);
+  const [pendingAction, setPendingAction] = useState<"complete" | "snooze" | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setItems(tasks);
+  }, [tasks]);
 
   useEffect(() => {
     trackEvent(
       "my_tasks_viewed",
-      { total: tasks.length, membershipId },
+      { total: items.length, membershipId },
       { groups: { orgId } }
     );
-  }, [membershipId, orgId, tasks.length]);
+  }, [items.length, membershipId, orgId]);
 
   useSentrySequenceScope(
     { orgId },
     {
       message: "my_tasks_viewed",
-      data: { total: tasks.length },
+      data: { total: items.length },
     }
   );
 
-  const filteredTasks = useMemo(() => filterTasks(tasks, filter), [tasks, filter]);
+  const filteredTasks = useMemo(() => filterTasks(items, filter), [items, filter]);
+
+  const closeDialog = () => {
+    setSelectedTask(null);
+    setActionError(null);
+  };
+
+  const handleComplete = (task: MyTaskItem) => {
+    setPageError(null);
+    setActionError(null);
+    setPendingAction("complete");
+
+    startTransition(async () => {
+      try {
+        await completeAssignmentAction({ assignmentId: task.id });
+        const nowIso = new Date().toISOString();
+        setItems((current) =>
+          current.map((item) =>
+            item.id === task.id
+              ? {
+                  ...item,
+                  status: "done",
+                  doneAt: nowIso,
+                  snoozedUntil: null,
+                  overdueAt: null,
+                  isOverdue: false,
+                  isSnoozed: false,
+                  isBlocked: false,
+                  blockedReason: null,
+                }
+              : item
+          )
+        );
+        router.refresh();
+        if (selectedTask?.id === task.id) {
+          closeDialog();
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Não foi possível concluir a tarefa.";
+        if (selectedTask?.id === task.id) {
+          setActionError(message);
+        } else {
+          setPageError(message);
+        }
+      } finally {
+        setPendingAction(null);
+      }
+    });
+  };
+
+  const handleSnooze = (task: MyTaskItem, rawValue: string) => {
+    if (!rawValue) {
+      setActionError("Informe uma data válida para adiar.");
+      return;
+    }
+
+    const parsed = new Date(rawValue);
+    if (Number.isNaN(parsed.getTime())) {
+      setActionError("Informe uma data válida para adiar.");
+      return;
+    }
+
+    setActionError(null);
+    setPageError(null);
+    setPendingAction("snooze");
+
+    const isoValue = parsed.toISOString();
+
+    startTransition(async () => {
+      try {
+        await snoozeAssignmentAction({ assignmentId: task.id, snoozeUntil: rawValue });
+        setItems((current) =>
+          current.map((item) =>
+            item.id === task.id
+              ? {
+                  ...item,
+                  status: "snoozed",
+                  snoozedUntil: isoValue,
+                  overdueAt: null,
+                  isOverdue: false,
+                  isSnoozed: true,
+                  isBlocked: false,
+                }
+              : item
+          )
+        );
+        router.refresh();
+        closeDialog();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Não foi possível adiar a tarefa.";
+        setActionError(message);
+      } finally {
+        setPendingAction(null);
+      }
+    });
+  };
+
+  const isBusy = pendingAction !== null || isPending;
 
   return (
     <section className={styles.page} aria-labelledby="my-tasks-title">
@@ -100,6 +211,12 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
             </button>
           ))}
         </div>
+
+        {pageError ? (
+          <div role="alert" className={styles.errorBanner}>
+            {pageError}
+          </div>
+        ) : null}
 
         <div className={styles.tableWrapper} role="region" aria-live="polite">
           {filteredTasks.length === 0 ? (
@@ -145,15 +262,36 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
                         {task.isBlocked ? <span className={styles.flag}>Bloqueado</span> : null}
                       </div>
                     </td>
-                    <td>
-                      <div className={styles.actions}>
-                        <Button kind={Button.kinds.SECONDARY} size={Button.sizes.SMALL} disabled>
+                  <td>
+                    <div className={styles.actions}>
+                        <Button
+                          kind={Button.kinds.SECONDARY}
+                          size={Button.sizes.SMALL}
+                          onClick={() => handleComplete(task)}
+                          disabled={isBusy}
+                        >
                           Concluir
                         </Button>
-                        <Button kind={Button.kinds.TERTIARY} size={Button.sizes.SMALL} disabled>
+                        <Button
+                          kind={Button.kinds.TERTIARY}
+                          size={Button.sizes.SMALL}
+                          onClick={() => {
+                            setSelectedTask(task);
+                            setActionError(null);
+                          }}
+                          disabled={isBusy}
+                        >
                           Adiar
                         </Button>
-                        <Button kind={Button.kinds.TERTIARY} size={Button.sizes.SMALL} disabled>
+                        <Button
+                          kind={Button.kinds.TERTIARY}
+                          size={Button.sizes.SMALL}
+                          onClick={() => {
+                            setSelectedTask(task);
+                            setActionError(null);
+                          }}
+                          disabled={isBusy}
+                        >
                           Ver detalhes
                         </Button>
                       </div>
@@ -165,6 +303,24 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
           )}
         </div>
       </div>
+
+      <TaskDetailsDialog
+        task={selectedTask}
+        open={Boolean(selectedTask)}
+        pendingAction={pendingAction}
+        errorMessage={actionError}
+        onClose={closeDialog}
+        onComplete={() => {
+          if (selectedTask) {
+            handleComplete(selectedTask);
+          }
+        }}
+        onSnooze={(value) => {
+          if (selectedTask) {
+            handleSnooze(selectedTask, value);
+          }
+        }}
+      />
     </section>
   );
 }

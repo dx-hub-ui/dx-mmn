@@ -1,6 +1,8 @@
 {
   "imports": {
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.44.2",
-    "std/http/server": "https://deno.land/std@0.208.0/http/server.ts"
+    "std/http/server": "https://deno.land/std@0.208.0/http/server.ts",
+    "date-fns": "npm:date-fns@3.6.0",
+    "date-fns-tz": "npm:date-fns-tz@2.0.0"
   }
 }

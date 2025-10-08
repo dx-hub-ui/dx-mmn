@@ -38,8 +38,27 @@ operar a sequência sem sair do DX Hub.
 - Spec E2E placeholder para o editor (skipado até configurarmos Supabase de testes).
 - Documentação e changelog atualizados para acompanhar o avanço da sprint.
 
-## Próximos passos (Sprint 3)
+## Sprint 3 — Engine, notificações e tarefas
 
-- Motor de assignments, notificações in-app e reassignment automático conectados ao Supabase/Edge Functions.
-- Modal de detalhes em Minhas Tarefas com ações de concluir e adiar (snooze).
-- Integração total de telemetria de notificações, eventos de overdue e reassignment.
+A terceira sprint conclui o núcleo operacional das sequências, automatizando assignments, notificações in-app e ações diárias
+das reps via "Minhas tarefas".
+
+### Principais entregas
+
+- **Motor de sequências** publicado em `supabase/functions/sequences_engine`, gerando assignments conforme janela de trabalho,
+  respeitando dependências/"pause until done", ajustando `overdue_at` e concluindo inscrições quando todos os passos são finalizados.
+- **Notificações in-app** para inscrições (`sequence_paused`, `sequence_resumed`, `sequence_completed`, `sequence_removed`) via
+  gatilho SQL e para tarefas (`assignment_created`, `due_today`, `overdue`, `assignment_snoozed`) pelo engine e pelas ações de
+  usuário.
+- **View `v_my_tasks` enriquecida** com descrição, prioridade e tags do passo, permitindo o modal detalhado reutilizar os dados
+  sem consultas adicionais.
+- **Ações de servidor para tarefas** (`completeAssignmentAction`, `snoozeAssignmentAction`) com revalidação automática, eventos
+  PostHog e breadcrumbs Sentry contendo `org_id`, `sequence_id`, `version_id` e `enrollment_id`.
+- **Modal de detalhes** em `/tasks/my` com resumo do passo, etiquetas, banner de erros acessível e formulário de adiamento com
+  validação, além de feedback otimista na tabela.
+
+### Qualidade e testes
+
+- Novos testes Vitest (`validation.test.ts`) para a sanitização de datas de adiamento e ajustes nas specs de normalização.
+- Atualização dos testes existentes para refletir os campos adicionais em `MyTaskItem`.
+- Execução dos jobs de lint, typecheck e unit tests garantindo que os fluxos adicionados não quebram o build.
