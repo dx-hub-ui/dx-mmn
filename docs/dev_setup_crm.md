@@ -30,7 +30,9 @@ pnpm install
 pnpm dev
 ```
 A aplicação fica disponível em `http://localhost:3000`. Usuários seed: `owner@example.com`, `leader@example.com`, `rep1@example.com`, `rep2@example.com` (login via magic link/OTP).
-> **Fluxo de login:** o callback `/auth/callback` tenta primeiro `verifyOtp` com `token`/`token_hash`; quando há `code_verifier` salvo executa `exchangeCodeForSession(code)` e, em último caso, aceita `setSession` com `access_token`/`refresh_token` encontrados no hash. Só depois sincroniza os cookies via `/auth/sync`. O middleware (`src/middleware.ts`) segue delegando a validação ao `createServerClient`, preservando os cookies emitidos pelo Supabase.
+> **Fluxo de login:** o callback `/auth/callback` usa `exchangeCodeForSession` para trocar códigos PKCE, tenta `verifyOtp` com `token_hash` ou `token` apenas para tipos de OTP por email (`magiclink`, `signup`, `invite`, `recovery`, `email`, `email_change`) e, em último caso, aceita `setSession` com `access_token`/`refresh_token`. Apenas depois sincroniza os cookies via `/auth/sync`. O middleware (`src/middleware.ts`) continua delegando a validação ao `createServerClient`, preservando os cookies emitidos pelo Supabase e ignorando erros de `code_verifier` provenientes de links abertos em outro dispositivo.
+
+> **Políticas RLS:** a função `can_access_membership` (security definer) desativa temporariamente o RLS enquanto consulta `visible_membership_ids`, permitindo que `memberships_select_visible` calcule visibilidade sem disparar o erro `42P17` de recursão infinita.
 
 > **Onboarding automático:** o gatilho SQL `handle_new_user` cria uma organização padrão e um membership `org` para cada usuário novo, além de espelhar os metadados em `public.profiles`. Ao remover um usuário em `auth.users`, o gatilho `handle_deleted_user` limpa o respectivo perfil.
 

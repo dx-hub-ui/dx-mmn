@@ -1,5 +1,15 @@
 # Changelog
 
+# 2025-11-02
+
+### Fixed
+- `/auth/callback` agora troca códigos PKCE via `exchangeCodeForSession`, ignora erros de `code_verifier` em links abertos em outro dispositivo, usa `verifyOtp` tolerante a `token_hash`/`token` (magic link, signup, invite, recovery, email) e só recorre a `setSession` com `access_token`/`refresh_token` ao final, eliminando o erro "Link inválido ou expirado" após login ou cadastro.
+- Ajustamos o fallback `verifyOtp` para limitar-se aos tipos de OTP por email (magiclink, signup, invite, recovery, email, email_change), evitando tentativas inválidas que geravam erros de compilação durante o build e garantindo que o magic link continue funcionando mesmo sem `code_verifier`.
+- `can_access_membership` (security definer) passou a desativar temporariamente o RLS enquanto consulta `visible_membership_ids`, removendo o erro `42P17 infinite recursion detected in policy for relation "memberships"` ao carregar o dashboard.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` atualizados com o fluxo revisado (`exchangeCodeForSession` + fallback OTP) e com a observação sobre a desativação temporária de RLS em `can_access_membership`.
+
 # 2025-11-01
 
 ### Fixed

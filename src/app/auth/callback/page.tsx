@@ -6,6 +6,20 @@ import { useSearchParams } from "next/navigation";
 import { Flex, Loader, Text } from "@vibe/core";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
+const EMAIL_OTP_TYPES = [
+  "magiclink",
+  "signup",
+  "invite",
+  "recovery",
+  "email",
+  "email_change",
+] as const;
+
+type EmailOtpTypeCandidate = (typeof EMAIL_OTP_TYPES)[number];
+
+const isEmailOtpType = (value: string | null | undefined): value is EmailOtpTypeCandidate =>
+  Boolean(value) && (EMAIL_OTP_TYPES as ReadonlyArray<string>).includes(value!);
+
 export default function AuthCallbackPage() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo")?.startsWith("/") ? searchParams.get("redirectTo")! : "/dashboard";
@@ -36,13 +50,23 @@ export default function AuthCallbackPage() {
           return;
         }
 
+        const shouldStopDueTo = (maybeError: Error | null | undefined) => {
+          if (!maybeError) return false;
+          const message = maybeError.message ?? "Erro ao recuperar sessão.";
+          if (/code verifier/i.test(message) || /invalid request/i.test(message)) {
+            console.warn("Supabase PKCE fallback:", message);
+            return false;
+          }
+          surfaceError(message);
+          return true;
+        };
+
         let {
           data: { session },
           error: sessionError,
         } = await supabase.auth.getSession();
 
-        if (sessionError) {
-          surfaceError(sessionError.message);
+        if (sessionError && shouldStopDueTo(sessionError)) {
           return;
         }
 
@@ -52,65 +76,108 @@ export default function AuthCallbackPage() {
           }
         };
 
-        if (!session) {
-          const code = pickParam("code");
-          if (code) {
-            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        const code = pickParam("code");
+        const token = pickParam("token");
+        const tokenHash = pickParam("token_hash");
+        const accessTokenParam = pickParam("access_token");
+        const refreshTokenParam = pickParam("refresh_token");
+        const emailParam = pickParam("email") ?? pickParam("user_email") ?? undefined;
+        const rawType = pickParam("type")?.toLowerCase() ?? undefined;
+        const otpTypeCandidates = Array.from(
+          new Set<EmailOtpTypeCandidate>([
+            ...(isEmailOtpType(rawType) ? [rawType] : []),
+            ...EMAIL_OTP_TYPES,
+          ]),
+        );
+
+        if (!session && code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            if (shouldStopDueTo(error)) {
+              // tenta fallback com tokens
+            } else {
+              return;
+            }
+          } else {
+            captureSession(data.session);
+          }
+        }
+
+        const canUseTokenHash = Boolean(tokenHash);
+        const canUseToken = Boolean(token && emailParam);
+
+        if (!session && (canUseTokenHash || canUseToken) && otpTypeCandidates.length > 0) {
+          type VerifyResult = "success" | "retry" | "fatal";
+          let lastError: string | null = null;
+
+          const attemptVerify = async (
+            payload: Parameters<typeof supabase.auth.verifyOtp>[0],
+          ): Promise<VerifyResult> => {
+            const { data, error } = await supabase.auth.verifyOtp(payload);
             if (error) {
-              const message = error.message ?? "Falha ao validar código.";
-              if (/code verifier/i.test(message) || /invalid request/i.test(message)) {
-                console.warn("Supabase PKCE fallback:", message);
-              } else {
-                surfaceError(message);
+              lastError = error.message;
+              if (/token (?:not found|has expired)/i.test(error.message)) {
+                return "retry";
+              }
+              surfaceError(error.message);
+              return "fatal";
+            }
+            captureSession(data.session);
+            lastError = null;
+            return "success";
+          };
+
+          if (canUseTokenHash) {
+            for (const typeCandidate of otpTypeCandidates) {
+              const result = await attemptVerify({
+                type: typeCandidate,
+                token_hash: tokenHash!,
+              });
+
+              if (result === "success") {
+                break;
+              }
+
+              if (result === "fatal") {
                 return;
               }
-            } else {
-              captureSession(data.session);
             }
+          }
+
+          if (!session && canUseToken) {
+            for (const typeCandidate of otpTypeCandidates) {
+              const result = await attemptVerify({
+                type: typeCandidate,
+                token: token!,
+                email: emailParam!,
+              });
+
+              if (result === "success") {
+                break;
+              }
+
+              if (result === "fatal") {
+                return;
+              }
+            }
+          }
+
+          if (!session && lastError) {
+            surfaceError(lastError);
+            return;
           }
         }
 
-        if (!session) {
-          const token = pickParam("token");
-          const tokenHash = pickParam("token_hash");
-          if (token || tokenHash) {
-            const typeParam = (pickParam("type") ?? "magiclink") as Parameters<typeof supabase.auth.verifyOtp>[0]["type"];
-            const emailParam = pickParam("email") ?? undefined;
-
-            const verifyPayload: Parameters<typeof supabase.auth.verifyOtp>[0] = {
-              type: typeParam,
-            } as Parameters<typeof supabase.auth.verifyOtp>[0];
-
-            if (token) {
-              (verifyPayload as { token: string }).token = token;
-            } else if (tokenHash) {
-              (verifyPayload as { token_hash: string }).token_hash = tokenHash;
-            }
-
-            if (emailParam) {
-              (verifyPayload as { email?: string }).email = emailParam;
-            }
-
-            const { data, error } = await supabase.auth.verifyOtp(verifyPayload);
-            if (error) {
-              surfaceError(error.message);
-              return;
-            }
-            captureSession(data.session);
+        if (!session && accessTokenParam && refreshTokenParam) {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessTokenParam,
+            refresh_token: refreshTokenParam,
+          });
+          if (error) {
+            surfaceError(error.message);
+            return;
           }
-        }
-
-        if (!session) {
-          const accessToken = pickParam("access_token");
-          const refreshToken = pickParam("refresh_token");
-          if (accessToken && refreshToken) {
-            const { data, error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-            if (error) {
-              surfaceError(error.message);
-              return;
-            }
-            captureSession(data.session);
-          }
+          captureSession(data.session);
         }
 
         if (!session) {

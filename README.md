@@ -43,7 +43,7 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 
 1. Acesse `http://localhost:3000/` (a tela de login também está disponível em `/sign-in` para links diretos) e, opcionalmente, informe `redirectTo` para personalizar o destino após o login (por padrão `/dashboard`).
 2. Informe o email associado ao seu usuário e envie o formulário para receber um link mágico.
-3. O Supabase redirecionará para `/auth/callback`. Lá tentamos validar primeiro via `verifyOtp`, reutilizando o `token`/`token_hash` entregue pelo link; quando o navegador tem `code_verifier` salvo executamos `exchangeCodeForSession` e, por fim, aceitamos `access_token`/`refresh_token` presentes no fragmento da URL. Somente após obter uma sessão válida sincronizamos os cookies HTTP-only via `/auth/sync` e seguimos para o destino informado em `redirectTo` (padrão `/dashboard`).
+3. O Supabase redirecionará para `/auth/callback`. O callback chama `exchangeCodeForSession` para trocar códigos PKCE, tenta `verifyOtp` com `token_hash` ou `token` limitando-se aos tipos de OTP por email (`magiclink`, `signup`, `invite`, `recovery`, `email`, `email_change`) e, se necessário, aceita `setSession` com `access_token`/`refresh_token` encontrados no fragmento. Só após confirmar uma sessão válida sincronizamos os cookies HTTP-only via `/auth/sync` e seguimos para o destino informado em `redirectTo` (padrão `/dashboard`), ignorando com segurança erros de `code_verifier` quando o link é aberto em outro dispositivo.
 4. Se precisar reenviar o link, basta repetir o processo; a tela exibirá o status da solicitação e qualquer erro retornado pelo Supabase.
 
 > **Dica:** durante o desenvolvimento, configure `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` com os valores do projeto para que o formulário fique ativo. Em ambientes de review, a interface informa quando as variáveis não estão configuradas.
@@ -82,7 +82,7 @@ Quando publicar, configure as mesmas variáveis no Supabase para cada função.
 
 1. **Login seguro** (`/` ou `/sign-in` + `/auth/callback` + `/dashboard`):
    - Usuários solicitam um link mágico de acesso na landing inicial da aplicação.
-  - Após confirmar o link recebido por email, o browser é redirecionado para `/auth/callback`, que trata manualmente `token`/`token_hash`, códigos PKCE e tokens no hash, sincroniza a sessão com cookies HTTP-only e só então libera o acesso ao dashboard (padrão `/dashboard`).
+  - Após confirmar o link recebido por email, o browser é redirecionado para `/auth/callback`, que chama `exchangeCodeForSession` para trocar códigos PKCE, tenta `verifyOtp` com `token_hash`/`token` apenas para tipos de OTP por email (magic link, signup, invite, recovery, email, email_change) e, em último caso, aceita `access_token`/`refresh_token` antes de sincronizar cookies HTTP-only — tudo ignorando com segurança erros de `code_verifier` para links abertos em outro dispositivo.
 2. **Criação automática de organização** (`handle_new_user` + `memberships`):
    - Assim que um usuário confirma o cadastro via Supabase, o gatilho `handle_new_user` cria uma organização padrão, gera o membership com papel `org` e espelha os metadados em `public.profiles`.
    - A rota `POST /api/orgs/create` continua disponível para permitir que o usuário cadastre organizações adicionais com slug personalizado quando necessário.
@@ -116,7 +116,7 @@ Use o Supabase Studio com a opção **JWT override** ou tokens gerados via CLI (
 - Todas as mutações sensíveis (criação de organização, geração e resgate de convites) passam por Edge Functions com Service Role e validações de negócios.
 - RLS está habilitado em `memberships`, `contacts` e `invite_links`. Apenas leituras necessárias são liberadas aos usuários autenticados.
 - Função SQL `visible_membership_ids` calcula dinamicamente a subárvore de visibilidade, garantindo isolamento entre organizações e hierarquias.
-- `public.profiles` permanece sincronizada com `auth.users` através dos gatilhos `handle_new_user` (espelhamento + criação da organização padrão) e `handle_deleted_user` (remoção automática de perfis órfãos).
+- `public.profiles` permanece sincronizada com `auth.users` através dos gatilhos `handle_new_user` (espelhamento + criação da organização padrão) e `handle_deleted_user` (remoção automática de perfis órfãos). A política `memberships_select_visible` delega a verificação à função `can_access_membership` (security definer), que desativa temporariamente o RLS durante o cálculo para consultar `visible_membership_ids` sem provocar recursão.
 - Não exponha a Service Role key no cliente; somente rotas servidoras ou funções no backend devem utilizá-la.
 - Utilize HTTPS e configure domínios confiáveis de redirecionamento no Supabase para evitar abuso em convites.
 
