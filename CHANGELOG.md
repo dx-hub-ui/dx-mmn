@@ -1,5 +1,13 @@
 # Changelog
 
+# 2025-11-05
+
+### Fixed
+- `can_access_membership` renomeia o parâmetro interno para `target_membership_id`, eliminando o erro `42702 column reference "membership_id" is ambiguous` ao carregar páginas protegidas que dependem das políticas de RLS.
+
+### Documentation
+- README documenta a atualização do parâmetro `target_membership_id` e o motivo do ajuste para evitar ambiguidades no Postgres.
+
 # 2025-11-04
 
 ### Changed
