@@ -13,13 +13,29 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const run = async () => {
-      // 1) implicit: detectSessionInUrl=true salva sessão se veio #access_token
-      await supabase.auth.getSession();
+      const url = new URL(window.location.href);
+
+      const errorDescription = url.searchParams.get("error_description");
+      if (errorDescription) {
+        setErr(errorDescription);
+        return;
+      }
+
+      const code = url.searchParams.get("code");
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession({ code });
+        if (error) {
+          setErr(error.message);
+          return;
+        }
+      } else {
+        // 1) implicit: detectSessionInUrl=true salva sessão se veio #access_token
+        await supabase.auth.getSession();
+      }
 
       // 2) fallback token_hash (alguns templates enviam magic link assim)
-      const u = new URL(window.location.href);
       const hash = new URLSearchParams(location.hash.slice(1));
-      const token_hash = u.searchParams.get("token_hash") || hash.get("token_hash");
+      const token_hash = url.searchParams.get("token_hash") || hash.get("token_hash");
       if (token_hash) {
         const { error } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash });
         if (error) { setErr(error.message); return; }

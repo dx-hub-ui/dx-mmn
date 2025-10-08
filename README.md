@@ -36,13 +36,14 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 2. Habilite **Email** e selecione **Magic Link** ou **OTP** conforme desejado.
 3. Configure o domínio de envio de e-mails ou utilize o serviço padrão do Supabase em ambiente de desenvolvimento.
 4. Atualize as variáveis `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` com os valores do projeto.
-5. Para testar localmente, crie usuários via Magic Link ou usando o seed incluído (com emails `owner@example.com`, `leader@example.com`, etc.).
+5. Defina `NEXT_PUBLIC_SITE_URL` com a URL pública do frontend (ex.: `http://localhost:3000` em desenvolvimento ou `https://app.dxhub.com.br` em produção). Ela é utilizada como base para gerar o `emailRedirectTo` enviado ao Supabase.
+6. Para testar localmente, crie usuários via Magic Link ou usando o seed incluído (com emails `owner@example.com`, `leader@example.com`, etc.).
 
 ## Login via Magic Link
 
 1. Acesse `http://localhost:3000/` (a tela de login também está disponível em `/sign-in` para links diretos) e, opcionalmente, informe `redirectTo` para personalizar o destino após o login (por padrão `/dashboard`).
 2. Informe o email associado ao seu usuário e envie o formulário para receber um link mágico.
-3. O Supabase validará o token e redirecionará para `/auth/callback`, onde a sessão é persistida e você é levado ao caminho definido em `redirectTo` (padrão `/dashboard`).
+3. O Supabase validará o token e redirecionará para `/auth/callback`, que faz a troca de código PKCE (`exchangeCodeForSession`) ou valida o `token_hash` legado antes de sincronizar os cookies HTTP-only. Em seguida, você é levado ao caminho definido em `redirectTo` (padrão `/dashboard`).
 4. Se precisar reenviar o link, basta repetir o processo; a tela exibirá o status da solicitação e qualquer erro retornado pelo Supabase.
 
 > **Dica:** durante o desenvolvimento, configure `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` com os valores do projeto para que o formulário fique ativo. Em ambientes de review, a interface informa quando as variáveis não estão configuradas.
@@ -61,6 +62,7 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 ```env
 NEXT_PUBLIC_SUPABASE_URL=...        # URL do projeto Supabase
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...   # Chave pública (anon)
+NEXT_PUBLIC_SITE_URL=...            # URL pública usada nos links mágicos
 SUPABASE_URL=...                    # Mesma URL para chamadas a Edge Functions
 SUPABASE_SERVICE_ROLE_KEY=...       # Chave service role (mantida somente no servidor)
 ```

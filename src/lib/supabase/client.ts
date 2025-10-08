@@ -7,7 +7,7 @@ export function createSupabaseBrowserClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       auth: {
-        flowType: "implicit",      // sem PKCE
+        flowType: "pkce",          // suporta links magic e troca de código
         detectSessionInUrl: true,  // lê #access_token no callback e persiste no client
       },
     }

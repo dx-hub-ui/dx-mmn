@@ -1,5 +1,16 @@
 # Changelog
 
+# 2025-10-29
+
+### Fixed
+- Fluxo de callback do Supabase realiza `exchangeCodeForSession` ao receber `code` de PKCE e mantém o fallback de `token_hash`, evitando que os usuários sejam redirecionados de volta para `/sign-in` após clicar no magic link.
+
+### Changed
+- Formulário de login respeita o parâmetro `redirectTo` recebido via query string e gera `emailRedirectTo` usando `NEXT_PUBLIC_SITE_URL`, suportando múltiplos ambientes sem alterar o código.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` atualizados com a variável `NEXT_PUBLIC_SITE_URL` e a descrição do fluxo de troca PKCE no callback.
+
 # 2025-10-28
 
 ### Added
