@@ -1,73 +1,59 @@
+// src/app/sign-in/page.tsx
 "use client";
-import { useEffect, useMemo, useState } from "react";
+
+import { useMemo, useState } from "react";
 import { Button, Flex, Loader, Text } from "@vibe/core";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import styles from "./callback.module.css";
+import styles from "./sign-in.module.css";
 
-export default function AuthCallbackPage() {
+export default function SignInPage() {
   const router = useRouter();
   const sp = useSearchParams();
   const redirectParam = sp.get("redirectTo");
   const normalizedRedirect = redirectParam?.startsWith("/") ? redirectParam : "/dashboard";
-  const hasEnv = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
+  const hasEnv = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
   const supabase = useMemo(() => (hasEnv ? createSupabaseBrowserClient() : null), [hasEnv]);
-  const [status, setStatus] = useState<"loading" | "error" | "success">("loading");
-  const [message, setMessage] = useState("Conectando à sua conta...");
 
-  useEffect(() => {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
+  const [message, setMessage] = useState<string | null>(null);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!supabase) {
-      if (!hasEnv) { setStatus("error"); setMessage("Variáveis de ambiente do Supabase não configuradas."); }
+      setStatus("error");
+      setMessage("Variáveis de ambiente do Supabase não configuradas.");
       return;
     }
-    let mounted = true;
-    const run = async () => {
-      const url = new URL(window.location.href);
-      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-      const qp = url.searchParams;
+    setStatus("loading");
+    setMessage(null);
 
-      const err =
-        hash.get("error_description") || hash.get("error") || qp.get("error_description") || qp.get("error");
-      if (err) { setStatus("error"); setMessage(err); return; }
+    const emailRedirectTo = `https://app.dxhub.com.br/auth/callback?redirectTo=${encodeURIComponent(
+      normalizedRedirect
+    )}`;
 
-      // 1) PKCE exchange (preferred)
-      if (qp.get("code") || hash.get("code")) {
-        const { error } = await supabase.auth.exchangeCodeForSession(window.location.href);
-        if (!mounted) return;
-        if (!error) { setStatus("success"); setMessage("Tudo pronto! Redirecionando..."); router.replace(normalizedRedirect); return; }
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo },
+    });
 
-        // Specific PKCE failure -> try token-hash fallback
-        if (error.message.includes("code verifier") || error.message.includes("code_verifier")) {
-          // 2) Token-hash fallback (works across devices)
-          const token_hash = qp.get("token_hash") || hash.get("token_hash");
-          if (token_hash) {
-            const { error: vErr } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash });
-            if (!mounted) return;
-            if (!vErr) { setStatus("success"); setMessage("Tudo pronto! Redirecionando..."); router.replace(normalizedRedirect); return; }
-            setStatus("error"); setMessage(vErr.message); return;
-          }
-        }
-        setStatus("error"); setMessage(error.message); return;
-      }
+    if (error) {
+      setStatus("error");
+      setMessage(error.message);
+      return;
+    }
 
-      // 3) Legacy implicit fallback
-      const at = hash.get("access_token") || qp.get("access_token");
-      const rt = hash.get("refresh_token") || qp.get("refresh_token");
-      if (at && rt) {
-        const { error } = await supabase.auth.setSession({ access_token: at, refresh_token: rt });
-        if (!mounted) return;
-        if (!error) { setStatus("success"); setMessage("Tudo pronto! Redirecionando..."); router.replace(normalizedRedirect); return; }
-        setStatus("error"); setMessage(error.message); return;
-      }
+    setStatus("sent");
+    setMessage("Enviamos um link de acesso para seu e-mail.");
+  };
 
-      setStatus("error"); setMessage("Não foi possível validar o link de autenticação.");
-    };
-    void run();
-    return () => { mounted = false; };
-  }, [supabase, router, normalizedRedirect, hasEnv]);
-
-  const back = () => router.replace(`/sign-in?redirectTo=${encodeURIComponent(normalizedRedirect)}`);
+  const goCallback = () => {
+    router.replace(`/auth/callback?redirectTo=${encodeURIComponent(normalizedRedirect)}`);
+  };
 
   return (
     <main className={styles.root}>
@@ -75,20 +61,51 @@ export default function AuthCallbackPage() {
         <div className={styles.message}>
           {status === "loading" ? <Loader size={Loader.sizes.SMALL} /> : null}
           <Text type={Text.types.TEXT2} weight={Text.weights.BOLD}>
-            {status === "success" ? "Login confirmado" : status === "error" ? "Falha na autenticação" : "Validando link"}
+            {status === "sent" ? "Verifique seu e-mail" : "Entrar"}
           </Text>
-          <Text type={Text.types.TEXT3} color={status === "error" ? Text.colors.NEGATIVE : Text.colors.SECONDARY}
-            className={status === "error" ? styles.errorText : undefined}>
-            {message}
-          </Text>
+          {message ? (
+            <Text
+              type={Text.types.TEXT3}
+              color={status === "error" ? Text.colors.NEGATIVE : Text.colors.SECONDARY}
+              className={status === "error" ? styles.errorText : undefined}
+            >
+              {message}
+            </Text>
+          ) : null}
         </div>
-        {status === "error" ? (
-          <Flex justify={Flex.justify.CENTER}>
-            <Button kind={Button.kinds.PRIMARY} type={Button.types.BUTTON} onClick={back}>
-              Voltar para o login
+
+        <form onSubmit={onSubmit} className={styles.form}>
+          <label htmlFor="email" className={styles.label}>
+            E-mail
+          </label>
+          <input
+            id="email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={styles.input}
+            placeholder="seu@email.com"
+            autoComplete="email"
+            inputMode="email"
+          />
+          <Flex justify={Flex.justify.CENTER} gap={8}>
+            <Button
+              kind={Button.kinds.PRIMARY}
+              type={Button.types.SUBMIT}
+              disabled={status === "loading" || !email}
+            >
+              Enviar link
+            </Button>
+            <Button
+              kind={Button.kinds.SECONDARY}
+              type={Button.types.BUTTON}
+              onClick={goCallback}
+            >
+              Já tenho link
             </Button>
           </Flex>
-        ) : null}
+        </form>
       </section>
     </main>
   );
