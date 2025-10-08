@@ -13,10 +13,10 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const run = async () => {
-      // 1) implicit: detectSessionInUrl=true salva a sessão se vier #access_token
+      // 1) implicit: detectSessionInUrl=true salva sessão se veio #access_token
       await supabase.auth.getSession();
 
-      // 2) fallback token_hash
+      // 2) fallback token_hash (alguns templates enviam magic link assim)
       const u = new URL(window.location.href);
       const hash = new URLSearchParams(location.hash.slice(1));
       const token_hash = u.searchParams.get("token_hash") || hash.get("token_hash");
@@ -25,7 +25,7 @@ export default function AuthCallbackPage() {
         if (error) { setErr(error.message); return; }
       }
 
-      // 3) garantir cookies para o middleware (sync server)
+      // 3) sincroniza cookies HTTP-only p/ middleware
       const { data } = await supabase.auth.getSession();
       const at = data.session?.access_token;
       const rt = data.session?.refresh_token;
@@ -37,9 +37,8 @@ export default function AuthCallbackPage() {
         body: JSON.stringify({ access_token: at, refresh_token: rt }),
         cache: "no-store",
       });
-      if (!r.ok) { setErr(await r.text().catch(()=>"Falha ao sincronizar.")); return; }
+      if (!r.ok) { setErr(await r.text().catch(()=> "Falha ao sincronizar.")); return; }
 
-      // 4) redirecionar somente após cookies escritos
       window.location.replace(redirectTo);
     };
     run();
