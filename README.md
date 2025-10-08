@@ -54,6 +54,8 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 - A sidebar fixa destaca a entrada **Dashboard** (antiga "Home") como atalho principal para essa visão inicial.
 - A tela lista os dados básicos do usuário logado (nome, email e UUID) para facilitar depuração.
 - Também apresenta todos os vínculos (`memberships`) do usuário com as organizações, destacando o papel (`org`, `leader`, `rep`) e o status de cada associação para validar cenários de permissão.
+- Falhas temporárias ao consultar memberships agora exibem um aviso amigável na própria página em vez de cair no erro genérico do Next.js, permitindo que usuários tentem novamente sem recarregar toda a aplicação.
+- A camada server do dashboard utiliza o cliente oficial `@supabase/supabase-js` para obter o tipo `User`, portanto mantenha as dependências instaladas com `pnpm install` após atualizar o projeto.
 - Utilize esta visualização para testar rapidamente como o conteúdo deverá variar conforme o papel em futuras implementações.
 
 ## Variáveis de ambiente
