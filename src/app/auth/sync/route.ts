@@ -1,4 +1,6 @@
 // src/app/auth/sync/route.ts
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
@@ -16,8 +18,18 @@ export async function POST(req: Request) {
     {
       cookies: {
         get() { return undefined; },
-        set(name, value, options) { res.cookies.set({ name, value, ...options }); },
-        remove(name, options) { res.cookies.set({ name, value: "", ...options }); },
+        set(name, value, options) {
+          res.cookies.set({
+            name, value, ...options,
+            path: "/", httpOnly: true, sameSite: "lax", secure: true,
+          });
+        },
+        remove(name, options) {
+          res.cookies.set({
+            name, value: "", ...options,
+            path: "/", httpOnly: true, sameSite: "lax", secure: true,
+          });
+        },
       },
     }
   );
@@ -25,5 +37,5 @@ export async function POST(req: Request) {
   const { error } = await supabase.auth.setSession({ access_token, refresh_token });
   if (error) return new NextResponse(error.message, { status: 400 });
 
-  return res; // cookies sb-* escritos
+  return res;
 }
