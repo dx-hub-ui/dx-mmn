@@ -1,9 +1,9 @@
-// middleware.ts — protect app surfaces; do NOT guard "/", "/auth/*", or "/sign-in"
+// middleware.ts — proteja só telas de app; não intercepte "/" nem "/auth/*" nem "/sign-in"
 import { NextRequest, NextResponse } from "next/server";
 
-async function validate(accessToken: string, supabaseUrl: string, anon: string) {
-  const r = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    headers: { Authorization: `Bearer ${accessToken}`, apikey: anon },
+async function validate(token: string, url: string, anon: string) {
+  const r = await fetch(`${url}/auth/v1/user`, {
+    headers: { Authorization: `Bearer ${token}`, apikey: anon },
     cache: "no-store",
   });
   if (r.ok) return true;
@@ -33,6 +33,7 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
+// src/app/(app)/dashboard → path é /dashboard
 export const config = {
   matcher: ["/dashboard/:path*", "/settings/:path*", "/tables/:path*", "/app/:path*"],
 };
