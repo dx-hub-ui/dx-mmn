@@ -36,13 +36,14 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 2. Habilite **Email** e selecione **Magic Link** ou **OTP** conforme desejado.
 3. Configure o domínio de envio de e-mails ou utilize o serviço padrão do Supabase em ambiente de desenvolvimento.
 4. Atualize as variáveis `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` com os valores do projeto.
-5. Para testar localmente, crie usuários via Magic Link ou usando o seed incluído (com emails `owner@example.com`, `leader@example.com`, etc.).
+5. Defina `NEXT_PUBLIC_SITE_URL` com a URL pública do frontend (ex.: `http://localhost:3000` em desenvolvimento ou `https://app.dxhub.com.br` em produção). Ela é utilizada como base para gerar o `emailRedirectTo` enviado ao Supabase.
+6. Para testar localmente, crie usuários via Magic Link ou usando o seed incluído (com emails `owner@example.com`, `leader@example.com`, etc.).
 
 ## Login via Magic Link
 
 1. Acesse `http://localhost:3000/` (a tela de login também está disponível em `/sign-in` para links diretos) e, opcionalmente, informe `redirectTo` para personalizar o destino após o login (por padrão `/dashboard`).
 2. Informe o email associado ao seu usuário e envie o formulário para receber um link mágico.
-3. O Supabase validará o token e redirecionará para `/auth/callback`, onde a sessão é persistida e você é levado ao caminho definido em `redirectTo` (padrão `/dashboard`).
+3. O Supabase redirecionará para `/auth/callback`. O callback tenta recuperar a sessão com `getSessionFromUrl(storeSession: true)` (cobrindo PKCE ou tokens no hash) e, se o código PKCE não puder ser trocado, faz fallback para `verifyOtp`, aceitando `token`/`token_hash` com tolerância aos tipos (`magiclink`, `signup`, `email`, `invite`). Em último caso utiliza `setSession` com `access_token`/`refresh_token` encontrados no fragmento. Somente após obter uma sessão válida sincronizamos os cookies HTTP-only via `/auth/sync` e seguimos para o destino informado em `redirectTo` (padrão `/dashboard`).
 4. Se precisar reenviar o link, basta repetir o processo; a tela exibirá o status da solicitação e qualquer erro retornado pelo Supabase.
 
 > **Dica:** durante o desenvolvimento, configure `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` com os valores do projeto para que o formulário fique ativo. Em ambientes de review, a interface informa quando as variáveis não estão configuradas.
@@ -61,6 +62,7 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 ```env
 NEXT_PUBLIC_SUPABASE_URL=...        # URL do projeto Supabase
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...   # Chave pública (anon)
+NEXT_PUBLIC_SITE_URL=...            # URL pública usada nos links mágicos
 SUPABASE_URL=...                    # Mesma URL para chamadas a Edge Functions
 SUPABASE_SERVICE_ROLE_KEY=...       # Chave service role (mantida somente no servidor)
 ```
@@ -80,10 +82,10 @@ Quando publicar, configure as mesmas variáveis no Supabase para cada função.
 
 1. **Login seguro** (`/` ou `/sign-in` + `/auth/callback` + `/dashboard`):
    - Usuários solicitam um link mágico de acesso na landing inicial da aplicação.
-   - Após confirmar o link recebido por email, o browser é redirecionado para `/auth/callback`, que registra a sessão antes de seguir para o dashboard protegido (padrão `/dashboard`).
-2. **Criação de organização** (`POST /api/orgs/create`):
-   - Usuário autenticado chama a rota.
-   - Route handler contata a Edge Function `create_org`, que valida o slug, cria a organização e um membership `org` para o usuário.
+  - Após confirmar o link recebido por email, o browser é redirecionado para `/auth/callback`, que usa `getSessionFromUrl` para reaproveitar códigos PKCE/tokens, faz fallback manual com `verifyOtp` tolerante a tipos (magic link, signup, recovery/invite) e, por fim, aceita `access_token`/`refresh_token` antes de sincronizar cookies HTTP-only e liberar o dashboard (padrão `/dashboard`).
+2. **Criação automática de organização** (`handle_new_user` + `memberships`):
+   - Assim que um usuário confirma o cadastro via Supabase, o gatilho `handle_new_user` cria uma organização padrão, gera o membership com papel `org` e espelha os metadados em `public.profiles`.
+   - A rota `POST /api/orgs/create` continua disponível para permitir que o usuário cadastre organizações adicionais com slug personalizado quando necessário.
 3. **Geração de convite** (`POST /api/invites/generate`):
    - Somente `org` e `leader` ativos podem gerar convites para `leader` ou `rep`.
    - Pode-se amarrar um novo `rep` a um líder específico (hierarquia) através de `parentLeaderId`.
@@ -114,6 +116,7 @@ Use o Supabase Studio com a opção **JWT override** ou tokens gerados via CLI (
 - Todas as mutações sensíveis (criação de organização, geração e resgate de convites) passam por Edge Functions com Service Role e validações de negócios.
 - RLS está habilitado em `memberships`, `contacts` e `invite_links`. Apenas leituras necessárias são liberadas aos usuários autenticados.
 - Função SQL `visible_membership_ids` calcula dinamicamente a subárvore de visibilidade, garantindo isolamento entre organizações e hierarquias.
+- `public.profiles` permanece sincronizada com `auth.users` através dos gatilhos `handle_new_user` (espelhamento + criação da organização padrão) e `handle_deleted_user` (remoção automática de perfis órfãos). A política `memberships_select_visible` usa a função `can_access_membership` (security definer) para evitar recursão infinita ao consultar visibilidade dentro do RLS.
 - Não exponha a Service Role key no cliente; somente rotas servidoras ou funções no backend devem utilizá-la.
 - Utilize HTTPS e configure domínios confiáveis de redirecionamento no Supabase para evitar abuso em convites.
 

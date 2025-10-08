@@ -7,6 +7,7 @@
   ```env
   NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+  NEXT_PUBLIC_SITE_URL=http://localhost:3000
   SUPABASE_URL=http://127.0.0.1:54321
   SUPABASE_SERVICE_ROLE_KEY=...
   ```
@@ -29,6 +30,11 @@ pnpm install
 pnpm dev
 ```
 A aplicação fica disponível em `http://localhost:3000`. Usuários seed: `owner@example.com`, `leader@example.com`, `rep1@example.com`, `rep2@example.com` (login via magic link/OTP).
+> **Fluxo de login:** o callback `/auth/callback` chama `getSessionFromUrl(storeSession: true)` para reaproveitar códigos PKCE ou tokens do hash; se faltar `code_verifier`, cai para `verifyOtp` com tolerância aos tipos (`magiclink`, `signup`, `email`, `invite`, `recovery`) e, em último caso, aceita `setSession` com `access_token`/`refresh_token`. Só depois sincroniza os cookies via `/auth/sync`. O middleware (`src/middleware.ts`) segue delegando a validação ao `createServerClient`, preservando os cookies emitidos pelo Supabase.
+
+> **Políticas RLS:** a função `can_access_membership` (security definer) garante que `memberships_select_visible` resolva visibilidade sem recursão infinita ao consultar `visible_membership_ids`, evitando o erro `42P17` observado quando policies acessam a própria tabela diretamente.
+
+> **Onboarding automático:** o gatilho SQL `handle_new_user` cria uma organização padrão e um membership `org` para cada usuário novo, além de espelhar os metadados em `public.profiles`. Ao remover um usuário em `auth.users`, o gatilho `handle_deleted_user` limpa o respectivo perfil.
 
 ## 5. Scripts úteis
 | Script | Descrição |
