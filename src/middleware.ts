@@ -1,4 +1,4 @@
-// middleware.ts — protect app surfaces; do NOT guard "/" or /auth/*
+// middleware.ts — protect app surfaces; do NOT guard "/", "/auth/*", or "/sign-in"
 import { NextRequest, NextResponse } from "next/server";
 
 async function validate(accessToken: string, supabaseUrl: string, anon: string) {
@@ -14,7 +14,6 @@ async function validate(accessToken: string, supabaseUrl: string, anon: string) 
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
-  // never touch auth or sign-in or home
   if (pathname.startsWith("/auth/") || pathname === "/sign-in" || pathname === "/") {
     return NextResponse.next();
   }
@@ -34,7 +33,6 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-// route group (app) still resolves to path "/dashboard"
 export const config = {
   matcher: ["/dashboard/:path*", "/settings/:path*", "/tables/:path*", "/app/:path*"],
 };
