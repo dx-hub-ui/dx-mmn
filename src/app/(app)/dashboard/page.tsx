@@ -38,20 +38,6 @@ async function getAuthenticatedUser(
   supabase: SupabaseServerClient
 ): Promise<User | null> {
   const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
-
-  if (sessionError) {
-    console.error("[dashboard] Falha ao recuperar a sessão atual", sessionError);
-    return null;
-  }
-
-  if (session?.user) {
-    return session.user;
-  }
-
-  const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
@@ -61,7 +47,21 @@ async function getAuthenticatedUser(
     return null;
   }
 
-  return user ?? null;
+  if (user) {
+    return user;
+  }
+
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    console.error("[dashboard] Falha ao recuperar a sessão atual", sessionError);
+    return null;
+  }
+
+  return session?.user ?? null;
 }
 
 async function getMemberships(

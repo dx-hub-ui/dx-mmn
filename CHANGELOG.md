@@ -3,11 +3,11 @@
 # 2025-11-07
 
 ### Fixed
-- `/api/user/profile` passa a ignorar erros de permissão (`PGRST301`/`42501`) ao consultar memberships, registrando o incidente em
-  telemetria e retornando o perfil mesmo sem vínculo ativo, evitando o erro 500 exibido no menu do usuário.
+- Dashboard passa a priorizar `supabase.auth.getUser()` antes de `getSession`, eliminando os avisos de segurança ao carregar `/dashboard` e garantindo que o usuário autenticado seja validado diretamente com o Supabase.
+- Recriamos a função `can_access_membership` com o parâmetro `target_membership_id` via migração `008_fix_dashboard_memberships.sql`, agora derrubando explicitamente a versão anterior antes de recriá-la, evitando o erro `42702 column reference "membership_id" is ambiguous` nas políticas ao listar memberships do dashboard e falhas ao aplicar a migração.
 
 ### Documentation
-- `docs/crm_readme.md` atualizado com a nota de correção sobre o fallback do membership na rota de perfil.
+- `docs/dev_setup_crm.md` atualizado com a observação sobre a nova migração que elimina a ambiguidade de `membership_id`.
 
 # 2025-11-06
 
