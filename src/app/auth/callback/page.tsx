@@ -192,11 +192,26 @@ export default function AuthCallbackPage() {
           return;
         }
 
+        const {
+          data: clientSessionData,
+          error: clientSessionError,
+        } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (clientSessionError && shouldStopDueTo(clientSessionError)) {
+          return;
+        }
+
+        captureSession(clientSessionData?.session ?? session);
+
         const syncResponse = await fetch("/auth/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ access_token: accessToken, refresh_token: refreshToken }),
           cache: "no-store",
+          credentials: "include",
         });
 
         if (!syncResponse.ok) {

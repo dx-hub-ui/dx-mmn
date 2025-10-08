@@ -1,10 +1,22 @@
 # Changelog
 
-# 2025-11-03
+# 2025-11-04
+
+### Changed
+- Sidebar principal substitui o item "Home" por **Dashboard** e aponta diretamente para `/dashboard`, alinhando a navegação com a nova página inicial autenticada.
 
 ### Documentation
-- Criamos `docs/monday_design_guide.md` com diretrizes completas para reproduzir a experiência visual e de interação do monday.com (páginas, modais, formulários, boards, feedback e tokens compartilhados).
-- README atualizado com link direto para o novo guia de design.
+- README atualizado para destacar o Dashboard como entrada principal da sidebar após o login.
+
+# 2025-11-03
+
+### Fixed
+- `/auth/callback` agora força `supabase.auth.setSession` no browser, sincroniza cookies via `/auth/sync` com `credentials: "include"` e respeita `persistSession`/`autoRefreshToken`, garantindo que o login por magic link continue válido após fechar e reabrir o navegador.
+- Middleware (`src/middleware.ts`) passou a tentar `getSession` + `refreshSession` antes de redirecionar, preservando sessões válidas ao acessar `/dashboard` ou demais rotas protegidas.
+- `/dashboard` agora força renderização dinâmica e usa `auth.getSession` antes do fallback `getUser`, assegurando que a sessão autenticada seja lida corretamente nos carregamentos subsequentes.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` explicam a persistência da sessão (setSession no browser + `/auth/sync` com credenciais) e o comportamento do middleware ao renovar tokens antes de redirecionar.
 
 # 2025-11-02
 

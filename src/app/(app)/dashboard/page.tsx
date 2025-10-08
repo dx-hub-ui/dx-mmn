@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import DashboardClient from "./DashboardClient";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type MembershipRow = {
   id: string;
   role: "org" | "leader" | "rep";
@@ -19,12 +22,27 @@ export default async function DashboardPage() {
   const supabase = createSupabaseServerClient();
 
   const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
 
-  if (userError) {
-    throw userError;
+  if (sessionError) {
+    throw sessionError;
+  }
+
+  let user = session?.user ?? null;
+
+  if (!user) {
+    const {
+      data: { user: fetchedUser },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError) {
+      throw userError;
+    }
+
+    user = fetchedUser ?? null;
   }
 
   if (!user) {
