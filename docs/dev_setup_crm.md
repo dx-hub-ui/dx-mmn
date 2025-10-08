@@ -7,6 +7,7 @@
   ```env
   NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+  NEXT_PUBLIC_SITE_URL=http://localhost:3000
   SUPABASE_URL=http://127.0.0.1:54321
   SUPABASE_SERVICE_ROLE_KEY=...
   ```
@@ -29,6 +30,7 @@ pnpm install
 pnpm dev
 ```
 A aplicação fica disponível em `http://localhost:3000`. Usuários seed: `owner@example.com`, `leader@example.com`, `rep1@example.com`, `rep2@example.com` (login via magic link/OTP).
+> **Fluxo de login:** o callback `/auth/callback` inicializa o cliente, tenta `exchangeCodeForSession(code)` e, caso o Supabase reclame de `code_verifier` ausente (links abertos em outro dispositivo), faz fallback para `verifyOtp(token_hash)` ou `setSession` com os tokens do hash antes de sincronizar os cookies via `/auth/sync`. O middleware (`src/middleware.ts`) segue delegando a validação ao `createServerClient`, preservando os cookies emitidos pelo Supabase.
 
 ## 5. Scripts úteis
 | Script | Descrição |

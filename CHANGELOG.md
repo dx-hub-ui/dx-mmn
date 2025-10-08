@@ -1,5 +1,38 @@
 # Changelog
 
+# 2025-10-31
+
+### Fixed
+- Reestruturamos `/auth/callback` para processar manualmente `code`, `token_hash` e tokens `access/refresh`, tolerando erros de PKCE e impedindo que o magic link expire ao chegar ao usuário.
+
+### Changed
+- O cliente Supabase no browser agora mantém `detectSessionInUrl` desativado, entregando ao callback o tratamento dos parâmetros e evitando que o SDK consuma o token antes da sincronização de cookies.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` atualizados com o passo a passo do callback manual, incluindo fallback PKCE/OTP e dicas de troubleshooting para links abertos em outro dispositivo.
+
+# 2025-10-30
+
+### Fixed
+- Corrigimos o callback de autenticação para aguardar `supabase.auth.initialize()`, reaproveitar a sessão detectada automaticamente e validar tokens legados com `verifyOtp`, eliminando o erro "code verifier" e os loops de retorno ao `/sign-in`.
+
+### Changed
+- Middleware agora usa `createServerClient` para validar usuários autenticados e propagar cookies do Supabase, substituindo o fetch manual que ignorava os cookies PKCE.
+
+### Documentation
+- Atualizamos o guia de login para detalhar a ordem do callback (inicialização, validação de sessão, fallback `token_hash`, sincronização) e registrar o novo middleware baseado no cliente do Supabase.
+
+# 2025-10-29
+
+### Fixed
+- Fluxo de callback do Supabase realiza `exchangeCodeForSession` ao receber `code` de PKCE e mantém o fallback de `token_hash`, evitando que os usuários sejam redirecionados de volta para `/sign-in` após clicar no magic link.
+
+### Changed
+- Formulário de login respeita o parâmetro `redirectTo` recebido via query string e gera `emailRedirectTo` usando `NEXT_PUBLIC_SITE_URL`, suportando múltiplos ambientes sem alterar o código.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` atualizados com a variável `NEXT_PUBLIC_SITE_URL` e a descrição do fluxo de troca PKCE no callback.
+
 # 2025-10-28
 
 ### Added
@@ -65,3 +98,9 @@
 
 ### Documentation
 - README atualizado com instruções para configurar e testar o fluxo de login via Magic Link.
+## 2025-10-15
+
+### Fixed
+- Corrigimos a troca de código PKCE em `/auth/callback` para usar a assinatura correta de `exchangeCodeForSession`, evitando falhas de build no fluxo de login por Magic Link.
+- Quando o Supabase não encontra `code_verifier` (ex.: link aberto em outro dispositivo), o callback agora ignora o erro e cai no `token_hash`, evitando o loop de autenticação ao validar magic links.
+
