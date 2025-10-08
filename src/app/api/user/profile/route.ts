@@ -324,19 +324,14 @@ async function getActiveMembership(supabase: SupabaseClient, userId: string): Pr
     .limit(1)
     .maybeSingle();
 
-  if (!error || error.code === "PGRST116") {
-    return {
-      id: data?.id ?? null,
-      organization_id: data?.organization_id ?? null,
-    };
+  if (error && error.code !== "PGRST116") {
+    throw error;
   }
 
-  if (error.code === "PGRST301" || error.code === "42501") {
-    await trackServerEvent("memberships/fetch_denied", { userId, code: error.code });
-    return { id: null, organization_id: null };
-  }
-
-  throw error;
+  return {
+    id: data?.id ?? null,
+    organization_id: data?.organization_id ?? null,
+  };
 }
 
 function buildProfileResponse({

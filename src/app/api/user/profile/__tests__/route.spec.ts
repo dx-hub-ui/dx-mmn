@@ -85,51 +85,6 @@ describe("/api/user/profile", () => {
     });
   });
 
-  it("retorna perfil mesmo quando memberships dispara erro de permissão", async () => {
-    const mockSupabase: any = {
-      auth: {
-        getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u1", email: "ana@example.com" } }, error: null }),
-      },
-      from: vi.fn(),
-    };
-    mockedCreateSupabaseServerClient.mockReturnValue(mockSupabase);
-
-    const profilesBuilder = createBuilder();
-    profilesBuilder.maybeSingle.mockResolvedValue({
-      data: {
-        email: "ana@example.com",
-        raw_user_meta_data: { display_name: "Ana QA", theme_preference: "dark" },
-      },
-      error: null,
-    });
-
-    const membershipsBuilder = createBuilder();
-    membershipsBuilder.maybeSingle.mockResolvedValue({
-      data: null,
-      error: { code: "42501", message: "permission denied" },
-    });
-
-    mockSupabase.from.mockImplementation((table: string) => {
-      if (table === "profiles") {
-        return profilesBuilder;
-      }
-      if (table === "memberships") {
-        return membershipsBuilder;
-      }
-      throw new Error(`unexpected table ${table}`);
-    });
-
-    const response = await GET();
-    expect(response.status).toBe(200);
-    const body = (await response.json()) as { profile: any };
-    expect(body.profile).toMatchObject({
-      user_id: "u1",
-      member_id: null,
-      org_id: null,
-    });
-    expect(mockedTrackServerEvent).toHaveBeenCalledWith("memberships/fetch_denied", { userId: "u1", code: "42501" });
-  });
-
   it("atualiza dados textuais do perfil", async () => {
     const mockSupabase: any = {
       auth: {

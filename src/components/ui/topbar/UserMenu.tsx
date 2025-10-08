@@ -161,6 +161,7 @@ export default function UserMenu() {
   );
 
   const avatarSrc = profile?.avatar_url ?? undefined;
+  const avatarType = avatarSrc ? Avatar.types.IMG : Avatar.types.TEXT;
 
   return (
     <>
@@ -171,10 +172,12 @@ export default function UserMenu() {
         closeMenuOnItemClick
         component={() => (
           <Avatar
+            id="user-menu-avatar"
+            size={Avatar.sizes.LARGE}
+            type={avatarType}
             src={avatarSrc}
             text={!avatarSrc ? avatarInitials : undefined}
-            customSize={32}
-            ariaLabel={profile?.display_name ?? "Conta"}
+            ariaLabel={profile?.display_name ?? profile?.email ?? "Conta"}
           />
         )}
         onMenuShow={() => {

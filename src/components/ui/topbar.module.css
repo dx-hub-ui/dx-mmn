@@ -20,4 +20,9 @@
 .productName { font: var(--dx-font-body-strong, 600 14px/20px var(--font-family, system-ui)); }
 
 .middle { min-width: 0; }
-.nav { display: inline-flex; align-items: center; gap: 8px; }
+.nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: end;
+}
