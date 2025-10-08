@@ -1,3 +1,4 @@
+// src/app/auth/sync/route.ts
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
@@ -15,9 +16,10 @@ export async function POST(req: Request) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      cookies: () => ({
+      // Use o shape de objeto (CookieMethodsServerDeprecated)
+      cookies: {
         get() {
-          return undefined;
+          return undefined; // não precisamos ler cookies aqui
         },
         set(name, value, options) {
           res.cookies.set({
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
             secure: true,
           });
         },
-      }),
+      },
     }
   );
 
