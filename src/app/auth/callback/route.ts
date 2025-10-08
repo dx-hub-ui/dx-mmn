@@ -12,27 +12,15 @@ export async function GET(req: Request) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name) {
-          // no read on first hit; cookies are set during exchange
-          return undefined;
-        },
-        set(name, value, options) {
-          res.cookies.set({ name, value, ...options });
-        },
-        remove(name, options) {
-          res.cookies.set({ name, value: "", ...options });
-        },
+        get() { return undefined; },
+        set(name, value, options) { res.cookies.set({ name, value, ...options }); },
+        remove(name, options) { res.cookies.set({ name, value: "", ...options }); },
       },
     }
   );
 
-  // PKCE magic link: exchange ?code=... for a session and set sb-* cookies.
-  const { error } = await supabase.auth.exchangeCodeForSession(url);
-
-  // Clean URL
-  url.searchParams.delete("code");
-  url.searchParams.delete("state");
-  url.searchParams.delete("token_hash");
+  // Fix: .toString()
+  const { error } = await supabase.auth.exchangeCodeForSession(url.toString());
 
   if (error) {
     const back = new URL("/sign-in", url.origin);
