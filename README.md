@@ -41,7 +41,7 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 
 ## Login via Magic Link
 
-1. Acesse `http://localhost:3000/` (a tela de login também está disponível em `/sign-in` para links diretos) e, opcionalmente, informe `redirectTo` para personalizar o destino após o login (por padrão `/dashboard`).
+1. Acesse `http://localhost:3000/` (a tela de login também está disponível em `/sign-in` para links diretos) e, opcionalmente, informe `redirectTo` para personalizar o destino após o login (por padrão `/dashboard`). Caso já exista uma sessão válida (cookies + storage gravados pelo Supabase), essas rotas redirecionam automaticamente para `/dashboard`, inclusive após fechar e reabrir o navegador.
 2. Informe o email associado ao seu usuário e envie o formulário para receber um link mágico.
 3. O Supabase redirecionará para `/auth/callback`. O callback chama `exchangeCodeForSession` para trocar códigos PKCE, tenta `verifyOtp` com `token_hash` ou `token` limitando-se aos tipos de OTP por email (`magiclink`, `signup`, `invite`, `recovery`, `email`, `email_change`) e, se necessário, aceita `setSession` com `access_token`/`refresh_token` encontrados no fragmento. Ao confirmar a sessão, forçamos `supabase.auth.setSession` no browser para persistir os tokens (com `persistSession` + `autoRefreshToken`) e só então sincronizamos os cookies HTTP-only via `/auth/sync` (requisição com `credentials: "include"`) antes de seguir para o destino `redirectTo` (padrão `/dashboard`). Esse fluxo ignora com segurança erros de `code_verifier` quando o link é aberto em outro dispositivo.
 4. Se precisar reenviar o link, basta repetir o processo; a tela exibirá o status da solicitação e qualquer erro retornado pelo Supabase.
@@ -54,6 +54,8 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 - A sidebar fixa destaca a entrada **Dashboard** (antiga "Home") como atalho principal para essa visão inicial.
 - A tela lista os dados básicos do usuário logado (nome, email e UUID) para facilitar depuração.
 - Também apresenta todos os vínculos (`memberships`) do usuário com as organizações, destacando o papel (`org`, `leader`, `rep`) e o status de cada associação para validar cenários de permissão.
+- Falhas temporárias ao consultar memberships agora exibem um aviso amigável na própria página em vez de cair no erro genérico do Next.js, permitindo que usuários tentem novamente sem recarregar toda a aplicação.
+- A camada server do dashboard utiliza o cliente oficial `@supabase/supabase-js` para obter o tipo `User`, portanto mantenha as dependências instaladas com `pnpm install` após atualizar o projeto.
 - Utilize esta visualização para testar rapidamente como o conteúdo deverá variar conforme o papel em futuras implementações.
 
 ## Variáveis de ambiente
@@ -83,6 +85,8 @@ Quando publicar, configure as mesmas variáveis no Supabase para cada função.
 
 1. **Login seguro** (`/` ou `/sign-in` + `/auth/callback` + `/dashboard`):
    - Usuários solicitam um link mágico de acesso na landing inicial da aplicação.
+   - Quando a aba é reaberta com tokens persistidos, `/sign-in` usa `getSession`/`onAuthStateChange` para recuperar a sessão, sincroniza os cookies via `/auth/sync` e só então redireciona automaticamente para o destino configurado, evitando loops infinitos em "Confirmando seu acesso..." e garantindo que o middleware `/dashboard` reconheça a autenticação.
+   - Para preservar a tipagem sem importar `@supabase/supabase-js` (que não entra no bundle edge), derive `AuthSession` com `Awaited<ReturnType<ReturnType<typeof createSupabaseBrowserClient>["auth"]["getSession"]>>["data"]["session"]`, assegurando autocompletes e builds consistentes ao evoluir o fluxo.
 - Após confirmar o link recebido por email, o browser é redirecionado para `/auth/callback`, que chama `exchangeCodeForSession` para trocar códigos PKCE, tenta `verifyOtp` com `token_hash`/`token` apenas para tipos de OTP por email (magic link, signup, invite, recovery, email, email_change) e, em último caso, aceita `access_token`/`refresh_token`. Em seguida, forçamos `supabase.auth.setSession` para gravar a sessão persistente no browser e sincronizamos cookies HTTP-only via `/auth/sync` com `credentials: "include"`, garantindo que o usuário continue autenticado mesmo após fechar o navegador.
 2. **Criação automática de organização** (`handle_new_user` + `memberships`):
    - Assim que um usuário confirma o cadastro via Supabase, o gatilho `handle_new_user` cria uma organização padrão, gera o membership com papel `org` e espelha os metadados em `public.profiles`.
