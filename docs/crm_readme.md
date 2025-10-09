@@ -3,7 +3,7 @@
 ## Visão Geral
 - A área `/crm` é servida via página `src/app/(app)/crm/page.tsx`, carregada dentro do AppShell padrão descrito em `page_design_guidelines.md`.
 - O módulo utiliza o Supabase (RLS) para carregar contatos e memberships visíveis através das funções utilitárias `listContacts` e `fetchVisibleMemberships`.
-- A listagem principal (`ContactsBoardPage`) é um componente client-side que combina filtros locais, views salvas e virtualização (`@tanstack/react-virtual`) para suportar coleções com 1k+ linhas mantendo acessibilidade (`role="grid"`, navegação por teclado, foco visível).
+- A listagem principal (`ContactsBoardPage`) usa componentes do Vibe (`Tabs`, `Table`) para alternar entre a visão em tabela e o Kanban. A tabela oferece ordenação por coluna, skeletons durante carregamentos e mantém a navegação por teclado acessível (`role="grid"`).
 
 ## Revisão de Bugs (Junho/2025)
 - **Prioridade Alta — Geração de convites bloqueada:** a rota `POST /api/invites/generate` lia apenas a variável `SUPABASE_URL`. Em ambientes que expõem apenas `NEXT_PUBLIC_SUPABASE_URL` (setup recomendado no restante do app) o endpoint retornava "Server configuration missing" e nenhum convite podia ser criado. A correção passa a aceitar ambas as chaves e normaliza a URL antes de chamar a função Edge do Supabase.
@@ -29,9 +29,8 @@
 
 ## Funcionalidades da Sprint 1
 - Board com colunas exigidas (checkbox, Nome, Dono, Estágio, Último toque, Próximo passo, Indicado por, Telefone, Tags, Score, Ações).
-- Filtros combináveis: estágio, dono, indicado por, tags, intervalo de próximo passo e busca global full-text (nome, email, telefone, tags, dono, indicado).
-- Views salvas pré-configuradas e documentadas (Meus, Time, Hoje, Sem toque 7d, Novos da semana, Indicados por mim).
-- Agrupamento dinâmico por estágio ou dono, com virtualização de linhas para manter performance.
+- Busca global acompanhada de views salvas pré-configuradas (Meus, Time, Hoje, Sem toque 7d, Novos da semana, Indicados por mim) expostas como botões no topo da tabela.
+- Ordenação por coluna e skeletons nativos da `@vibe/core/Table`, mantendo a leitura acessível enquanto dados são carregados.
 - Edição inline com validações BR, dedupe pré-inserção/atualização, normalização E.164 e feedback de erro/sucesso inline.
 - Criação rápida no topo da grade reutilizando as mesmas regras.
 - Seleção persistente entre filtros e paginações virtuais com telemetria `crm/selection_changed`.
@@ -63,7 +62,7 @@
 
 ## Decisões & Gaps
 - **@vibe/code indisponível**: não existe pacote público acessível, optamos por `@vibe/core` + CSS modules alinhados aos tokens globais; registrado aqui para futuras integrações caso o pacote seja disponibilizado.
-- **Virtualização customizada**: `@tanstack/react-virtual` foi adotado para evitar dependência pesada; garante foco e semântica de grid.
+- **Tabela usando @vibe/core**: adotamos `Tabs` + `Table` para alinhar a UI ao design Monday, com ordenação e skeletons nativos; removemos a virtualização customizada para simplificar o layout e reduzir CSS manual.
 - **Permissões**: RLS via Supabase garante owner visível; UI respeita roles (`Meus` usa membership atual, `Time` usa árvore via `visible_membership_ids`).
 - **Mutação autenticada**: rotas POST/PATCH (`/api/crm/contacts`) exigem `actorMembershipId` explícito para registrar eventos e validar hierarquias; requisições sem o campo respondem 400.
 - **Parser CSV leve**: `parseCsv` implementado manualmente. Casos com delimitadores alternativos ou arquivos muito grandes devem ser validados em QA futuro.

@@ -1,3 +1,11 @@
+# 2025-11-18
+
+### Changed
+- CRM: `ContactsBoardPage` passou a usar `Tabs` e `Table` do Vibe com layout enxuto, remoção da toolbar antiga, ordenação por coluna e skeletons nativos.
+
+### Documentation
+- Atualizamos `docs/crm_readme.md` com a nova experiência do board em abas e a simplificação dos filtros.
+
 # 2025-11-17
 
 ### Documentation
