@@ -6,6 +6,22 @@
 ### Documentation
 - `docs/sequences_module.md` revisado com as diretrizes da nova lista de sequências (cabeçalho sem breadcrumbs/KPIs, ícone `Open` no hover e uso de `--primary-background-color`).
 
+### Fixed
+- Normalizamos o fallback de contatos para atribuir `referred_by` como `null` quando o relacionamento está ausente, garantindo que `pnpm run build` não volte a falhar por tipos incompletos durante leituras individuais (`fetchContactById`).
+- Ajustamos o mapeamento de contatos para aceitar respostas do Supabase com `referred_by` como array ou objeto único, evitando futuras quebras caso a API altere o formato do relacionamento.
+
+### Documentation
+- `docs/crm_readme.md` atualizado com nota operacional cobrindo a normalização de `referred_by` no fallback para orientar incidentes em bancos restaurados.
+
+# 2025-11-14
+
+### Fixed
+- Ajustamos a consulta principal de contatos para usar `const` e satisfazer o lint `prefer-const`, garantindo que o fallback sem relacionamento siga aprovando no `pnpm run build` mesmo quando o Supabase não possui `contacts_referred_by_contact_id_fkey`.
+- Mantivemos `PostgrestFilterBuilder` importado de `@supabase/postgrest-js` e adicionamos o pacote como dependência direta, eliminando a quebra de build causada pela ausência do módulo nas pipelines.
+
+### Documentation
+- `docs/crm_readme.md` recebeu nota operacional explicando a dependência do lint `prefer-const` durante o fallback de contatos.
+- Documentamos que `@supabase/postgrest-js` está presente no `package.json`, garantindo que os tipos de filtros permaneçam disponíveis durante o build.
 # 2025-11-14
 
 ### Fixed
@@ -17,6 +33,10 @@
 # 2025-11-13
 
 ### Fixed
+- A API de contatos passou a fazer fallback automático quando o relacionamento `contacts_referred_by_contact_id_fkey` não está disponível no cache do Supabase, evitando o erro `PGRST200` ao carregar CRM e mantendo as ações em lote funcionais.
+
+### Documentation
+- `docs/crm_readme.md` atualizado com a mitigação para bancos sem o relacionamento de indicações, orientando o comportamento de fallback.
 - Topbar agora expande as três colunas por toda a largura da barra, alinhando a coluna da marca à variável `var(--sidebar-current, 272px)` para respeitar o estado atual da Sidebar.
 
 ### Documentation
