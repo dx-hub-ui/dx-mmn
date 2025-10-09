@@ -13,6 +13,7 @@ export type SequenceRow = {
   name: string;
   description: string | null;
   status: SequenceStatus;
+  is_active: boolean;
   default_target_type: SequenceTargetType;
   active_version_id: string | null;
   created_at: string;
@@ -84,6 +85,7 @@ export type SequenceRecord = {
   name: string;
   description: string | null;
   status: SequenceStatus;
+  isActive: boolean;
   defaultTargetType: SequenceTargetType;
   activeVersionId: string | null;
   createdAt: string;

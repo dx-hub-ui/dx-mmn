@@ -14,7 +14,11 @@ type MembershipRow = {
   } | null;
 };
 
-export default async function SequencesPage() {
+export default async function SequencesPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const supabase = createSupabaseServerClient();
 
   const {
@@ -57,6 +61,8 @@ export default async function SequencesPage() {
   }
 
   const sequences = await listSequencesByOrg(membership.organization_id);
+  const openNewModal = (typeof searchParams?.nova === "string" && searchParams.nova === "1") ||
+    (Array.isArray(searchParams?.nova) && searchParams?.nova.includes("1"));
 
   return (
     <SequenceManagerPage
@@ -64,6 +70,7 @@ export default async function SequencesPage() {
       orgId={membership.organization_id}
       organizationName={membership.organization.name}
       membershipRole={membership.role}
+      autoOpenNewModal={openNewModal}
     />
   );
 }

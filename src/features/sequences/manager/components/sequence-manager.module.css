@@ -183,7 +183,7 @@
 
 .table {
   width: 100%;
-  min-width: 960px;
+  min-width: 1040px;
   border-collapse: collapse;
 }
 
@@ -279,6 +279,60 @@
 .emptyTitle {
   font-size: 1.1rem;
   font-weight: 600;
+}
+
+.actionsHeader {
+  text-align: right;
+}
+
+.actionsCell {
+  text-align: right;
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.actionsHint {
+  font-size: 0.75rem;
+  color: var(--secondary-text-color, #676879);
+}
+
+.modalForm {
+  display: grid;
+  gap: 16px;
+}
+
+.modalFieldset {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: grid;
+  gap: 8px;
+}
+
+.modalFieldset[disabled] {
+  opacity: 0.7;
+}
+
+.modalFieldset legend {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--secondary-text-color, #676879);
+}
+
+.modalHint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--secondary-text-color, #676879);
+}
+
+.modalRadioGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 @media (max-width: 960px) {

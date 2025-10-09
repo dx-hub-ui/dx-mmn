@@ -1,3 +1,15 @@
+# 2025-11-10
+
+### Added
+- Modal de criação de sequência em `/sequences`, reutilizando componentes do Vibe, validações e telemetria (`sequences/new_created_modal`) antes de redirecionar para o editor.
+
+### Changed
+- Editor de sequências atualizado com Toggle de ativação (`@vibe/core/Toggle`) no cabeçalho, bloqueando passos, regras e inscrições enquanto `is_active` estiver verdadeiro.
+- Formulários de regras e inscrições passam a usar `fieldset` desabilitado, garantindo feedback visual consistente e impedindo salvamentos com a sequência ativa.
+
+### Documentation
+- `docs/sequences_module.md` revisado com o novo fluxo de criação via modal e o controle de ativação baseado em Toggle.
+
 # Changelog
 
 # 2025-11-09

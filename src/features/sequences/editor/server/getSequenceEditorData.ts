@@ -15,7 +15,7 @@ export async function getSequenceEditorData(sequenceId: string): Promise<Sequenc
     supabase
       .from("sequences")
       .select(
-        "id, org_id, name, description, status, default_target_type, active_version_id, created_at, updated_at"
+        "id, org_id, name, description, status, is_active, default_target_type, active_version_id, created_at, updated_at"
       )
       .eq("id", sequenceId)
       .maybeSingle(),

@@ -7,6 +7,7 @@ const BASE_ROW: SequenceManagerRow = {
   org_id: "org-1",
   name: "Boas-vindas",
   status: "active",
+  is_active: true,
   default_target_type: "contact",
   active_version_number: 2,
   steps_total: 4,
@@ -26,6 +27,7 @@ describe("normalizeSequenceManagerRow", () => {
       orgId: "org-1",
       name: "Boas-vindas",
       status: "active",
+      isActive: true,
       targetType: "contact",
       activeVersionNumber: 2,
       stepsTotal: 4,
@@ -51,6 +53,7 @@ describe("filterSequences", () => {
       sequence_id: "seq-2",
       name: "Reativação",
       status: "paused",
+      is_active: false,
       default_target_type: "member",
     }),
   ];

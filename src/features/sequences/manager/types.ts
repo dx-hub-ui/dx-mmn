@@ -6,6 +6,7 @@ export type SequenceManagerRow = {
   org_id: string;
   name: string;
   status: SequenceStatus;
+  is_active: boolean;
   default_target_type: SequenceTargetType;
   active_version_number: number | null;
   steps_total: number | null;
@@ -21,6 +22,7 @@ export type SequenceManagerItem = {
   orgId: string;
   name: string;
   status: SequenceStatus;
+  isActive: boolean;
   targetType: SequenceTargetType;
   activeVersionNumber: number;
   stepsTotal: number;

@@ -17,6 +17,7 @@ export function normalizeSequenceRow(row: SequenceRow): SequenceRecord {
     name: row.name,
     description: row.description,
     status: row.status,
+    isActive: row.is_active,
     defaultTargetType: row.default_target_type,
     activeVersionId: row.active_version_id,
     createdAt: row.created_at,

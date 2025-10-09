@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { trackServerEvent } from "@/lib/telemetry.server";
+import { captureSequenceServerBreadcrumb } from "@/lib/observability/sentryServer";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { SequenceAssigneeMode, SequenceStepType, SequenceTargetType } from "@/features/sequences/editor/types";
 
@@ -56,17 +57,120 @@ async function requireAuthContext(): Promise<SequenceAuthContext> {
   };
 }
 
-export async function createSequenceDraftAction() {
+async function publishSequenceVersionInternal(
+  context: SequenceAuthContext,
+  sequenceId: string,
+  versionId: string,
+  strategy: "terminate" | "migrate"
+) {
+  const { supabase, membership, userId } = context;
+  const now = new Date().toISOString();
+
+  const { error: versionError } = await supabase
+    .from("sequence_versions")
+    .update({
+      status: "published",
+      on_publish: strategy,
+      published_at: now,
+      published_by_membership_id: membership.id,
+    })
+    .eq("id", versionId)
+    .eq("sequence_id", sequenceId);
+
+  if (versionError) {
+    throw versionError;
+  }
+
+  const { error: sequenceError } = await supabase
+    .from("sequences")
+    .update({
+      status: "active",
+      active_version_id: versionId,
+      is_active: true,
+      updated_by_membership_id: membership.id,
+    })
+    .eq("id", sequenceId);
+
+  if (sequenceError) {
+    throw sequenceError;
+  }
+
+  captureSequenceServerBreadcrumb(
+    { orgId: membership.organization_id, sequenceId, versionId },
+    { message: "sequence_toggle_active", data: { state: "activated", strategy } }
+  );
+
+  await trackServerEvent(
+    "sequence_version_published",
+    { sequenceId, versionId, strategy },
+    { groups: { orgId: membership.organization_id, sequenceId }, distinctId: userId }
+  );
+
+  await trackServerEvent(
+    "sequences/toggle_active",
+    { sequenceId, versionId, state: "activated", strategy },
+    { groups: { orgId: membership.organization_id, sequenceId }, distinctId: userId }
+  );
+}
+
+async function deactivateSequenceInternal(
+  context: SequenceAuthContext,
+  sequenceId: string,
+  versionId: string
+) {
+  const { supabase, membership, userId } = context;
+
+  const { error } = await supabase
+    .from("sequences")
+    .update({
+      status: "paused",
+      is_active: false,
+      updated_by_membership_id: membership.id,
+    })
+    .eq("id", sequenceId);
+
+  if (error) {
+    throw error;
+  }
+
+  captureSequenceServerBreadcrumb(
+    { orgId: membership.organization_id, sequenceId, versionId },
+    { message: "sequence_toggle_active", data: { state: "deactivated" } }
+  );
+
+  await trackServerEvent(
+    "sequences/toggle_active",
+    { sequenceId, versionId, state: "deactivated" },
+    { groups: { orgId: membership.organization_id, sequenceId }, distinctId: userId }
+  );
+}
+
+export async function createSequenceDraftAction(input?: {
+  name: string;
+  targetType: SequenceTargetType;
+}) {
   const { supabase, membership, userId } = await requireAuthContext();
 
-  const defaultName = "Nova sequência";
+  const payload = input ?? { name: "", targetType: "contact" as SequenceTargetType };
+  const trimmedName = payload.name.trim();
+
+  if (!trimmedName) {
+    throw new Error("Informe um nome para a sequência.");
+  }
+
+  if (trimmedName.length < 3) {
+    throw new Error("O nome da sequência deve ter pelo menos 3 caracteres.");
+  }
+
+  const targetType: SequenceTargetType = payload.targetType === "member" ? "member" : "contact";
 
   const { data: sequence, error: sequenceError } = await supabase
     .from("sequences")
     .insert({
       org_id: membership.organization_id,
-      name: defaultName,
+      name: trimmedName,
       description: "",
+      default_target_type: targetType,
       created_by_membership_id: membership.id,
       updated_by_membership_id: membership.id,
     })
@@ -93,6 +197,17 @@ export async function createSequenceDraftAction() {
   if (versionError) {
     throw versionError;
   }
+
+  captureSequenceServerBreadcrumb(
+    { orgId: membership.organization_id, sequenceId: sequence.id, versionId: version.id },
+    { message: "sequences/new_created_modal", data: { targetType } }
+  );
+
+  await trackServerEvent(
+    "sequences/new_created_modal",
+    { sequenceId: sequence.id, versionId: version.id, targetType },
+    { groups: { orgId: membership.organization_id, sequenceId: sequence.id }, distinctId: userId }
+  );
 
   await trackServerEvent(
     "sequence_created",
@@ -340,40 +455,37 @@ export async function updateSequenceVersionRulesAction(input: UpdateVersionRules
   revalidatePath(`/sequences/${input.sequenceId}`);
 }
 
-export async function publishSequenceVersionAction(sequenceId: string, versionId: string, strategy: "terminate" | "migrate") {
-  const { supabase, membership, userId } = await requireAuthContext();
+export async function publishSequenceVersionAction(
+  sequenceId: string,
+  versionId: string,
+  strategy: "terminate" | "migrate"
+) {
+  const context = await requireAuthContext();
 
-  const now = new Date().toISOString();
+  await publishSequenceVersionInternal(context, sequenceId, versionId, strategy);
 
-  const { error: versionError } = await supabase
-    .from("sequence_versions")
-    .update({
-      status: "published",
-      on_publish: strategy,
-      published_at: now,
-      published_by_membership_id: membership.id,
-    })
-    .eq("id", versionId)
-    .eq("sequence_id", sequenceId);
+  revalidatePath("/sequences");
+  revalidatePath(`/sequences/${sequenceId}`);
+}
 
-  if (versionError) {
-    throw versionError;
+export async function updateSequenceActivationAction({
+  sequenceId,
+  versionId,
+  isActive,
+  strategy,
+}: {
+  sequenceId: string;
+  versionId: string;
+  isActive: boolean;
+  strategy?: "terminate" | "migrate";
+}) {
+  const context = await requireAuthContext();
+
+  if (isActive) {
+    await publishSequenceVersionInternal(context, sequenceId, versionId, strategy ?? "terminate");
+  } else {
+    await deactivateSequenceInternal(context, sequenceId, versionId);
   }
-
-  const { error: sequenceError } = await supabase
-    .from("sequences")
-    .update({ status: "active", active_version_id: versionId, updated_by_membership_id: membership.id })
-    .eq("id", sequenceId);
-
-  if (sequenceError) {
-    throw sequenceError;
-  }
-
-  await trackServerEvent(
-    "sequence_version_published",
-    { sequenceId, versionId, strategy },
-    { groups: { orgId: membership.organization_id, sequenceId }, distinctId: userId }
-  );
 
   revalidatePath("/sequences");
   revalidatePath(`/sequences/${sequenceId}`);
