@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type HTMLAttributes } from "react";
 import {
   Button,
   TabsContext,
@@ -14,9 +14,9 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  TableCellSkeleton,
+  Skeleton,
 } from "@vibe/core";
-import type { TableColumn } from "@vibe/core";
+import type { TableColumn, TableRowProps } from "@vibe/core";
 import {
   ContactRecord,
   ContactStageId,
@@ -58,6 +58,22 @@ const STAGE_TONES: Record<string, string> = {
 const STAGE_ORDER = new Map(CONTACT_STAGES.map((stage, index) => [stage.id, index] as const));
 
 const Tabs = TabsContext;
+
+type TableLoadingStateType = NonNullable<TableColumn["loadingStateType"]>;
+
+const SKELETON_WIDTH_BY_TYPE: Partial<Record<TableLoadingStateType, number>> = {
+  circle: 28,
+  rectangle: 48,
+  "medium-text": 140,
+};
+
+const SKELETON_HEIGHT_BY_TYPE: Partial<Record<TableLoadingStateType, number>> = {
+  circle: 28,
+  rectangle: 16,
+};
+
+type InteractiveRowProps = TableRowProps & HTMLAttributes<HTMLDivElement>;
+const InteractiveTableRow = TableRow as unknown as (props: InteractiveRowProps) => JSX.Element;
 
 type OrganizationInfo = {
   id: string;
@@ -166,6 +182,40 @@ function matchesFilters(contact: ContactRecord, filters: ContactFilters): boolea
   }
 
   return true;
+}
+
+function TableLoadingSkeletonCell({ type = "long-text" }: { type?: TableLoadingStateType }) {
+  const skeletonType =
+    type === "circle"
+      ? Skeleton.types.CIRCLE
+      : type === "rectangle"
+      ? Skeleton.types.RECTANGLE
+      : Skeleton.types.TEXT;
+
+  const width = SKELETON_WIDTH_BY_TYPE[type];
+  const height = SKELETON_HEIGHT_BY_TYPE[type];
+
+  const wrapperClassName = [
+    styles.tableSkeletonWrapper,
+    type === "medium-text" ? styles.tableSkeletonWrapperMedium : "",
+    type === "circle" ? styles.tableSkeletonWrapperCircle : "",
+    type === "rectangle" ? styles.tableSkeletonWrapperRectangle : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <TableCell>
+      <Skeleton
+        type={skeletonType}
+        width={width}
+        height={height}
+        fullWidth={type === "long-text"}
+        wrapperClassName={wrapperClassName}
+        className={styles.tableSkeleton}
+      />
+    </TableCell>
+  );
 }
 
 function compareStrings(a: string | null | undefined, b: string | null | undefined): number {
@@ -942,8 +992,10 @@ export default function ContactsBoardPage({
                   </TableHeader>
 
                   <TableBody>
-                    {isCreating && (
-                      <TableRow className={styles.tableRow} key="create-row">
+                    {[
+                      ...(isCreating
+                        ? [
+                          <TableRow className={styles.tableRow} key="create-row">
                         <TableCell>
                           <Button kind={Button.kinds.TERTIARY} onClick={() => setIsCreating(false)}>
                             Cancelar
@@ -1080,19 +1132,21 @@ export default function ContactsBoardPage({
                           </div>
                           {formErrors && <div className={styles.formError}>{formErrors}</div>}
                         </TableCell>
-                      </TableRow>
-                    )}
-                    {showSkeleton
-                      ? skeletonRows.map((rowIndex) => (
+                          </TableRow>,
+                          ]
+                        : []),
+                      ...(showSkeleton
+                        ? skeletonRows.map((rowIndex) => (
                           <TableRow key={`skeleton-${rowIndex}`} className={styles.tableRow}>
                             {tableColumns.map((column) => (
-                              <TableCell key={column.id}>
-                                <TableCellSkeleton type={column.loadingStateType} />
-                              </TableCell>
+                              <TableLoadingSkeletonCell
+                                key={column.id}
+                                type={column.loadingStateType}
+                              />
                             ))}
                           </TableRow>
                         ))
-                      : visibleContacts.map((contact) => {
+                        : visibleContacts.map((contact) => {
                           const stageDefinition = CONTACT_STAGES.find(
                             (stage) => stage.id === contact.stage
                           );
@@ -1284,7 +1338,7 @@ export default function ContactsBoardPage({
                           }
 
                           return (
-                            <TableRow
+                            <InteractiveTableRow
                               key={contact.id}
                               className={styles.tableRow}
                               data-selected={isSelected}
@@ -1351,9 +1405,11 @@ export default function ContactsBoardPage({
                                   Editar
                                 </Button>
                               </TableCell>
-                            </TableRow>
+                            </InteractiveTableRow>
                           );
-                        })}
+                        })
+                      ),
+                    ]}
                   </TableBody>
                 </Table>
               </div>

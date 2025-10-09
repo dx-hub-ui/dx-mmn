@@ -62,6 +62,7 @@
 
 ## Decisões & Gaps
 - **@vibe/code indisponível**: não existe pacote público acessível, optamos por `@vibe/core` + CSS modules alinhados aos tokens globais; registrado aqui para futuras integrações caso o pacote seja disponibilizado.
+- **Skeleton local do board**: como `TableCellSkeleton` não é exportado por `@vibe/core`, mantemos um wrapper `TableLoadingSkeletonCell` baseado em `Skeleton` + `TableCell` dentro de `ContactsBoardPage` para preservar o layout do carregamento sem depender de caminhos internos do pacote.
 - **Tabela usando @vibe/core**: adotamos `Tabs` + `Table` para alinhar a UI ao design Monday, com ordenação e skeletons nativos; removemos a virtualização customizada para simplificar o layout e reduzir CSS manual.
 - **Permissões**: RLS via Supabase garante owner visível; UI respeita roles (`Meus` usa membership atual, `Time` usa árvore via `visible_membership_ids`).
 - **Mutação autenticada**: rotas POST/PATCH (`/api/crm/contacts`) exigem `actorMembershipId` explícito para registrar eventos e validar hierarquias; requisições sem o campo respondem 400.

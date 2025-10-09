@@ -144,6 +144,29 @@
   background: rgba(58, 89, 255, 0.08);
 }
 
+.tableSkeletonWrapper {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 32px;
+  padding-inline-end: var(--spacing-large, 16px);
+}
+
+.tableSkeletonWrapperMedium {
+  width: 140px;
+  padding-inline-end: 0;
+}
+
+.tableSkeletonWrapperCircle,
+.tableSkeletonWrapperRectangle {
+  width: auto;
+  padding-inline-end: 0;
+}
+
+.tableSkeleton {
+  max-width: 100%;
+}
+
 .nameCell {
   display: flex;
   flex-direction: column;
