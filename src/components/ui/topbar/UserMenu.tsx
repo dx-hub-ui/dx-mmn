@@ -169,6 +169,8 @@ export default function UserMenu() {
         className={styles.menuButton}
         ariaLabel="Abrir menu do usuário"
         dialogPosition={MenuButton.dialogPositions.BOTTOM_END}
+        dialogClassName={styles.menuDialog}
+        zIndex={12000}
         closeMenuOnItemClick
         component={() => (
           <Avatar
@@ -178,6 +180,7 @@ export default function UserMenu() {
             src={avatarSrc}
             text={!avatarSrc ? avatarInitials : undefined}
             ariaLabel={profile?.display_name ?? profile?.email ?? "Conta"}
+            className={styles.avatar}
           />
         )}
         onMenuShow={() => {
