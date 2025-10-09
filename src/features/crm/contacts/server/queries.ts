@@ -13,13 +13,13 @@ export async function fetchContactById(
   supabase: SupabaseServerClient,
   contactId: string
 ): Promise<ContactRecord | null> {
-  let { data, error } = await supabase
+  const primaryResult = await supabase
     .from("contacts")
     .select(CONTACTS_SELECT_WITH_REFERRER)
     .eq("id", contactId)
     .maybeSingle();
 
-  if (error && error.code === "PGRST200") {
+  if (primaryResult.error?.code === "PGRST200") {
     const fallbackResult = await supabase
       .from("contacts")
       .select(CONTACTS_SELECT_CORE)
@@ -30,15 +30,23 @@ export async function fetchContactById(
       throw fallbackResult.error;
     }
 
-    data = fallbackResult.data;
-    error = null;
-  } else if (error) {
-    throw error;
+    if (!fallbackResult.data) {
+      return null;
+    }
+
+    return mapContactRow({
+      ...(fallbackResult.data as Record<string, unknown>),
+      referred_by: null,
+    } as ContactRow);
   }
 
-  if (!data) {
+  if (primaryResult.error) {
+    throw primaryResult.error;
+  }
+
+  if (!primaryResult.data) {
     return null;
   }
 
-  return mapContactRow(data as unknown as ContactRow);
+  return mapContactRow(primaryResult.data as unknown as ContactRow);
 }

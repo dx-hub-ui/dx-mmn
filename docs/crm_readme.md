@@ -11,6 +11,7 @@
 - **Prioridade Média — Indicações sem relacionamento:** ambientes com bancos restaurados antes da migração `contacts_referred_by_contact_id_fkey` quebravam toda leitura de contatos (`PGRST200`). A consulta agora tenta carregar o relacionamento `referred_by` e, caso o vínculo inexista, faz fallback automático para os campos básicos de contato, mantendo a listagem e ações em lote operacionais.
   - Observação operacional: o build de produção roda `pnpm run build`, que executa ESLint (`prefer-const`). Mantemos a consulta principal imutável (`const`) para que o fallback não volte a bloquear deploys quando o relacionamento estiver ausente.
   - Observação adicional: mantemos `@supabase/postgrest-js` como dependência direta para garantir que os tipos utilizados em `listContacts` estejam sempre disponíveis durante o `pnpm run build`.
+  - Observação adicional 2: ao usar o fallback sem relacionamento, normalizamos o retorno para garantir que `referred_by` seja tratado como `null`, evitando regressões de build causadas por tipos incompletos na resposta do Supabase.
 
 ## Camadas e Pastas
 - `src/features/crm/contacts/types.ts`: tipos compartilhados (estágios, filtros, metadados de membership) e eventos de telemetria.

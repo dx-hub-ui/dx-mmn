@@ -7,6 +7,11 @@ const DEFAULT_LIMIT = 1500;
 
 type SupabaseServerClient = ReturnType<typeof createSupabaseServerClient>;
 
+type ContactReferrerRow = {
+  id: string;
+  name: string;
+};
+
 export type ContactRow = {
   id: string;
   organization_id: string;
@@ -39,10 +44,7 @@ export type ContactRow = {
       raw_user_meta_data: Record<string, unknown> | null;
     } | null;
   } | null;
-  referred_by?: {
-    id: string;
-    name: string;
-  } | null;
+  referred_by?: ContactReferrerRow | ContactReferrerRow[] | null;
 };
 
 export const CONTACTS_SELECT_CORE = `id, organization_id, owner_membership_id, name, email, whatsapp, status, source, tags, score, last_touch_at, next_action_at, next_action_note, referred_by_contact_id, created_at, updated_at,
@@ -123,10 +125,26 @@ type MembershipRow = {
   } | null;
 };
 
+function normalizeReferredBy(
+  value: ContactRow["referred_by"]
+): ContactReferrerRow | null {
+  if (!value) {
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+
+  return value;
+}
+
 export function mapContactRow(row: ContactRow): ContactRecord {
   const ownerProfile = row.owner?.profile?.raw_user_meta_data as { name?: string; full_name?: string } | null;
   const ownerDisplayName =
     ownerProfile?.name ?? ownerProfile?.full_name ?? row.owner?.profile?.email ?? "Sem nome";
+
+  const referredBy = normalizeReferredBy(row.referred_by);
 
   return {
     id: row.id,
@@ -161,7 +179,7 @@ export function mapContactRow(row: ContactRow): ContactRecord {
             avatarUrl: null,
           }
         : null,
-    referredBy: row.referred_by ? { id: row.referred_by.id, name: row.referred_by.name } : null,
+    referredBy: referredBy ? { id: referredBy.id, name: referredBy.name } : null,
   };
 }
 

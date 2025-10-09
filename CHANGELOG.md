@@ -1,3 +1,12 @@
+# 2025-11-15
+
+### Fixed
+- Normalizamos o fallback de contatos para atribuir `referred_by` como `null` quando o relacionamento está ausente, garantindo que `pnpm run build` não volte a falhar por tipos incompletos durante leituras individuais (`fetchContactById`).
+- Ajustamos o mapeamento de contatos para aceitar respostas do Supabase com `referred_by` como array ou objeto único, evitando futuras quebras caso a API altere o formato do relacionamento.
+
+### Documentation
+- `docs/crm_readme.md` atualizado com nota operacional cobrindo a normalização de `referred_by` no fallback para orientar incidentes em bancos restaurados.
+
 # 2025-11-14
 
 ### Fixed
