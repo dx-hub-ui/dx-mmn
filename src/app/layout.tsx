@@ -2,9 +2,11 @@
 import { Suspense } from "react";
 import "./globals.css";
 import "monday-ui-style/dist/index.css"; // ✅ estilos base do Monday/Vibe
-import PostHogProvider from "@/components/observability/PostHogProvider";
 import { captureException } from "@sentry/nextjs";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
+import { createRequestId, setServerRequestContext } from "@/lib/request-context";
+import { ObservabilityProvider } from "@/providers/ObservabilityProvider";
 import {
   ThemePreference,
   getBodyThemeClass,
@@ -17,7 +19,13 @@ import {
 export const metadata = { title: "DX Vibe" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const requestHeaders = headers();
+  const existingRequestId = requestHeaders.get("x-request-id");
+  const requestId = existingRequestId ?? createRequestId();
+  setServerRequestContext({ requestId });
+
   let profileTheme: ThemePreference | null = null;
+  let userId: string | null = null;
 
   try {
     const supabase = createSupabaseServerClient();
@@ -27,6 +35,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     } = await supabase.auth.getUser();
 
     if (!userError && user) {
+      userId = user.id;
+      setServerRequestContext({ userId });
       const { data: profileRow, error: profileError } = await supabase
         .from("profiles")
         .select("raw_user_meta_data")
@@ -53,10 +63,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body id="main" className={bodyClass} suppressHydrationWarning>
-        <Suspense fallback={null}>
-          <PostHogProvider />
-        </Suspense>
-        {children}
+        <ObservabilityProvider
+          context={{
+            requestId,
+            userId,
+            orgId: null,
+          }}
+        >
+          <Suspense fallback={null}>{children}</Suspense>
+        </ObservabilityProvider>
       </body>
     </html>
   );

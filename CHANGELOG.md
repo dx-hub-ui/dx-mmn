@@ -1,5 +1,18 @@
 # Changelog
 
+# 2025-11-07
+
+### Added
+- Integração completa de observabilidade com `ObservabilityProvider`, request context, eventos tipados PostHog e nova API `/api/health/observability`.
+- Abstração de provedores de e-mail (Resend, Brevo e modo no-op), templates transacionais e pipeline de notificações com telemetria.
+- Scripts de fumaça (`pnpm test:smoke`) cobrindo Sentry, PostHog e e-mail, além dos endpoints `/api/health/email`.
+
+### Changed
+- Configurações do Sentry para clientes, servidor e edge agora incluem release automático, replays e profiling, com upload condicional de sourcemaps.
+- Middleware passa a propagar `x-request-id` para edge/server e inicializa escopo do Sentry, garantindo correlação de requisições.
+
+### Documentation
+- Novos guias `docs/observability.md`, `docs/email.md` e runbooks em `docs/runbooks/*` detalhando operação e mitigação de incidentes.
 # 2025-11-08
 
 ### Changed
