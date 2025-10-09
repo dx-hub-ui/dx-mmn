@@ -38,6 +38,8 @@ A aplicação fica disponível em `http://localhost:3000`. Usuários seed: `owne
 
 > **Políticas RLS:** a função `can_access_membership` (security definer) desativa temporariamente o RLS enquanto consulta `visible_membership_ids`, permitindo que `memberships_select_visible` calcule visibilidade sem disparar o erro `42P17` de recursão infinita. A migração `008_fix_dashboard_memberships.sql` remove a versão antiga da função antes de recriá-la com o parâmetro `target_membership_id`, evitando o erro `42702 column reference "membership_id" is ambiguous` e garantindo que o `supabase db reset` conclua sem falhas ao consultar memberships pelo dashboard.
 
+> **Relacionamento Profiles ↔ Memberships:** para habilitar o select aninhado `profile:profiles` usado nas APIs (`supabase.from("memberships").select(...)`), a migração `009_fix_memberships_profiles_fk.sql` substitui o `FOREIGN KEY` de `memberships.user_id` para apontar diretamente a `public.profiles(id)` com `ON DELETE CASCADE`. Isso mantém o PostgREST ciente da relação espelhada, evita o erro `PGRST200` durante joins e continua removendo memberships automaticamente quando o perfil associado for apagado pelos gatilhos de deleção.
+
 > **Onboarding automático:** o gatilho SQL `handle_new_user` cria uma organização padrão e um membership `org` para cada usuário novo, além de espelhar os metadados em `public.profiles`. Ao remover um usuário em `auth.users`, o gatilho `handle_deleted_user` limpa o respectivo perfil.
 
 ## 5. Scripts úteis
