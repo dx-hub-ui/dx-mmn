@@ -1,3 +1,11 @@
+# 2025-11-21
+
+### Fixed
+- Impedimos que o helper `createSupabaseServerClient` derrube o runtime quando o Next bloqueia `cookies().set`, encapsulando a mutação em `try/catch` e registrando um aviso somente em desenvolvimento.
+
+### Documentation
+- Documentamos no `README.md` que o helper ignora mutações de cookie fora de Server Actions/Route Handlers para evitar o erro "Cookies can only be modified in a Server Action or Route Handler".
+
 # 2025-11-20
 
 ### Changed

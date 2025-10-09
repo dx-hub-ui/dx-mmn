@@ -127,6 +127,7 @@ Use o Supabase Studio com a opção **JWT override** ou tokens gerados via CLI (
 - Para evitar ambiguidades entre colunas e parâmetros PL/pgSQL, o segundo parâmetro da função `can_access_membership` foi renomeado para `target_membership_id`. Essa alteração elimina o erro `42702 column reference "membership_id" is ambiguous` observado ao consultar memberships a partir do dashboard.
 - Não exponha a Service Role key no cliente; somente rotas servidoras ou funções no backend devem utilizá-la.
 - Utilize HTTPS e configure domínios confiáveis de redirecionamento no Supabase para evitar abuso em convites.
+- No App Router do Next.js 14.2+, mutações de cookies (`cookies().set`/`delete`) só são permitidas dentro de Server Actions ou Route Handlers. O helper `createSupabaseServerClient` trata automaticamente essa limitação: em ambientes onde o Next bloqueia a escrita (como Server Components), o helper registra um aviso no console e segue com a execução somente-leitura, evitando o erro `Cookies can only be modified in a Server Action or Route Handler` exibido recentemente em produção.
 
 ## Referências úteis
 
