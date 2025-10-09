@@ -1,3 +1,8 @@
+# 2025-11-17
+
+### Documentation
+- Added `docs/table_design_reference.md` consolidating monday.com-style table patterns, header behaviors, and skeleton guidance for developers.
+
 # 2025-11-16
 
 ### Changed
