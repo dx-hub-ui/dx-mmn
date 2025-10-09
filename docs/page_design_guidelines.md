@@ -5,7 +5,7 @@
 ## 1) Layout & Estrutura
 - **Use sempre o AppShell**: páginas devem ser renderizadas dentro de `src/app/(app)/layout.tsx` que injeta `<AppShell>...`.
 - **Não altere Topbar/Sidebar**: respeite as APIs expostas (ex.: `isSidebarOpen`) e evite CSS que vaze para esses componentes.
-- **Menu do usuário**: o avatar (`@vibe/core/Avatar` com `size="large"`) fica ancorado no canto direito da Topbar, encostado no padding externo da barra. O `MenuButton` precisa manter o avatar quadrado (40px) sem esticar e o menu deve abrir acima de qualquer outro overlay (`z-index` alto) garantindo que tooltips e dropdowns não fiquem atrás da Sidebar. O menu expõe "Minha conta", "Mudar tema" (Claro/Escuro/Noite com estado selecionado) e "Logout"; teclas de navegação/ESC precisam funcionar.
+- **Menu do usuário**: o avatar (`@vibe/core/Avatar` com `size="large"`) fica ancorado no canto direito da Topbar, encostado no padding externo da barra. O `MenuButton` precisa manter o avatar quadrado (40px) sem esticar e o menu deve abrir acima de qualquer outro overlay (`z-index` alto) garantindo que tooltips e dropdowns não fiquem atrás da Sidebar. O menu expõe "Minha conta", "Mudar tema" (Claro/Escuro/Noite com estado selecionado) e "Logout"; teclas de navegação/ESC precisam funcionar. **Sempre envolva submenus em `<Menu>`** (ex.: opções de tema) para cumprir a expectativa de `React.Children.only` do `@vibe/core/MenuItem` e evitar erros em runtime.
 - **Modal "Minha conta"**: use `@vibe/core/Modal` com tabs "Visão geral" (IDs apenas leitura) e "Perfil" (inputs, textarea e upload de avatar). Valide client/server, mantenha o campo obrigatório de "Nome exibido" (display name) e emita telemetria (`profile/save_*`, `avatar/upload_*`).
 - **Observabilidade**: capture exceções inesperadas do menu/modal com `captureException` (`@sentry/nextjs`) para manter o rastreio de falhas no cliente.
 - **Temas suportados**: a `<html>` recebe classes `theme-light`, `theme-dark` ou `theme-night`; `body#main` combina com `light-app-theme`/`dark-app-theme`/`night-app-theme`. Sempre aplique alterações via helpers de `src/lib/theme.ts` para sincronizar `localStorage` e o Supabase.
@@ -28,6 +28,7 @@ export default function MinhaPagina() {
 ```
 
 ## 2) Tokens de Design & CSS
+- **Importe estilos base do Vibe** em `src/app/globals.css` com `@import "monday-ui-style/dist/index.css";` antes de qualquer declaração `@tailwind`, garantindo que o CSS seja carregado uma única vez sem gerar avisos de preload no navegador.
 - **Variáveis globais** (definidas no tema):
   - Dimensões: `--dx-top-bar-height`, `--dx-sidebar-width`, `--dx-sidebar-collapsed-width`.
   - Cores: `--dx-bg`, `--dx-text`, `--dx-border`, `--surface-color`, etc.

@@ -17,6 +17,33 @@
 
 # Changelog
 
+# 2025-11-12
+
+### Fixed
+- Reestruturamos a Topbar em três colunas para garantir o avatar ancorado à direita e adicionamos o atalho de Inbox usando `@vibe/core/IconButton` com o ícone `@vibe/icons/Inbox`.
+
+### Documentation
+- Atualizamos `docs/monday_design_guide.md` com a nova organização da Topbar e o posicionamento do atalho de Inbox antes do menu do usuário.
+
+# 2025-11-11
+
+### Fixed
+- Corrigimos o submenu de tema do menu do usuário para renderizar um único elemento filho (`<Menu>`), eliminando o erro `React.Children.only` ao abrir o avatar na Topbar.
+- Movemos o carregamento do CSS base do Vibe para `globals.css`, prevenindo o aviso de preload não utilizado emitido pelo navegador em produção.
+
+### Documentation
+- Atualizamos `docs/page_design_guidelines.md` com a orientação sobre envolver submenus em `<Menu>` e sobre o carregamento global do CSS do Vibe.
+
+# 2025-11-10
+
+### Fixed
+- Ajustamos a página `/` para não mais chamar `supabase.auth.refreshSession` no servidor, evitando o erro "Cookies can only be modified in a Server Action or Route Handler" ao acessar a aplicação.
+- Ajustamos o `FOREIGN KEY` de `public.memberships.user_id` para apontar a `public.profiles(id)` com `ON DELETE CASCADE`, permitindo que o Supabase exponha o relacionamento `profile:profiles` e eliminando o erro `PGRST200` ao carregar memberships com dados de perfil.
+- A consulta de contatos da página `/crm` agora especifica o relacionamento `memberships!contacts_owner_membership_id_fkey`, removendo o erro `PGRST201` causado pela ambiguidade entre os vínculos `invited_by` e `owner_membership_id`.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` atualizados com a nova relação `profiles ↔ memberships` e o impacto da migração `009_fix_memberships_profiles_fk.sql`.
+
 # 2025-11-09
 
 ### Added

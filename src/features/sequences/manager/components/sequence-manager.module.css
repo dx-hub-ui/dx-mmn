@@ -7,12 +7,7 @@
 
 .pageHeader {
   padding: clamp(24px, 5vw, 40px);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--dx-app-canvas-top, #d3e6e8) 75%, transparent) 0%,
-      var(--dx-surface, var(--primary-background-color)) 120px
-    );
+  background: var(--dx-surface, var(--application-background-color));
   border-bottom: 1px solid var(--dx-border, var(--layout-border-color));
   display: grid;
   gap: 20px;

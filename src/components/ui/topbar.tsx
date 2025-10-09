@@ -1,5 +1,7 @@
 "use client";
 
+import { IconButton } from "@vibe/core";
+import { Inbox } from "@vibe/icons";
 import clsx from "clsx";
 import styles from "./topbar.module.css";
 import UserMenu from "./topbar/UserMenu";
@@ -16,6 +18,13 @@ export default function Topbar({ isSidebarOpen, className }: TopbarProps) {
         </div>
         <div className={styles.middle} />
         <nav className={styles.nav} aria-label="Topbar actions">
+          <IconButton
+            icon={Inbox}
+            ariaLabel="Abrir inbox"
+            tooltipContent="Inbox"
+            size={IconButton.sizes.MEDIUM}
+            kind={IconButton.kinds.TERTIARY}
+          />
           <UserMenu />
         </nav>
       </div>

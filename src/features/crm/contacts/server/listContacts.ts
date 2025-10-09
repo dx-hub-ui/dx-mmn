@@ -109,7 +109,7 @@ export async function listContacts(
     .select(
       `id, organization_id, owner_membership_id, name, email, whatsapp, status, source, tags, score, last_touch_at, next_action_at, next_action_note, referred_by_contact_id, created_at, updated_at,
        lost_reason, lost_review_at, archived_at,
-       owner:memberships (id, organization_id, role, user_id, parent_leader_id, profile:profiles (id, email, raw_user_meta_data)),
+       owner:memberships!contacts_owner_membership_id_fkey (id, organization_id, role, user_id, parent_leader_id, profile:profiles (id, email, raw_user_meta_data)),
        referred_by:contacts!contacts_referred_by_contact_id_fkey (id, name)`
     )
     .eq("organization_id", organizationId)
