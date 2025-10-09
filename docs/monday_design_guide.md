@@ -49,7 +49,8 @@
 - **Boards** (Tabela, Kanban, Calendar):
   - Toolbar fixa sob o header com filtros, Views, botões de automações.
   - Seções: `BoardHeader` (titulo, descrição, star, share), `BoardToolbar`, `BoardContent` (scroll independente).
-  - Utilize `@tanstack/react-table` para tabela, com colunas reordenáveis e cabeçalho sticky.
+- Utilize `@tanstack/react-table` para tabela, com colunas reordenáveis e cabeçalho sticky.
+- Quando usar `@vibe/core/Table`, mantenha o array `columns` restrito aos campos suportados pela API (id, title, width, etc.) e transporte metadados visuais (ex.: `sticky`, `headerClassName`) separadamente para aplicá-los diretamente nos componentes de cabeçalho. Isso evita que o build quebre com validações de tipo/lint ao estender as colunas. Uma estratégia prática é guardar cada coluna como `{ definition, header }`, onde `definition` é passada ao componente `Table` e `header` concentra as props específicas usadas nos `TableHeaderCell`.
 - **Dashboards**:
   - Grid responsivo (`repeat(auto-fit, minmax(320px, 1fr))`). Cards com header (icone + título), KPI e footer com CTA.
 - **Páginas de Configuração**:
@@ -92,6 +93,7 @@
 - Checkboxes `@vibe/core` para seleção múltipla, Bulk Actions bar flutuante inferior.
 - Kanban: colunas com header (Status + contagem + SLA) e cards arrastáveis `@dnd-kit`.
 - Calendário: estilo Monday `Timeline` com faixas coloridas (usando cor da coluna).
+- Referência viva: `src/features/tasks/my/components/MyTasksPage.tsx` usa `@vibe/core/Table` com badges de status "tinted" e ações inline seguindo tokens `--dx-*`.
 
 ## 12. Experiência Mobile & Responsiva
 - Breakpoints: `--bp-sm: 640px`, `--bp-md: 960px`, `--bp-lg: 1280px` (definir via CSS custom properties ou `clamp`).

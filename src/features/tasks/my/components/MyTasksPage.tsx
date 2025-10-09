@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import clsx from "clsx";
-import { Button } from "@vibe/core";
+import { Button, EmptyState, Flex, Text } from "@vibe/core";
 import { useRouter } from "next/navigation";
 import { completeAssignmentAction, snoozeAssignmentAction } from "@/app/(app)/tasks/actions";
 import { trackEvent } from "@/lib/telemetry";
@@ -11,6 +11,8 @@ import { filterTasks, statusLabel } from "../normalize";
 import type { AssignmentStatus, MyTaskItem, MyTasksFilter } from "../types";
 import styles from "./my-tasks.module.css";
 import TaskDetailsDialog from "./TaskDetailsDialog";
+import type { TableColumn } from "@vibe/core";
+import { Table, TableBody, TableCell, TableContainer, TableHeader, TableHeaderCell, TableRow } from "@vibe/core";
 
 const FILTERS: { id: MyTasksFilter; label: string }[] = [
   { id: "todos", label: "Todas" },
@@ -20,10 +22,77 @@ const FILTERS: { id: MyTasksFilter; label: string }[] = [
   { id: "adiadas", label: "Adiados" },
 ];
 
+type ColumnConfig = {
+  definition: TableColumn;
+  header?: {
+    sticky?: boolean;
+    className?: string;
+  };
+};
+
+const COLUMN_CONFIGS: ColumnConfig[] = [
+  {
+    definition: {
+      id: "task",
+      title: "Tarefa",
+      width: "2fr",
+    },
+    header: {
+      sticky: true,
+      className: styles.headerCellPrimary,
+    },
+  },
+  {
+    definition: {
+      id: "sequence",
+      title: "Sequência › Step",
+      width: "1.6fr",
+    },
+  },
+  {
+    definition: {
+      id: "due",
+      title: "Vencimento",
+      width: "1fr",
+    },
+  },
+  {
+    definition: {
+      id: "status",
+      title: "Status",
+      width: "1fr",
+    },
+  },
+  {
+    definition: {
+      id: "signals",
+      title: "Sinais",
+      width: "1.2fr",
+    },
+  },
+  {
+    definition: {
+      id: "actions",
+      title: "Ações rápidas",
+      width: "1.4fr",
+    },
+    header: {
+      className: styles.headerCellEnd,
+    },
+  },
+];
+
 type MyTasksPageProps = {
   orgId: string;
   membershipId: string;
   tasks: MyTaskItem[];
+};
+
+const STATUS_CLASS_MAP: Record<AssignmentStatus, string> = {
+  open: styles.statusOpen,
+  done: styles.statusDone,
+  snoozed: styles.statusSnoozed,
+  blocked: styles.statusBlocked,
 };
 
 function formatDate(value: string | null) {
@@ -38,21 +107,6 @@ function formatDate(value: string | null) {
     }).format(new Date(value));
   } catch {
     return "—";
-  }
-}
-
-function statusClass(status: AssignmentStatus) {
-  switch (status) {
-    case "open":
-      return styles.statusOpen;
-    case "done":
-      return styles.statusDone;
-    case "snoozed":
-      return styles.statusSnoozed;
-    case "blocked":
-      return styles.statusBlocked;
-    default:
-      return styles.statusOpen;
   }
 }
 
@@ -87,6 +141,34 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
   );
 
   const filteredTasks = useMemo(() => filterTasks(items, filter), [items, filter]);
+  const tableColumns = useMemo<TableColumn[]>(
+    () => COLUMN_CONFIGS.map((column) => column.definition),
+    []
+  );
+
+  const stickyColumnIds = useMemo(
+    () =>
+      new Set(
+        COLUMN_CONFIGS.filter((column) => column.header?.sticky).map(
+          (column) => column.definition.id
+        )
+      ),
+    []
+  );
+
+  const emptyState = (
+    <EmptyState
+      title="Nenhuma tarefa para esse filtro"
+      description="Assim que novas tarefas forem geradas pelas sequências, elas aparecerão aqui para você priorizar."
+      mainAction={<Button kind={Button.kinds.PRIMARY} disabled>Abrir sequência</Button>}
+    />
+  );
+
+  const tableErrorState = (
+    <div className={styles.tableErrorState} role="alert">
+      Não foi possível carregar as tarefas.
+    </div>
+  );
 
   const closeDialog = () => {
     setSelectedTask(null);
@@ -188,29 +270,40 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
   return (
     <section className={styles.page} aria-labelledby="my-tasks-title">
       <header className={styles.pageHeader}>
-        <h1 id="my-tasks-title" className={styles.pageTitle}>
-          Minhas tarefas
-        </h1>
-        <p className={styles.helperText}>
-          Visualize todas as ações geradas pelas sequências da organização e acompanhe o que precisa ser feito.
-        </p>
+        <div className={styles.pageHeaderContent}>
+          <Text element="h1" id="my-tasks-title" type={Text.types.TEXT1} weight={Text.weights.BOLD} className={styles.pageTitle}>
+            Minhas tarefas
+          </Text>
+          <Text type={Text.types.TEXT2} color={Text.colors.SECONDARY} className={styles.helperText}>
+            Visualize todas as ações geradas pelas sequências da organização e acompanhe o que precisa ser feito.
+          </Text>
+        </div>
       </header>
 
       <div className={styles.pageBody}>
-        <div className={styles.tabList} role="tablist" aria-label="Filtros de tarefas">
-          {FILTERS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={filter === item.id}
-              className={styles.tabButton}
-              onClick={() => setFilter(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <Flex
+          direction={Flex.directions.ROW}
+          wrap
+          gap={Flex.gaps.SMALL}
+          className={styles.toolbar}
+          role="toolbar"
+          aria-label="Filtros de tarefas"
+        >
+          <div className={styles.tabList} role="tablist" aria-label="Filtros de tarefas">
+            {FILTERS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={filter === item.id}
+                className={styles.tabButton}
+                onClick={() => setFilter(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </Flex>
 
         {pageError ? (
           <div role="alert" className={styles.errorBanner}>
@@ -218,90 +311,93 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
           </div>
         ) : null}
 
-        <div className={styles.tableWrapper} role="region" aria-live="polite">
-          {filteredTasks.length === 0 ? (
-            <div className={styles.emptyState}>
-              <h2>Nenhuma tarefa para esse filtro</h2>
-              <p className={styles.helperText}>
-                Assim que novas tarefas forem geradas pelas sequências, elas aparecerão aqui para você priorizar.
-              </p>
-              <Button kind={Button.kinds.PRIMARY} disabled>
-                Abrir sequência
-              </Button>
-            </div>
-          ) : (
-            <table className={styles.table} role="grid" aria-labelledby="my-tasks-title">
-              <thead>
-                <tr>
-                  <th scope="col">Tarefa</th>
-                  <th scope="col">Sequência › Step</th>
-                  <th scope="col">Vencimento</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Sinais</th>
-                  <th scope="col">Ações rápidas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTasks.map((task) => (
-                  <tr key={task.id}>
-                    <th scope="row">{task.stepTitle}</th>
-                    <td>
-                      <div>
-                        <strong>{task.sequenceName}</strong>
-                      </div>
-                      <div className={styles.helperText}>{task.targetType === "contact" ? "Contato" : "Membro"}</div>
-                    </td>
-                    <td>{formatDate(task.dueAt)}</td>
-                    <td>
-                      <span className={clsx(styles.statusPill, statusClass(task.status))}>{statusLabel(task.status)}</span>
-                    </td>
-                    <td>
-                      <div className={styles.flags}>
-                        {task.isOverdue ? <span className={styles.flag}>Em atraso</span> : null}
-                        {task.isSnoozed ? <span className={styles.flag}>Adiado</span> : null}
-                        {task.isBlocked ? <span className={styles.flag}>Bloqueado</span> : null}
-                      </div>
-                    </td>
-                  <td>
-                    <div className={styles.actions}>
-                        <Button
-                          kind={Button.kinds.SECONDARY}
-                          size={Button.sizes.SMALL}
-                          onClick={() => handleComplete(task)}
-                          disabled={isBusy}
-                        >
-                          Concluir
-                        </Button>
-                        <Button
-                          kind={Button.kinds.TERTIARY}
-                          size={Button.sizes.SMALL}
-                          onClick={() => {
-                            setSelectedTask(task);
-                            setActionError(null);
-                          }}
-                          disabled={isBusy}
-                        >
-                          Adiar
-                        </Button>
-                        <Button
-                          kind={Button.kinds.TERTIARY}
-                          size={Button.sizes.SMALL}
-                          onClick={() => {
-                            setSelectedTask(task);
-                            setActionError(null);
-                          }}
-                          disabled={isBusy}
-                        >
-                          Ver detalhes
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
+        <TableContainer surface="primary" className={styles.tableShell} role="region" aria-live="polite">
+          <Table
+            aria-labelledby="my-tasks-title"
+            columns={tableColumns}
+            emptyState={emptyState}
+            errorState={tableErrorState}
+            withoutBorder
+          >
+            <TableHeader>
+              <TableRow>
+                {COLUMN_CONFIGS.map((column) => (
+                  <TableHeaderCell
+                    key={column.definition.id}
+                    title={column.definition.title}
+                    sticky={column.header?.sticky}
+                    className={column.header?.className}
+                  />
                 ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {filteredTasks.map((task) => (
+                <TableRow
+                  key={task.id}
+                  highlighted={selectedTask?.id === task.id}
+                  className={styles.tableRow}
+                >
+                  <TableCell sticky={stickyColumnIds.has("task")} className={styles.primaryCell}>
+                    <div className={styles.primaryTitle}>{task.stepTitle}</div>
+                  </TableCell>
+                  <TableCell className={styles.sequenceCell}>
+                    <div className={styles.sequenceName}>{task.sequenceName}</div>
+                    <div className={styles.metaCaption}>{task.targetType === "contact" ? "Contato" : "Membro"}</div>
+                  </TableCell>
+                  <TableCell className={styles.metaCell}>{formatDate(task.dueAt)}</TableCell>
+                  <TableCell className={styles.statusCell}>
+                    <span className={clsx(styles.statusBadge, STATUS_CLASS_MAP[task.status] ?? styles.statusOpen)}>
+                      {statusLabel(task.status)}
+                    </span>
+                  </TableCell>
+                  <TableCell className={styles.signalsCell}>
+                    <div className={styles.flags}>
+                      {task.isOverdue ? <span className={styles.flag}>Em atraso</span> : null}
+                      {task.isSnoozed ? <span className={styles.flag}>Adiado</span> : null}
+                      {task.isBlocked ? <span className={styles.flag}>Bloqueado</span> : null}
+                    </div>
+                  </TableCell>
+                  <TableCell className={styles.actionsCell}>
+                    <div className={styles.actions}>
+                      <Button
+                        kind={Button.kinds.SECONDARY}
+                        size={Button.sizes.SMALL}
+                        onClick={() => handleComplete(task)}
+                        disabled={isBusy}
+                      >
+                        Concluir
+                      </Button>
+                      <Button
+                        kind={Button.kinds.TERTIARY}
+                        size={Button.sizes.SMALL}
+                        onClick={() => {
+                          setSelectedTask(task);
+                          setActionError(null);
+                        }}
+                        disabled={isBusy}
+                      >
+                        Adiar
+                      </Button>
+                      <Button
+                        kind={Button.kinds.TERTIARY}
+                        size={Button.sizes.SMALL}
+                        onClick={() => {
+                          setSelectedTask(task);
+                          setActionError(null);
+                        }}
+                        disabled={isBusy}
+                      >
+                        Ver detalhes
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </div>
 
       <TaskDetailsDialog

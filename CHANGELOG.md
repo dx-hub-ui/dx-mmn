@@ -1,3 +1,14 @@
+# 2025-11-18
+
+### Changed
+- Refatoramos `/tasks/my` para usar `@vibe/core/Table`, com shell monday-style, badges de status "tinted" e ações inline alinhadas aos tokens `--dx-*`.
+
+### Documentation
+- Acrescentada referência na seção de tabelas do guia Monday destacando `MyTasksPage` como implementação alinhada aos padrões de board.
+
+### Fixed
+- Reorganizamos as colunas da tabela em `/tasks/my` separando metadados visuais do cabeçalho da definição consumida pelo `@vibe/core/Table`, garantindo build limpo sem perder os comportamentos sticky monday-style.
+
 # 2025-11-17
 
 ### Documentation
