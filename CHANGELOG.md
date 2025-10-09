@@ -1,5 +1,13 @@
 # Changelog
 
+# 2025-11-10
+
+### Fixed
+- Ajustamos o `FOREIGN KEY` de `public.memberships.user_id` para apontar a `public.profiles(id)` com `ON DELETE CASCADE`, permitindo que o Supabase exponha o relacionamento `profile:profiles` e eliminando o erro `PGRST200` ao carregar memberships com dados de perfil.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` atualizados com a nova relação `profiles ↔ memberships` e o impacto da migração `009_fix_memberships_profiles_fk.sql`.
+
 # 2025-11-09
 
 ### Added
