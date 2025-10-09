@@ -92,6 +92,7 @@
 - Checkboxes `@vibe/core` para seleção múltipla, Bulk Actions bar flutuante inferior.
 - Kanban: colunas com header (Status + contagem + SLA) e cards arrastáveis `@dnd-kit`.
 - Calendário: estilo Monday `Timeline` com faixas coloridas (usando cor da coluna).
+- Referência viva: `src/features/tasks/my/components/MyTasksPage.tsx` usa `@vibe/core/Table` com badges de status "tinted" e ações inline seguindo tokens `--dx-*`.
 
 ## 12. Experiência Mobile & Responsiva
 - Breakpoints: `--bp-sm: 640px`, `--bp-md: 960px`, `--bp-lg: 1280px` (definir via CSS custom properties ou `clamp`).
