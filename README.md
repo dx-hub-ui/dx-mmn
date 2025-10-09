@@ -135,3 +135,4 @@ Use o Supabase Studio com a opção **JWT override** ou tokens gerados via CLI (
 - [Edge Functions](https://supabase.com/docs/guides/functions)
 - [Next.js App Router](https://nextjs.org/docs/app)
 - [Guia de design Monday-like da plataforma](docs/monday_design_guide.md)
+- [Table Design Reference](docs/table_design_reference.md)
