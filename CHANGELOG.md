@@ -1,5 +1,10 @@
 # Changelog
 
+# 2025-11-10
+
+### Fixed
+- Ajustamos a página `/` para não mais chamar `supabase.auth.refreshSession` no servidor, evitando o erro "Cookies can only be modified in a Server Action or Route Handler" ao acessar a aplicação.
+
 # 2025-11-09
 
 ### Added
