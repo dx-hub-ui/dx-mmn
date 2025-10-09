@@ -395,6 +395,18 @@ export default function ContactsBoardPage({
     [handleBulkUpdate]
   );
 
+  const handleCreateContactForStage = useCallback(
+    (stageId: ContactStageId) => {
+      setActiveTab(0);
+      setIsCreating(true);
+      setCreateForm(() => {
+        const base = emptyEditableForm(currentMembership.id);
+        return { ...base, stage: stageId };
+      });
+    },
+    [currentMembership.id]
+  );
+
   useEffect(() => {
     trackEvent("crm/board_view_loaded", { organizationId: organization.id, total: contacts.length });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1420,6 +1432,7 @@ export default function ContactsBoardPage({
                   contacts={visibleContacts}
                   onStageChange={handleKanbanStageChange}
                   onOpenContact={handleOpenContact}
+                  onAddContact={handleCreateContactForStage}
                 />
               </div>
             </TabPanel>

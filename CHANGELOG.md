@@ -9,6 +9,24 @@
 
 ### Documentation
 - Atualizamos `docs/sequences_module.md` com o novo layout do editor (toolbar de notas, menu contextual e rolagem independente) e com os requisitos da tabela de inscrições usando `@vibe/core/Table` com ordenação e skeletons.
+# 2025-11-21
+
+### Fixed
+- Impedimos que o helper `createSupabaseServerClient` derrube o runtime quando o Next bloqueia `cookies().set`, encapsulando a mutação em `try/catch` e registrando um aviso somente em desenvolvimento.
+
+### Documentation
+- Documentamos no `README.md` que o helper ignora mutações de cookie fora de Server Actions/Route Handlers para evitar o erro "Cookies can only be modified in a Server Action or Route Handler".
+
+# 2025-11-20
+
+### Changed
+- CRM Kanban remodelado para estilo monday.com com cabeçalhos coloridos, menu contextual e botão rápido de criação usando componentes `@vibe/core` (`IconButton`, `MenuButton`).
+
+### Fixed
+- Drag and drop do Kanban passa a usar `closestCorners` e `data` explícito no `useDroppable`, garantindo que cartões reconheçam o estágio alvo ao serem soltos.
+
+### Documentation
+- `docs/crm_readme.md` atualizado com a estratégia de cores por estágio, novos atalhos de criação e notas sobre o ajuste do drag and drop.
 
 # 2025-11-18
 
