@@ -1,3 +1,12 @@
+# 2025-11-16
+
+### Changed
+- Tabela de sequências simplificada: removemos seleção em lote, eliminamos a indicação de versão abaixo do nome e aplicamos bordas completas com tipografia `var(--dx-font-text1-normal)` para todas as células.
+- Botão de filtro agora abre um popover (`DialogType=popover`) com opções rápidas para status e alvo usando `DialogContentContainer`, mantendo a busca na barra principal.
+
+### Documentation
+- Atualizamos `docs/sequences_module.md` com o novo comportamento dos filtros por popover e a remoção do aviso de seleção em lote.
+
 # 2025-11-15
 
 ### Changed

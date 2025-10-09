@@ -1,9 +1,23 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, type ComponentType } from "react";
 import clsx from "clsx";
-import { Button, Label, Modal, ModalContent, ModalFooter, ModalHeader, RadioButton, Search, TextField } from "@vibe/core";
+import {
+  Button,
+  Dialog,
+  type DialogProps,
+  type DialogType,
+  DialogContentContainer,
+  Label,
+  Modal,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  RadioButton,
+  Search,
+  TextField,
+} from "@vibe/core";
 import { Open } from "@vibe/icons";
 import { createSequenceDraftAction } from "@/app/(app)/sequences/actions";
 import { trackEvent } from "@/lib/telemetry";
@@ -26,8 +40,6 @@ type SequenceManagerPageProps = {
   membershipRole: "org" | "leader" | "rep";
   autoOpenNewModal?: boolean;
 };
-
-type SelectionState = Set<string>;
 
 type NewSequenceModalProps = {
   open: boolean;
@@ -141,8 +153,9 @@ export default function SequenceManagerPage({
     status: "todos",
     targetType: "todos",
   });
+  const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
 
-  const [selection, setSelection] = useState<SelectionState>(() => new Set());
+  const PopoverDialog = Dialog as unknown as ComponentType<DialogProps & { type?: DialogType }>;
 
   useEffect(() => {
     if (!autoOpenNewModal) {
@@ -232,41 +245,7 @@ export default function SequenceManagerPage({
     }
   );
 
-  useEffect(() => {
-    setSelection(new Set());
-  }, [filters.status, filters.targetType, filters.search]);
-
   const filtered = useMemo(() => filterSequences(sequences, filters), [sequences, filters]);
-
-  const allSelected = filtered.length > 0 && filtered.every((item) => selection.has(item.id));
-  const selectionCount = selection.size;
-
-  function toggleSelection(sequenceId: string) {
-    setSelection((prev) => {
-      const next = new Set(prev);
-      if (next.has(sequenceId)) {
-        next.delete(sequenceId);
-      } else {
-        next.add(sequenceId);
-      }
-      return next;
-    });
-  }
-
-  function toggleSelectAll() {
-    setSelection((prev) => {
-      if (filtered.length === 0) {
-        return new Set();
-      }
-
-      const allSelectedNow = filtered.every((item) => prev.has(item.id));
-      if (allSelectedNow) {
-        return new Set();
-      }
-
-      return new Set(filtered.map((item) => item.id));
-    });
-  }
 
   const statusLabel: Record<SequenceStatus, string> = {
     active: "Ativa",
@@ -308,50 +287,94 @@ export default function SequenceManagerPage({
             >
               Nova sequência
             </Button>
-            <Button kind={Button.kinds.SECONDARY} leftIcon="Filter" disabled>
-              Filtrar
-            </Button>
+
+            <PopoverDialog
+              open={filtersDialogOpen}
+              useDerivedStateFromProps
+              type="popover"
+              position="bottom-start"
+              moveBy={{ main: 0, secondary: 8 }}
+              showTrigger={[]}
+              hideTrigger={[]}
+              onClickOutside={() => setFiltersDialogOpen(false)}
+              onDialogDidHide={() => setFiltersDialogOpen(false)}
+              content={
+                <DialogContentContainer className={styles.filterDialog}>
+                  <div className={styles.filterHeader}>
+                    <span className={styles.filterTitle}>Filtros</span>
+                    <button
+                      type="button"
+                      className={styles.clearFilters}
+                      onClick={() => {
+                        setFilters((prev) => ({
+                          ...prev,
+                          status: "todos",
+                          targetType: "todos",
+                        }));
+                        setFiltersDialogOpen(false);
+                      }}
+                    >
+                      Limpar tudo
+                    </button>
+                  </div>
+
+                  <div className={styles.filterGroup}>
+                    <span className={styles.filterLabel}>Status</span>
+                    <div className={styles.filterOptions}>
+                      {STATUS_OPTIONS.map((option) => {
+                        const isSelected = filters.status === option;
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            className={clsx(styles.filterOption, {
+                              [styles.filterOptionSelected]: isSelected,
+                            })}
+                            onClick={() => setFilters((prev) => ({ ...prev, status: option }))}
+                          >
+                            {option === "todos" ? "Todos" : statusLabel[option as SequenceStatus]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className={styles.filterGroup}>
+                    <span className={styles.filterLabel}>Alvo</span>
+                    <div className={styles.filterOptions}>
+                      {TARGET_OPTIONS.map((option) => {
+                        const isSelected = filters.targetType === option;
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            className={clsx(styles.filterOption, {
+                              [styles.filterOptionSelected]: isSelected,
+                            })}
+                            onClick={() => setFilters((prev) => ({ ...prev, targetType: option }))}
+                          >
+                            {option === "todos" ? "Todos" : targetLabel[option as SequenceTargetType]}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </DialogContentContainer>
+              }
+            >
+              <Button
+                kind={filtersDialogOpen ? Button.kinds.PRIMARY : Button.kinds.SECONDARY}
+                leftIcon="Filter"
+                onClick={() => setFiltersDialogOpen((prev) => !prev)}
+                aria-haspopup="dialog"
+                aria-expanded={filtersDialogOpen}
+              >
+                Filtrar
+              </Button>
+            </PopoverDialog>
           </div>
 
           <div className={styles.toolbarFilters}>
-            <label className={styles.filterLabel} htmlFor="sequence-status-filter">
-              Status
-            </label>
-            <select
-              id="sequence-status-filter"
-              className={styles.select}
-              value={filters.status}
-              onChange={(event) =>
-                setFilters((prev) => ({ ...prev, status: event.target.value as SequenceStatus | "todos" }))
-              }
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option === "todos"
-                    ? "Todos"
-                    : statusLabel[option as SequenceStatus]}
-                </option>
-              ))}
-            </select>
-
-            <label className={styles.filterLabel} htmlFor="sequence-target-filter">
-              Alvo
-            </label>
-            <select
-              id="sequence-target-filter"
-              className={styles.select}
-              value={filters.targetType}
-              onChange={(event) =>
-                setFilters((prev) => ({ ...prev, targetType: event.target.value as SequenceTargetType | "todos" }))
-              }
-            >
-              {TARGET_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option === "todos" ? "Todos" : targetLabel[option as SequenceTargetType]}
-                </option>
-              ))}
-            </select>
-
             <Search
               value={filters.search}
               placeholder="Buscar por sequência, status ou tipo"
@@ -360,28 +383,6 @@ export default function SequenceManagerPage({
             />
           </div>
         </div>
-
-        {selectionCount > 0 ? (
-          <div className={styles.selectionBanner} role="status" aria-live="polite">
-            <div className={styles.selectionInfo}>
-              <span>{selectionCount} sequência(s) selecionada(s)</span>
-            </div>
-            <div className={styles.selectionActions}>
-              <Button kind={Button.kinds.PRIMARY} disabled>
-                Ativar
-              </Button>
-              <Button kind={Button.kinds.SECONDARY} disabled>
-                Pausar
-              </Button>
-              <Button kind={Button.kinds.SECONDARY} disabled>
-                Desativar
-              </Button>
-              <Button kind={Button.kinds.TERTIARY} disabled>
-                Arquivar
-              </Button>
-            </div>
-          </div>
-        ) : null}
 
         <div className={styles.tableCard} role="region" aria-live="polite">
           {filtered.length === 0 ? (
@@ -400,14 +401,6 @@ export default function SequenceManagerPage({
             >
               <thead>
                 <tr>
-                  <th className={styles.checkboxCell} scope="col">
-                    <input
-                      type="checkbox"
-                      aria-label="Selecionar todas as sequências filtradas"
-                      checked={allSelected}
-                      onChange={toggleSelectAll}
-                    />
-                  </th>
                   <th scope="col">Sequência</th>
                   <th scope="col">Status</th>
                   <th scope="col">Alvo padrão</th>
@@ -421,14 +414,6 @@ export default function SequenceManagerPage({
                 {filtered.map((item) => {
                   return (
                     <tr key={item.id}>
-                      <td className={styles.checkboxCell}>
-                        <input
-                          type="checkbox"
-                          aria-label={`Selecionar sequência ${item.name}`}
-                          checked={selection.has(item.id)}
-                          onChange={() => toggleSelection(item.id)}
-                        />
-                      </td>
                       <th scope="row" className={styles.nameCell}>
                         <button
                           type="button"
@@ -439,7 +424,6 @@ export default function SequenceManagerPage({
                           <span className={styles.sequenceName}>{item.name}</span>
                           <Open size={16} className={styles.openIcon} aria-hidden />
                         </button>
-                        <span className={styles.sequenceMeta}>Versão #{item.activeVersionNumber || 1}</span>
                       </th>
                       <td>
                         <span className={clsx(styles.badge, badgeClass[item.status])}>{statusLabel[item.status]}</span>

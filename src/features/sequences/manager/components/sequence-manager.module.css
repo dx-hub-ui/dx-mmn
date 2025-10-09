@@ -58,6 +58,7 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .toolbarFilters {
@@ -68,47 +69,96 @@
   justify-content: flex-end;
 }
 
-.filterLabel {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--secondary-text-color, #676879);
-}
-
-.select {
-  border: 1px solid var(--dx-border, var(--layout-border-color));
-  border-radius: var(--dx-radius-md, 12px);
-  padding: 8px 14px;
-  background: var(--application-background-color);
-  color: var(--dx-text);
-  font-size: 0.95rem;
-  min-width: 160px;
-}
-
 .search {
   min-width: clamp(220px, 20vw, 320px);
 }
 
-.selectionBanner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
+.filterDialog {
+  display: grid;
   gap: 16px;
-  padding: 14px 18px;
-  border-radius: var(--dx-radius-md, 12px);
-  border: 1px solid var(--dx-border, var(--layout-border-color));
-  background: color-mix(in srgb, var(--dx-primary-selected, rgba(0, 115, 234, 0.12)) 60%, transparent);
+  padding: 16px;
+  min-width: 280px;
+  max-width: 320px;
+  background: var(--primary-background-color);
+  color: var(--dx-text);
 }
 
-.selectionInfo {
-  font-weight: 600;
+.filterHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.selectionActions {
+.filterTitle {
+  font: var(--dx-font-text1-normal);
+  color: var(--dx-text);
+}
+
+.clearFilters {
+  border: none;
+  background: none;
+  padding: 0;
+  font: var(--dx-font-text1-normal);
+  color: var(--link-color, var(--dx-primary, #0073ea));
+  cursor: pointer;
+}
+
+.clearFilters:hover,
+.clearFilters:focus-visible {
+  color: var(--dx-primary-hover, #0060c8);
+  text-decoration: underline;
+}
+
+.clearFilters:focus-visible {
+  outline: 2px solid var(--dx-primary, #0073ea);
+  outline-offset: 2px;
+}
+
+.filterGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.filterLabel {
+  font: var(--dx-font-text1-normal);
+  color: var(--secondary-text-color, #676879);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.75rem;
+}
+
+.filterOptions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.filterOption {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--dx-border, var(--layout-border-color));
+  background: var(--application-background-color);
+  color: var(--dx-text);
+  font: var(--dx-font-text1-normal);
+  cursor: pointer;
+  transition: background 120ms ease-in-out, color 120ms ease-in-out, border-color 120ms ease-in-out;
+}
+
+.filterOption:hover,
+.filterOption:focus-visible {
+  border-color: var(--dx-primary, #0073ea);
+  color: var(--dx-primary, #0073ea);
+}
+
+.filterOption:focus-visible {
+  outline: 2px solid var(--dx-primary, #0073ea);
+  outline-offset: 2px;
+}
+
+.filterOptionSelected {
+  background: rgba(0, 115, 234, 0.12);
+  border-color: var(--dx-primary, #0073ea);
+  color: var(--dx-primary, #0073ea);
 }
 
 .tableCard {
@@ -121,25 +171,15 @@
 
 .table {
   width: 100%;
-  min-width: 1040px;
-  border-collapse: collapse;
+  min-width: 980px;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .table_d1c05c112f {
-  --table-grid-template-columns: minmax(52px, 60px) minmax(300px, 700px) 160px
-    minmax(140px, 220px) minmax(100px, 140px) minmax(120px, 150px) minmax(120px, 150px)
-    minmax(150px, 220px);
-  --table-row-size: 48px;
-  --sticky-cell-hover-background: linear-gradient(
-      to right,
-      var(--primary-background-hover-color),
-      var(--primary-background-hover-color)
-    ),
-    linear-gradient(
-      to right,
-      var(--primary-background-color),
-            var(--primary-background-color)
-    );
+  --table-grid-template-columns: minmax(320px, 700px) 160px minmax(140px, 220px)
+    minmax(100px, 140px) minmax(120px, 150px) minmax(120px, 150px) minmax(150px, 220px);
+  --table-row-size: 52px;
 }
 
 .table thead {
@@ -158,15 +198,26 @@
 .table tbody tr {
   display: grid;
   grid-template-columns: var(--table-grid-template-columns);
-  align-items: center;
+  align-items: stretch;
 }
 
 .table th,
 .table td {
   padding: 16px 20px;
   border-bottom: 1px solid var(--dx-border, var(--layout-border-color));
+  border-right: 1px solid var(--dx-border, var(--layout-border-color));
   text-align: left;
-  font-size: 0.95rem;
+  font: var(--dx-font-text1-normal);
+  color: var(--dx-text);
+}
+
+.table th:last-child,
+.table td:last-child {
+  border-right: none;
+}
+
+.table thead th {
+  background: transparent;
 }
 
 .table tbody tr {
@@ -178,22 +229,12 @@
   background: color-mix(in srgb, var(--dx-primary-selected, rgba(0, 115, 234, 0.12)) 45%, transparent);
 }
 
-.checkboxCell {
-  width: 52px;
-  display: flex;
-  justify-content: center;
-}
-
-.table input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--dx-primary, #0073ea);
-}
-
 .nameCell {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
+
 
 .sequenceButton {
   display: inline-flex;
@@ -202,7 +243,7 @@
   padding: 0;
   border: none;
   background: transparent;
-  font: inherit;
+  font: var(--dx-font-text1-normal);
   color: var(--link-color, var(--dx-primary, #0073ea));
   cursor: pointer;
   text-decoration: none;
@@ -231,13 +272,8 @@
 }
 
 .sequenceName {
-  font-weight: 600;
+  font: var(--dx-font-text1-normal);
   color: var(--dx-text);
-}
-
-.sequenceMeta {
-  font-size: 0.82rem;
-  color: var(--secondary-text-color, #676879);
 }
 
 .badge {
@@ -246,8 +282,8 @@
   justify-content: center;
   border-radius: 999px;
   padding: 4px 12px;
+  font: var(--dx-font-text1-normal);
   font-size: 0.8rem;
-  font-weight: 600;
   text-transform: capitalize;
 }
 
@@ -273,6 +309,7 @@
 
 .metaCell {
   color: var(--secondary-text-color, #676879);
+  font: var(--dx-font-text1-normal);
   font-size: 0.9rem;
 }
 
@@ -356,10 +393,6 @@
   }
 
   .filterLabel {
-    width: 100%;
-  }
-
-  .select {
     width: 100%;
   }
 
