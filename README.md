@@ -7,6 +7,7 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 - [Supabase CLI](https://supabase.com/docs/guides/cli) 1.158+.
 - Node.js 18+ com pnpm (ou npm/yarn/bun, adapte os comandos conforme necessário).
 - Variáveis de ambiente configuradas no arquivo `.env.local` do Next.js e em `.env` das Edge Functions (ver seção [Variáveis de ambiente](#variáveis-de-ambiente)).
+  > Se as variáveis `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` estiverem ausentes, as páginas exibem um aviso guiando a configuração e os módulos protegidos (como o CRM) permanecem inacessíveis até que os valores sejam preenchidos.
 
 ## Como rodar localmente
 

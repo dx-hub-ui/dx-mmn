@@ -1,5 +1,17 @@
 # Changelog
 
+# 2025-11-09
+
+### Added
+- Criamos o componente `SupabaseConfigNotice` para exibir um aviso reutilizável sempre que as variáveis públicas do Supabase não estiverem presentes.
+
+### Fixed
+- As páginas `/` (login) e `/crm` passaram a capturar a ausência de `NEXT_PUBLIC_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_ANON_KEY`, exibindo o aviso guiado em vez de quebrar o render da aplicação.
+- O teste do `ContactModal` agora garante que o container é exposto como `role="dialog"` com `aria-modal="true"`, protegendo a regressão que impedia abrir os detalhes em modal.
+
+### Documentation
+- README e `docs/dev_setup_crm.md` atualizados com a orientação sobre o aviso de configuração pendente do Supabase.
+
 # 2025-11-08
 
 ### Changed

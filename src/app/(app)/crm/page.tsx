@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import SupabaseConfigNotice from "@/components/supabase/SupabaseConfigNotice";
+import { isSupabaseConfigurationError } from "@/lib/supabase/errors";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { listContacts, fetchVisibleMemberships } from "@/features/crm/contacts/server/listContacts";
 import ContactsBoardPage from "./ContactsBoardPage";
@@ -15,7 +17,16 @@ type MembershipWithOrganization = {
 };
 
 export default async function CRMPage() {
-  const supabase = createSupabaseServerClient();
+  let supabase;
+
+  try {
+    supabase = createSupabaseServerClient();
+  } catch (error) {
+    if (isSupabaseConfigurationError(error)) {
+      return <SupabaseConfigNotice featureLabel="o CRM de contatos" documentationPath="docs/dev_setup_crm.md" />;
+    }
+    throw error;
+  }
   const {
     data: { user },
     error: userError,
