@@ -73,5 +73,6 @@ das reps via "Minhas tarefas".
 - **Inscrições** com estado vazio ilustrado (`EmptyState` do Vibe), formulário compacto e tabela com ações inline (pausar/retomar/encerrar) mantendo consistência visual com o manager.
 - **Criação de sequência via modal** substitui o redirecionamento para `/sequences/new`, abrindo o fluxo diretamente na lista com validação e telemetria (`sequences/new_created_modal`).
 - **Modal e cartões do manager** adotam submissão nativa e o token `--application-background-color`, mantendo compatibilidade com o `@vibe/core/Button` e o contraste adequado em todos os temas.
+- **Compatibilidade com o Modal do Vibe** exige que `ModalHeader` continue como filho direto de `Modal`, evitando erros de console e garantindo que as validações internas do componente sejam satisfeitas.
 - **Ação de editar** na tabela apresenta a mensagem "Desative para editar" vinculada via `aria-describedby`, garantindo o bloqueio quando a sequência estiver ativa sem recorrer a atributos não suportados pelo botão do Vibe.
 - **Controle de ativação com Toggle** reposiciona o antigo botão “Publicar”, bloqueando edições enquanto `is_active` estiver verdadeiro e registrando eventos no PostHog (`sequences/toggle_active`).

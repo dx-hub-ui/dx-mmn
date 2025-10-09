@@ -1,3 +1,11 @@
+# 2025-11-14
+
+### Fixed
+- Corrigimos o modal "Nova sequência" para manter `ModalHeader` como filho direto de `Modal`, eliminando os erros `React 422/425` e o aviso do helper de modais do Vibe no console das sequências.
+
+### Documentation
+- Atualizamos `docs/sequences_module.md` com a exigência de manter `ModalHeader` diretamente sob `Modal` para preservar a validação interna do componente do Vibe.
+
 # 2025-11-13
 
 ### Fixed
