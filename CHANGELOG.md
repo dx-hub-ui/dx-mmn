@@ -1,3 +1,11 @@
+# 2025-11-13
+
+### Fixed
+- A API de contatos passou a fazer fallback automático quando o relacionamento `contacts_referred_by_contact_id_fkey` não está disponível no cache do Supabase, evitando o erro `PGRST200` ao carregar CRM e mantendo as ações em lote funcionais.
+
+### Documentation
+- `docs/crm_readme.md` atualizado com a mitigação para bancos sem o relacionamento de indicações, orientando o comportamento de fallback.
+
 # 2025-11-10
 
 ### Added
