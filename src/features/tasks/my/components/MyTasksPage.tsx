@@ -123,7 +123,13 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
 
   const filteredTasks = useMemo(() => filterTasks(items, filter), [items, filter]);
   const tableColumns = useMemo<TableColumn[]>(
-    () => COLUMN_CONFIGS.map(({ headerClassName: _header, sticky: _sticky, ...column }) => column),
+    () =>
+      COLUMN_CONFIGS.map((column) => {
+        const { headerClassName, sticky, ...tableColumn } = column;
+        void headerClassName;
+        void sticky;
+        return tableColumn;
+      }),
     []
   );
 

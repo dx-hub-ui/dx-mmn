@@ -6,6 +6,9 @@
 ### Documentation
 - Acrescentada referência na seção de tabelas do guia Monday destacando `MyTasksPage` como implementação alinhada aos padrões de board.
 
+### Fixed
+- Corrigimos a configuração das colunas da tabela em `/tasks/my` para evitar erros de lint durante o build (remoção segura de metadata apenas visual do cabeçalho).
+
 # 2025-11-17
 
 ### Documentation
