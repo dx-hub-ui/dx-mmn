@@ -1,5 +1,13 @@
 # Changelog
 
+# 2025-11-12
+
+### Fixed
+- Reestruturamos a Topbar em três colunas para garantir o avatar ancorado à direita e adicionamos o atalho de Inbox usando `@vibe/core/IconButton` com o ícone `@vibe/icons/Inbox`.
+
+### Documentation
+- Atualizamos `docs/monday_design_guide.md` com a nova organização da Topbar e o posicionamento do atalho de Inbox antes do menu do usuário.
+
 # 2025-11-11
 
 ### Fixed

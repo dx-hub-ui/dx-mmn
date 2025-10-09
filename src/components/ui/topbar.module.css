@@ -9,9 +9,10 @@
   padding-inline: var(--page-padding-x);
   max-width: none;
   width: 100%;
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 12px;
+  column-gap: 12px;
 }
 
 .brand { display: inline-flex; align-items: center; gap: 10px; }
@@ -20,11 +21,10 @@
 
 .middle {
   min-width: 0;
-  flex: 1 1 auto;
 }
 .nav {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-left: auto;
+  justify-self: end;
 }
