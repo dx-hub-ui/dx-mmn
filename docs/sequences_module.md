@@ -72,4 +72,5 @@ das reps via "Minhas tarefas".
 - **Formulário de regras & notificações** reorganizado em grid, com campos agrupados por contexto (janela de trabalho, cooldown, estratégia de publicação) e CTA fixo de salvar.
 - **Inscrições** com estado vazio ilustrado (`EmptyState` do Vibe), formulário compacto e tabela com ações inline (pausar/retomar/encerrar) mantendo consistência visual com o manager.
 - **Criação de sequência via modal** substitui o redirecionamento para `/sequences/new`, abrindo o fluxo diretamente na lista com validação e telemetria (`sequences/new_created_modal`).
+- **Modal e cartões do manager** adotam submissão nativa e o token `--application-background-color`, mantendo compatibilidade com o `@vibe/core/Button` e o contraste adequado em todos os temas.
 - **Controle de ativação com Toggle** reposiciona o antigo botão “Publicar”, bloqueando edições enquanto `is_active` estiver verdadeiro e registrando eventos no PostHog (`sequences/toggle_active`).

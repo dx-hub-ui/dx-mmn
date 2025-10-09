@@ -64,20 +64,17 @@ function NewSequenceModal({
   onTargetChange,
   onSubmit,
 }: NewSequenceModalProps) {
-  const formId = "new-sequence-form";
-
   return (
     <Modal id="new-sequence-modal" show={open} onClose={onClose} width="480px" contentSpacing>
-      <ModalHeader title="Nova sequência" />
-      <ModalContent>
-        <form
-          id={formId}
-          className={styles.modalForm}
-          onSubmit={(event) => {
-            event.preventDefault();
-            onSubmit();
-          }}
-        >
+      <form
+        className={styles.modalForm}
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit();
+        }}
+      >
+        <ModalHeader title="Nova sequência" />
+        <ModalContent className={styles.modalBody}>
           <TextField
             title="Nome da sequência"
             value={name}
@@ -110,22 +107,21 @@ function NewSequenceModal({
               />
             </div>
           </fieldset>
-        </form>
-      </ModalContent>
-      <ModalFooter>
-        <Button kind={Button.kinds.TERTIARY} onClick={onClose} disabled={pending}>
-          Cancelar
-        </Button>
-        <Button
-          kind={Button.kinds.PRIMARY}
-          type={Button.types.SUBMIT}
-          form={formId}
-          loading={pending}
-          disabled={pending}
-        >
-          Criar sequência
-        </Button>
-      </ModalFooter>
+        </ModalContent>
+        <ModalFooter>
+          <Button
+            kind={Button.kinds.TERTIARY}
+            type={Button.types.BUTTON}
+            onClick={onClose}
+            disabled={pending}
+          >
+            Cancelar
+          </Button>
+          <Button kind={Button.kinds.PRIMARY} type={Button.types.SUBMIT} loading={pending} disabled={pending}>
+            Criar sequência
+          </Button>
+        </ModalFooter>
+      </form>
     </Modal>
   );
 }
