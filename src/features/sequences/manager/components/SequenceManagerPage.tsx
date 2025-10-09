@@ -155,9 +155,12 @@ export default function SequenceManagerPage({ sequences, orgId, organizationName
           <div className={styles.headerText}>
             <div className={styles.titleRow}>
               <h1 id="sequence-manager-title">Sequências</h1>
-              <Label kind={Label.kinds.FILL} color={Label.colors.PRIMARY} className={styles.betaLabel}>
-                Beta
-              </Label>
+              <Label
+                kind={Label.kinds.FILL}
+                color={Label.colors.PRIMARY}
+                className={styles.betaLabel}
+                text="Beta"
+              />
             </div>
             <p>
               Crie cadências multicanal e acompanhe o progresso das automações da organização {organizationName}.

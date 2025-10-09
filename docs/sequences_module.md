@@ -15,6 +15,7 @@ A Sprint 1 estabelece as fundações do módulo de **Sequências de tarefas** no
 - Reutilização do AppShell e tokens definidos em `globals.css`.
 - Acessibilidade com navegação por teclado (tabs, checkboxes, aria-labels) e textos de apoio claros.
 - Todos os textos apresentados ao usuário estão em português brasileiro.
+- Etiquetas de status utilizam `Label` do `@vibe/core` com a prop `text`, garantindo consistência tipográfica e compatibilidade com os tokens do design system.
 
 ## Sprint 2 — Editor, inscrições e ações
 

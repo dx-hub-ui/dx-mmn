@@ -130,9 +130,8 @@ function SortableStep({ step, index, isSelected, onSelect, onToggle }: SortableS
         <Label
           kind={Label.kinds.FILL}
           color={step.isActive ? Label.colors.POSITIVE : Label.colors.AMERICAN_GRAY}
-        >
-          {step.isActive ? "Ativo" : "Inativo"}
-        </Label>
+          text={step.isActive ? "Ativo" : "Inativo"}
+        />
         <Button
           kind={Button.kinds.TERTIARY}
           size={Button.sizes.SMALL}
@@ -673,9 +672,12 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
             <div className={styles.headerText}>
               <div className={styles.headerTitleRow}>
                 <h1 id="sequence-editor-title">{data.sequence.name}</h1>
-                <Label kind={Label.kinds.FILL} color={Label.colors.PRIMARY} className={styles.statusBadge}>
-                  {sequenceStatusLabel[data.sequence.status]}
-                </Label>
+                <Label
+                  kind={Label.kinds.FILL}
+                  color={Label.colors.PRIMARY}
+                  className={styles.statusBadge}
+                  text={sequenceStatusLabel[data.sequence.status]}
+                />
               </div>
               <div className={styles.headerMeta}>
                 <span>Versão atual #{currentVersion.versionNumber}</span>
@@ -805,9 +807,8 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                     <Label
                       kind={Label.kinds.FILL}
                       color={selectedStep.isActive ? Label.colors.POSITIVE : Label.colors.AMERICAN_GRAY}
-                    >
-                      {selectedStep.isActive ? "Ativo" : "Inativo"}
-                    </Label>
+                      text={selectedStep.isActive ? "Ativo" : "Inativo"}
+                    />
                   </header>
 
                   <div className={styles.detailMetaGrid}>
