@@ -208,16 +208,18 @@ export default function UserMenu() {
             disabled={loadingProfile || !profile}
           />
           <MenuItem title="Mudar tema" icon={Sun} submenuPosition="left" disabled={Boolean(themeUpdating)}>
-            {THEME_OPTIONS.map((option) => (
-              <MenuItem
-                key={option.value}
-                title={option.label}
-                icon={currentTheme === option.value ? Check : option.icon}
-                selected={currentTheme === option.value}
-                label={themeUpdating === option.value ? "Aplicando..." : undefined}
-                onClick={() => handleThemeChange(option.value)}
-              />
-            ))}
+            <Menu>
+              {THEME_OPTIONS.map((option) => (
+                <MenuItem
+                  key={option.value}
+                  title={option.label}
+                  icon={currentTheme === option.value ? Check : option.icon}
+                  selected={currentTheme === option.value}
+                  label={themeUpdating === option.value ? "Aplicando..." : undefined}
+                  onClick={() => handleThemeChange(option.value)}
+                />
+              ))}
+            </Menu>
           </MenuItem>
           <MenuDivider />
           <MenuItem title="Logout" icon={LogOut} onClick={handleLogout} />
