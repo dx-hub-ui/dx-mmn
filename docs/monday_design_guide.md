@@ -49,7 +49,11 @@
 - **Boards** (Tabela, Kanban, Calendar):
   - Toolbar fixa sob o header com filtros, Views, botões de automações.
   - Seções: `BoardHeader` (titulo, descrição, star, share), `BoardToolbar`, `BoardContent` (scroll independente).
-  - Utilize `@tanstack/react-table` para tabela, com colunas reordenáveis e cabeçalho sticky.
+- Utilize `@tanstack/react-table` para tabela, com colunas reordenáveis e cabeçalho sticky.
+- Quando usar `@vibe/core/Table`, mantenha o array `columns` restrito aos campos suportados pela API (id, title, width, etc.) e transporte metadados visuais (ex.: `sticky`, `headerClassName`) separadamente para aplicá-los diretamente nos componentes de cabeçalho. Isso evita que o build quebre com validações de tipo/lint ao estender as colunas. Uma estratégia prática é guardar cada coluna como `{ definition, header }`, onde `definition` é passada ao componente `Table` e `header` concentra as props específicas usadas nos `TableHeaderCell`.
+- Use a prop `title` de `TableHeaderCell` (que aceita `ReactNode`) para renderizar o conteúdo visível do cabeçalho e deixe `infoContent` para tooltips adicionais. Dessa forma mantemos controles inline sem extrapolar o contrato do componente.
+- Para compor toolbars ou grupos de filtros com `role`/`aria-*`, envolva o layout em um wrapper sem tipagem restritiva (ex.: `div` estilizado com tokens) e mantenha componentes `@vibe/core` como `Flex` apenas para a camada visual interna. Assim garantimos acessibilidade completa sem esbarrar nas limitações de tipos dos componentes Vibe.
+- Ao precisar declarar `role="region"`, `aria-live` ou aplicar tokens de superfície adicionais, envolva o `TableContainer` em um wrapper neutro (ex.: `<div className={styles.tableRegion}>`) e injete o visual via CSS module. O componente aceita apenas `className`, `id` e `data-testid`, então a abordagem garante build limpo sem abandonar o shell monday-style.
 - **Dashboards**:
   - Grid responsivo (`repeat(auto-fit, minmax(320px, 1fr))`). Cards com header (icone + título), KPI e footer com CTA.
 - **Páginas de Configuração**:
@@ -92,6 +96,7 @@
 - Checkboxes `@vibe/core` para seleção múltipla, Bulk Actions bar flutuante inferior.
 - Kanban: colunas com header (Status + contagem + SLA) e cards arrastáveis `@dnd-kit`.
 - Calendário: estilo Monday `Timeline` com faixas coloridas (usando cor da coluna).
+- Referência viva: `src/features/tasks/my/components/MyTasksPage.tsx` usa `@vibe/core/Table` com badges de status "tinted" e ações inline seguindo tokens `--dx-*`.
 
 ## 12. Experiência Mobile & Responsiva
 - Breakpoints: `--bp-sm: 640px`, `--bp-md: 960px`, `--bp-lg: 1280px` (definir via CSS custom properties ou `clamp`).
