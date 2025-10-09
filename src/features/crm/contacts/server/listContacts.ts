@@ -1,4 +1,4 @@
-import type { PostgrestFilterBuilder } from "@supabase/supabase-js";
+import type { PostgrestFilterBuilder } from "@supabase/postgrest-js";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ContactFilters, ContactRecord, MembershipSummary } from "../types";

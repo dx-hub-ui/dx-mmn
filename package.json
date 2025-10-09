@@ -21,6 +21,7 @@
     "@getbrevo/brevo": "^1.0.0",
     "@sentry/nextjs": "^7.112.0",
     "@sentry/profiling-node": "^7.112.0",
+    "@supabase/postgrest-js": "^2.74.0",
     "@supabase/ssr": "^0.4.0",
     "@supabase/supabase-js": "^2.74.0",
     "@tanstack/react-table": "^8.15.0",

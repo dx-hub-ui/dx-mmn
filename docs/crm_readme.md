@@ -10,7 +10,7 @@
 - **Prioridade Média — Menu do usuário quebrado:** `GET /api/user/profile` lançava 500 quando a consulta de memberships retornava `permission denied` (códigos `PGRST301`/`42501`), impedindo o carregamento do avatar e das opções. A rota agora registra o incidente em telemetria e continua respondendo com os dados do perfil, retornando `org_id`/`member_id` nulos.
 - **Prioridade Média — Indicações sem relacionamento:** ambientes com bancos restaurados antes da migração `contacts_referred_by_contact_id_fkey` quebravam toda leitura de contatos (`PGRST200`). A consulta agora tenta carregar o relacionamento `referred_by` e, caso o vínculo inexista, faz fallback automático para os campos básicos de contato, mantendo a listagem e ações em lote operacionais.
   - Observação operacional: o build de produção roda `pnpm run build`, que executa ESLint (`prefer-const`). Mantemos a consulta principal imutável (`const`) para que o fallback não volte a bloquear deploys quando o relacionamento estiver ausente.
-  - Observação adicional: os tipos utilizados em `listContacts` devem ser importados de `@supabase/supabase-js` (reexport oficial), evitando dependência explícita de `@supabase/postgrest-js` nas pipelines de build.
+  - Observação adicional: mantemos `@supabase/postgrest-js` como dependência direta para garantir que os tipos utilizados em `listContacts` estejam sempre disponíveis durante o `pnpm run build`.
 
 ## Camadas e Pastas
 - `src/features/crm/contacts/types.ts`: tipos compartilhados (estágios, filtros, metadados de membership) e eventos de telemetria.
