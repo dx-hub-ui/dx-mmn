@@ -7,12 +7,7 @@
 
 .pageHeader {
   padding: clamp(24px, 5vw, 40px);
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--dx-app-canvas-top, #d3e6e8) 75%, transparent) 0%,
-      var(--dx-surface, var(--primary-background-color)) 120px
-    );
+  background: var(--primary-background-color);
   border-bottom: 1px solid var(--dx-border, var(--layout-border-color));
   display: grid;
   gap: 20px;
@@ -109,7 +104,7 @@
   gap: 16px;
   align-items: center;
   justify-content: space-between;
-  background: var(--dx-surface, var(--primary-background-color));
+  background: var(--primary-background-color);
   border: 1px solid var(--dx-border, var(--layout-border-color));
   border-radius: var(--dx-radius-lg, 16px);
   padding: 16px 20px;
@@ -176,8 +171,7 @@
 .tableCard {
   overflow: hidden;
   border: 1px solid var(--dx-border, var(--layout-border-color));
-  border-radius: var(--dx-radius-lg, 16px);
-  background: var(--dx-surface, var(--primary-background-color));
+  background: var(--primary-background-color);
   box-shadow: var(--shadow-sm, 0 12px 30px -20px rgba(15, 23, 42, 0.5));
 }
 
