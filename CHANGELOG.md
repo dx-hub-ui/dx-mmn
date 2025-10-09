@@ -1,3 +1,14 @@
+# 2025-11-20
+
+### Changed
+- CRM Kanban remodelado para estilo monday.com com cabeçalhos coloridos, menu contextual e botão rápido de criação usando componentes `@vibe/core` (`IconButton`, `MenuButton`).
+
+### Fixed
+- Drag and drop do Kanban passa a usar `closestCorners` e `data` explícito no `useDroppable`, garantindo que cartões reconheçam o estágio alvo ao serem soltos.
+
+### Documentation
+- `docs/crm_readme.md` atualizado com a estratégia de cores por estágio, novos atalhos de criação e notas sobre o ajuste do drag and drop.
+
 # 2025-11-18
 
 ### Changed
