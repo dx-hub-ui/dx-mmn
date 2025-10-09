@@ -1,7 +1,6 @@
 // src/app/layout.tsx
 import { Suspense } from "react";
 import "./globals.css";
-import "monday-ui-style/dist/index.css"; // ✅ estilos base do Monday/Vibe
 import { captureException } from "@sentry/nextjs";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { headers } from "next/headers";

@@ -1,5 +1,14 @@
 # Changelog
 
+# 2025-11-11
+
+### Fixed
+- Corrigimos o submenu de tema do menu do usuário para renderizar um único elemento filho (`<Menu>`), eliminando o erro `React.Children.only` ao abrir o avatar na Topbar.
+- Movemos o carregamento do CSS base do Vibe para `globals.css`, prevenindo o aviso de preload não utilizado emitido pelo navegador em produção.
+
+### Documentation
+- Atualizamos `docs/page_design_guidelines.md` com a orientação sobre envolver submenus em `<Menu>` e sobre o carregamento global do CSS do Vibe.
+
 # 2025-11-10
 
 ### Fixed
