@@ -16,6 +16,13 @@
 ### Documentation
 - `docs/crm_readme.md` recebeu nota operacional explicando a dependência do lint `prefer-const` durante o fallback de contatos.
 - Documentamos que `@supabase/postgrest-js` está presente no `package.json`, garantindo que os tipos de filtros permaneçam disponíveis durante o build.
+# 2025-11-14
+
+### Fixed
+- Corrigimos o modal "Nova sequência" para manter `ModalHeader` como filho direto de `Modal`, eliminando os erros `React 422/425` e o aviso do helper de modais do Vibe no console das sequências.
+
+### Documentation
+- Atualizamos `docs/sequences_module.md` com a exigência de manter `ModalHeader` diretamente sob `Modal` para preservar a validação interna do componente do Vibe.
 
 # 2025-11-13
 
@@ -24,6 +31,10 @@
 
 ### Documentation
 - `docs/crm_readme.md` atualizado com a mitigação para bancos sem o relacionamento de indicações, orientando o comportamento de fallback.
+- Topbar agora expande as três colunas por toda a largura da barra, alinhando a coluna da marca à variável `var(--sidebar-current, 272px)` para respeitar o estado atual da Sidebar.
+
+### Documentation
+- `docs/monday_design_guide.md` documenta o alinhamento da coluna de marca da Topbar com a largura dinâmica da Sidebar.
 
 # 2025-11-10
 

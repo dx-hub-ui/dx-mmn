@@ -66,6 +66,7 @@ function NewSequenceModal({
 }: NewSequenceModalProps) {
   return (
     <Modal id="new-sequence-modal" show={open} onClose={onClose} width="480px" contentSpacing>
+      <ModalHeader title="Nova sequência" />
       <form
         className={styles.modalForm}
         onSubmit={(event) => {
@@ -73,7 +74,6 @@ function NewSequenceModal({
           onSubmit();
         }}
       >
-        <ModalHeader title="Nova sequência" />
         <ModalContent className={styles.modalBody}>
           <TextField
             title="Nome da sequência"
@@ -109,12 +109,7 @@ function NewSequenceModal({
           </fieldset>
         </ModalContent>
         <ModalFooter>
-          <Button
-            kind={Button.kinds.TERTIARY}
-            type={Button.types.BUTTON}
-            onClick={onClose}
-            disabled={pending}
-          >
+          <Button kind={Button.kinds.TERTIARY} type={Button.types.BUTTON} onClick={onClose} disabled={pending}>
             Cancelar
           </Button>
           <Button kind={Button.kinds.PRIMARY} type={Button.types.SUBMIT} loading={pending} disabled={pending}>

@@ -23,7 +23,7 @@
 - Canvas de páginas: aplique `min-height: calc(100dvh - var(--dx-top-bar-height))` e mantenha padding interno com `var(--page-padding-x/y)`.
 
 ## 3. Navegação & IA visual
-- **Topbar**: usa gradiente suave (`--dx-topbar-bg`). Estrutura-se em três colunas: marca à esquerda, espaço livre central para futuros itens contextuais e, à direita, os atalhos (ex.: Inbox com `@vibe/core/IconButton` + `@vibe/icons/Inbox`) seguidos do menu do usuário (avatar grande).
+- **Topbar**: usa gradiente suave (`--dx-topbar-bg`). Estrutura-se em três colunas: marca à esquerda, espaço livre central para futuros itens contextuais e, à direita, os atalhos (ex.: Inbox com `@vibe/core/IconButton` + `@vibe/icons/Inbox`) seguidos do menu do usuário (avatar grande). A coluna da marca deve respeitar `var(--sidebar-current, 272px)` para alinhar o conteúdo com a largura atual da Sidebar (expandida ou colapsada).
 - **Sidebar**: segmentos com agrupamentos (Workspace, Favoritos, Recents). Ícones `@vibe/icons` nos tamanhos 18/20px.
 - Estados do menu: ativo (`--dx-primary-selected`), hover (`--dx-primary-selected-hover`), desabilitado (`--disabled-text-color`).
 - Dropdowns de Workspaces devem abrir para a direita com largura mínima de 280px.
