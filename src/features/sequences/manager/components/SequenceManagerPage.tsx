@@ -542,7 +542,11 @@ export default function SequenceManagerPage({
   }, [filtered, sorting]);
 
   const showSkeleton = !isHydrated;
-  const dataState = { isLoading: showSkeleton, isEmpty: !showSkeleton && sorted.length === 0 };
+  const dataState = {
+    isLoading: showSkeleton,
+    isEmpty: !showSkeleton && sorted.length === 0,
+    isError: false,
+  };
 
   const sortStateFor = (column: SortColumn): SortDirection | "none" =>
     sorting.column === column ? sorting.direction : "none";
@@ -566,6 +570,26 @@ export default function SequenceManagerPage({
       handleRowClick(sequenceId);
     }
   };
+
+  const tableEmptyState = (
+    <div className={styles.emptyState}>
+      <span className={styles.emptyTitle}>Nenhuma sequência encontrada</span>
+      <p>Revise os filtros ou crie uma nova sequência para começar.</p>
+      <Button kind={Button.kinds.PRIMARY} onClick={handleOpenModal} disabled={isCreating}>
+        Nova sequência
+      </Button>
+    </div>
+  );
+
+  const tableErrorState = (
+    <div className={styles.emptyState} role="alert">
+      <span className={styles.emptyTitle}>Não foi possível carregar as sequências</span>
+      <p>Tente novamente atualizando a página.</p>
+      <Button kind={Button.kinds.SECONDARY} onClick={() => router.refresh()}>
+        Recarregar
+      </Button>
+    </div>
+  );
 
   const renderMetricHeader = (title: string, tooltip: string) => (
     <span className={styles.metricHeader}>
@@ -734,28 +758,15 @@ export default function SequenceManagerPage({
         <div className={styles.pageBody}>
           <div className={clsx(styles.tableCard, "sequence-table-card")} role="region" aria-live="polite">
             {dataState.isEmpty ? (
-              <div className={styles.emptyState}>
-                <span className={styles.emptyTitle}>Nenhuma sequência encontrada</span>
-                <p>Revise os filtros ou crie uma nova sequência para começar.</p>
-                <Button kind={Button.kinds.PRIMARY} onClick={handleOpenModal} disabled={isCreating}>
-                  Nova sequência
-                </Button>
-              </div>
+              tableEmptyState
             ) : (
               <div className={styles.tableScroll}>
                 <Table
                   columns={tableColumns}
                   dataState={dataState}
                   className={clsx(styles.table, "sequence-table")}
-                  emptyState={
-                    <div className={styles.emptyState}>
-                      <span className={styles.emptyTitle}>Nenhuma sequência encontrada</span>
-                      <p>Revise os filtros ou crie uma nova sequência para começar.</p>
-                      <Button kind={Button.kinds.PRIMARY} onClick={handleOpenModal} disabled={isCreating}>
-                        Nova sequência
-                      </Button>
-                    </div>
-                  }
+                  emptyState={tableEmptyState}
+                  errorState={tableErrorState}
                 >
                   <TableHeader>
                     <TableHeaderCell

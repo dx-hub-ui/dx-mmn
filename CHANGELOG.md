@@ -2,6 +2,10 @@
 
 ### Fixed
 - Corrigimos a busca da lista de sequências para usar o atributo padrão `aria-label` do `@vibe/core/Search`, evitando novos erros de tipagem no `pnpm run build` e preservando a acessibilidade da barra de filtros.
+- Adicionamos o `errorState` obrigatório ao `@vibe/core/Table` da lista de sequências com fallback acessível e CTA de recarregar, impedindo que o build volte a falhar por props ausentes.
+
+### Documentation
+- Atualizamos `docs/sequences_module.md` destacando que o `@vibe/core/Table` do manager deve receber `errorState` e um estado de erro acessível para manter o build saudável.
 
 # 2025-11-22
 
