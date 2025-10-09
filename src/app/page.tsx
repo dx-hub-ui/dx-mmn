@@ -19,15 +19,8 @@ export default async function RootPage() {
   }
 
   const {
-    data: { session: initialSession },
+    data: { session },
   } = await supabase.auth.getSession();
-
-  let session = initialSession;
-
-  if (!session) {
-    const { data } = await supabase.auth.refreshSession();
-    session = data?.session ?? null;
-  }
 
   if (session?.user) {
     redirect("/dashboard");

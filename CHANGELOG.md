@@ -3,6 +3,7 @@
 # 2025-11-10
 
 ### Fixed
+- Ajustamos a página `/` para não mais chamar `supabase.auth.refreshSession` no servidor, evitando o erro "Cookies can only be modified in a Server Action or Route Handler" ao acessar a aplicação.
 - Ajustamos o `FOREIGN KEY` de `public.memberships.user_id` para apontar a `public.profiles(id)` com `ON DELETE CASCADE`, permitindo que o Supabase exponha o relacionamento `profile:profiles` e eliminando o erro `PGRST200` ao carregar memberships com dados de perfil.
 
 ### Documentation
