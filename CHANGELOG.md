@@ -4,6 +4,9 @@
 - Editor de Sequências (`/sequences/[id]`) redesenhado com cabeçalho compacto, toggle "Inativa | Ativa" e CTA "Salvar sequência", cartões de etapas com menu contextual, painel de notas em `--allgrey-background-color` e rolagem independente entre lista e editor.
 - Migração das inscrições da sequência para `@vibe/core/Table` com ordenação por cabeçalho, skeleton durante ações e manutenção das ações inline (pausar/retomar/encerrar) alinhadas ao design Monday.
 
+### Fixed
+- Ajustamos as colunas da tabela de inscrições para definir `loadingStateType` nativo do Vibe (ID/Tipo/Status como `"medium-text"`, data como `"long-text"` e ações como `"circle"`), eliminando o import ocioso de `Skeleton` e garantindo skeletons consistentes durante operações.
+
 ### Documentation
 - Atualizamos `docs/sequences_module.md` com o novo layout do editor (toolbar de notas, menu contextual e rolagem independente) e com os requisitos da tabela de inscrições usando `@vibe/core/Table` com ordenação e skeletons.
 

@@ -29,7 +29,6 @@ import {
   MenuButton,
   MenuDivider,
   MenuItem,
-  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -40,6 +39,7 @@ import {
   Text,
   TextArea,
   Toggle,
+  type TableColumn,
 } from "@vibe/core";
 import { trackEvent } from "@/lib/telemetry";
 import { useSentrySequenceScope } from "@/lib/observability/sentryClient";
@@ -515,12 +515,12 @@ const ENROLLMENT_STATUS: Record<string, string> = {
   terminated: "Encerrada",
 };
 
-const ENROLLMENT_COLUMNS = [
-  { id: "targetId", title: "ID" },
-  { id: "targetType", title: "Tipo" },
-  { id: "status", title: "Status" },
-  { id: "enrolledAt", title: "Inscrito em" },
-  { id: "actions", title: "Ações" },
+const ENROLLMENT_COLUMNS: TableColumn[] = [
+  { id: "targetId", title: "ID", loadingStateType: "medium-text" },
+  { id: "targetType", title: "Tipo", loadingStateType: "medium-text" },
+  { id: "status", title: "Status", loadingStateType: "medium-text" },
+  { id: "enrolledAt", title: "Inscrito em", loadingStateType: "long-text" },
+  { id: "actions", title: "Ações", loadingStateType: "circle" },
 ];
 
 export default function SequenceEditorPage({ orgId, membershipId, membershipRole, data }: SequenceEditorPageProps) {
