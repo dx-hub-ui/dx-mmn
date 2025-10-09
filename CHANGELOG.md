@@ -13,6 +13,30 @@
 
 ### Documentation
 - Novos guias `docs/observability.md`, `docs/email.md` e runbooks em `docs/runbooks/*` detalhando operação e mitigação de incidentes.
+# 2025-11-08
+
+### Changed
+- Página `/sequences` remodelada para o layout Monday-like com breadcrumbs, cartões de métricas, filtros via `@vibe/core` e tabela com badges de status e resumo do alvo padrão.
+- Editor de sequências atualizado com cabeçalho contextual, experiência em duas colunas para passos, painel de detalhes enriquecido, formulários de regras reorganizados e estado vazio de inscrições alinhado ao Vibe.
+
+### Fixed
+- Ajustamos as etiquetas de status (`Label` do `@vibe/core`) do manager e do editor para usar a prop `text`, garantindo tipagem correta no build e mantendo a renderização alinhada ao design system.
+
+### Documentation
+- `docs/sequences_module.md` revisto com a nova hierarquia visual do manager e editor, destacando navegação por abas, templates de passos e resumo de métricas.
+- Acrescentada orientação sobre o uso da prop `text` em `Label` para preservar consistência tipográfica nas etiquetas de status do módulo de sequências.
+
+# 2025-11-07
+
+### Changed
+- Reestruturamos o layout interno da Topbar para que o menu do usuário fique encostado ao canto direito, respeitando apenas o padding lateral da barra.
+
+### Fixed
+- Avatar do menu do usuário volta a renderizar em formato quadrado (40px) sem esticar ao abrir o dropdown.
+- Dropdown e tooltip do menu do usuário passam a usar `z-index` elevado (`>=12000`), garantindo que apareçam sobre a Sidebar.
+
+### Documentation
+- `docs/page_design_guidelines.md` atualizado com orientações sobre ancoragem do avatar e prioridade de `z-index` do menu do usuário.
 
 # 2025-11-06
 

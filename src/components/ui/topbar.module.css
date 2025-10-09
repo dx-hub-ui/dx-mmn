@@ -5,12 +5,11 @@
 
 .inner {
   height: var(--dx-top-bar-height);
-  margin: 0 auto;
+  margin: 0;
   padding-inline: var(--page-padding-x);
-  max-width: var(--dx-layout-max-width);
+  max-width: none;
   width: 100%;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
   align-items: center;
   gap: 12px;
 }
@@ -19,10 +18,13 @@
 .brandMark { width: 20px; height: 20px; border-radius: 6px; background: var(--primary-color); }
 .productName { font: var(--dx-font-body-strong, 600 14px/20px var(--font-family, system-ui)); }
 
-.middle { min-width: 0; }
+.middle {
+  min-width: 0;
+  flex: 1 1 auto;
+}
 .nav {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  justify-self: end;
+  margin-left: auto;
 }
