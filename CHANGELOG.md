@@ -1,3 +1,11 @@
+# 2025-11-20
+
+### Changed
+- Página `/sequences`: reformulamos a lista com barra superior Monday-style (título + tag Beta + ações "Aprender mais"/"Feedback"), filtros em popover e tabela `@vibe/core/Table` com ordenação, skeleton inicial, chips de status do Vibe e colunas de métricas (inscrições e taxas) alinhadas à direita.
+
+### Documentation
+- Atualizamos `docs/sequences_module.md` com o novo layout da lista de sequências, detalhando ações da barra superior, chips de status, tooltips das métricas e busca focada no nome.
+
 # 2025-11-18
 
 ### Changed
