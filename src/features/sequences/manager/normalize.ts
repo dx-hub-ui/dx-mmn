@@ -1,4 +1,5 @@
 import type {
+  SequenceManagerCreator,
   SequenceManagerFilters,
   SequenceManagerItem,
   SequenceManagerRow,
@@ -21,6 +22,38 @@ function parseNumber(value: string | number | null | undefined) {
   return 0;
 }
 
+function toNumber(value: string | number | null | undefined) {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function normalizeCreator(row: SequenceManagerRow["created_by"]): SequenceManagerCreator | null {
+  if (!row) {
+    return null;
+  }
+
+  const name = row.display_name?.trim();
+  if (!name) {
+    return null;
+  }
+
+  return {
+    membershipId: row.membership_id,
+    name,
+    avatarUrl: row.avatar_url,
+  };
+}
+
 export function normalizeSequenceManagerRow(row: SequenceManagerRow): SequenceManagerItem {
   return {
     id: row.sequence_id,
@@ -33,6 +66,13 @@ export function normalizeSequenceManagerRow(row: SequenceManagerRow): SequenceMa
     stepsTotal: row.steps_total ?? 0,
     activeEnrollments: row.active_enrollments ?? 0,
     completionRate: parseNumber(row.completion_rate),
+    totalEnrollments: parseNumber(row.total_enrollments) ?? 0,
+    openRate: toNumber(row.open_rate),
+    replyRate: toNumber(row.reply_rate),
+    clickRate: toNumber(row.click_rate),
+    estimatedDays: row.estimated_days ?? null,
+    creator: normalizeCreator(row.created_by ?? null),
+    boardName: row.board_name ?? null,
     lastActivationAt: row.last_activation_at,
     updatedAt: row.updated_at,
     createdAt: row.created_at,

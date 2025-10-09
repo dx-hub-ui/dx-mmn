@@ -1,3 +1,12 @@
+# 2025-11-17
+
+### Changed
+- Atualizamos `/sequences` para usar a tabela do `@vibe/core` com skeleton, ordenação em todos os cabeçalhos e chips de status, além de cabeçalho com tag “Beta”, ícones de ajuda/feedback e colunas de métricas com tooltips alinhadas aos tokens `--dx-font-text2-*`.
+- Remodelamos `/sequences/[id]` com cabeçalho contextual (breadcrumb textual, toggle Inativa/Ativa e CTA “Salvar sequência”), cartões de etapas com menu contextual completo e painel de notas sobre `--allgrey-background-color`, incluindo textarea editável, toolbar (+, Aa, {}) e toggle “Pausar sequência até que a etapa seja marcada como concluída”.
+
+### Documentation
+- `docs/sequences_module.md` atualizado para refletir o novo cabeçalho da lista, a tabela com chips/ordenadores e o painel de edição com notas e toolbar no editor de sequências.
+
 # 2025-11-16
 
 ### Changed

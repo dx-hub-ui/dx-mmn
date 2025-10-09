@@ -19,16 +19,18 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
-  Avatar,
-  BreadcrumbItem,
-  BreadcrumbsBar,
   Button,
   EmptyState,
   Label,
+  Menu,
+  MenuButton,
+  MenuItem,
   Text,
   TextArea,
   Toggle,
+  Tooltip,
 } from "@vibe/core";
+import { Add, Code, Drag, MoreActions, NavigationChevronLeft, TextFormatting } from "@vibe/icons";
 import { trackEvent } from "@/lib/telemetry";
 import { useSentrySequenceScope } from "@/lib/observability/sentryClient";
 import { calculateDueDate } from "../dates";
@@ -59,13 +61,35 @@ type SequenceEditorPageProps = {
   data: SequenceEditorData;
 };
 
-type TabKey = "passos" | "regras" | "inscricoes";
+type TabKey = "etapas" | "regras" | "inscricoes";
+
+type StepModalPosition = {
+  kind: "before" | "after" | "end";
+  referenceId?: string;
+};
 
 type StepModalState = {
   mode: "create" | "edit";
   step?: SequenceStepRecord;
   presetType?: SequenceStepRecord["type"];
+  position?: StepModalPosition;
+  initialValues?: Partial<{
+    title: string;
+    shortDescription: string;
+    dueOffsetDays: number;
+    dueOffsetHours: number;
+    pauseUntilDone: boolean;
+  }>;
 };
+
+type StepMenuAction =
+  | "add-wait"
+  | "add-before"
+  | "add-after"
+  | "move-up"
+  | "move-down"
+  | "duplicate"
+  | "delete";
 
 type SortableStepProps = {
   step: SequenceStepRecord;
@@ -75,6 +99,7 @@ type SortableStepProps = {
   disableActions: boolean;
   onSelect: (step: SequenceStepRecord) => void;
   onToggle: (step: SequenceStepRecord, isActive: boolean) => void;
+  onMenuAction: (action: StepMenuAction, step: SequenceStepRecord) => void;
 };
 
 const STEP_TYPE_LABEL: Record<SequenceStepRecord["type"], string> = {
@@ -82,82 +107,109 @@ const STEP_TYPE_LABEL: Record<SequenceStepRecord["type"], string> = {
   call_task: "Tarefa de ligação",
 };
 
-function SortableStep({ step, index, isSelected, disableReorder, disableActions, onSelect, onToggle }: SortableStepProps) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: step.id, disabled: disableReorder });
+function SortableStep({
+  step,
+  index,
+  isSelected,
+  disableReorder,
+  disableActions,
+  onSelect,
+  onToggle,
+  onMenuAction,
+}: SortableStepProps) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id: step.id,
+    disabled: disableReorder,
+  });
 
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     transition,
   };
 
+  const shortDescription = step.shortDescription?.trim() || "Sem descrição";
+
   return (
     <article
       ref={setNodeRef}
       style={style}
       className={styles.stepCard}
-      data-inactive={step.isActive ? undefined : "true"}
       data-selected={isSelected ? "true" : undefined}
-      data-locked={disableActions ? "true" : undefined}
+      data-disabled={disableActions ? "true" : undefined}
       onClick={() => onSelect(step)}
       role="button"
       tabIndex={0}
       onKeyDown={(event) => {
-        if ((event.key === "Enter" || event.key === " ") && !disableActions) {
+        if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onSelect(step);
         }
       }}
     >
-      <header className={styles.stepHeader}>
-        <span className={styles.stepOrder}>{index + 1}</span>
-        <div className={styles.stepHeaderInfo}>
-          <h3>{step.title}</h3>
-          <span>{STEP_TYPE_LABEL[step.type]}</span>
+      <button
+        type="button"
+        className={styles.stepDragHandle}
+        aria-label="Arrastar etapa"
+        {...attributes}
+        {...(disableReorder ? {} : listeners)}
+        disabled={disableReorder}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <Drag aria-hidden />
+      </button>
+
+      <div className={styles.stepContent}>
+        <div className={styles.stepHeaderRow}>
+          <span className={styles.stepIndex}>{index + 1}.</span>
+          <div className={styles.stepTextGroup}>
+            <h3>{step.title}</h3>
+            <p>{shortDescription}</p>
+          </div>
+          <Label
+            kind={Label.kinds.FILL}
+            color={step.isActive ? Label.colors.POSITIVE : Label.colors.NEGATIVE}
+            text={step.isActive ? "Ativa" : "Inativa"}
+          />
         </div>
-        <button
-          type="button"
-          className={styles.dragHandle}
-          aria-label="Reordenar passo"
-          {...attributes}
-          {...(disableReorder ? {} : listeners)}
-          disabled={disableReorder}
-        >
-          ☰
-        </button>
-      </header>
-
-      <div className={styles.stepMeta}>
-        <span>
-          Vencimento em {step.dueOffsetDays} dia(s) e {step.dueOffsetHours} hora(s)
-        </span>
-        <span>
-          Responsável: {step.assigneeMode === "owner" ? "Dono do contato" : step.assigneeMode === "org" ? "Organização" : "Personalizado"}
-        </span>
-        {step.channelHint ? <span>Canal sugerido: {step.channelHint}</span> : null}
-        {step.pauseUntilDone ? <span>Bloqueia sequência até concluir</span> : null}
+        <div className={styles.stepMetaRow}>
+          <span>{STEP_TYPE_LABEL[step.type]}</span>
+          <span>
+            {step.dueOffsetDays} dia(s) • {step.dueOffsetHours} hora(s)
+          </span>
+        </div>
       </div>
 
-      <div className={styles.stepStatusRow}>
-        <Label
-          kind={Label.kinds.FILL}
-          color={step.isActive ? Label.colors.POSITIVE : Label.colors.AMERICAN_GRAY}
-          text={step.isActive ? "Ativo" : "Inativo"}
-        />
-        <Button
-          kind={Button.kinds.TERTIARY}
-          size={Button.sizes.SMALL}
-          onClick={(event) => {
-            event.stopPropagation();
-            if (disableActions) {
-              return;
-            }
-            onToggle(step, !step.isActive);
-          }}
-          disabled={disableActions}
-        >
-          {step.isActive ? "Desativar" : "Ativar"}
-        </Button>
-      </div>
+      <MenuButton
+        ariaLabel={`Abrir menu da etapa ${step.title}`}
+        disabled={disableActions}
+        closeMenuOnItemClick
+        onClick={(event) => event.stopPropagation()}
+        tooltipContent="Ações da etapa"
+        component={() => (
+          <button
+            type="button"
+            className={styles.stepMenuTrigger}
+            aria-label={`Opções da etapa ${step.title}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <MoreActions aria-hidden />
+          </button>
+        )}
+      >
+        <Menu>
+          <MenuItem title="Adicionar tempo de espera" onClick={() => onMenuAction("add-wait", step)} />
+          <MenuItem title="Adicionar etapa antes" onClick={() => onMenuAction("add-before", step)} />
+          <MenuItem title="Adicionar etapa depois" onClick={() => onMenuAction("add-after", step)} />
+          <MenuItem title="Mover etapa para cima" onClick={() => onMenuAction("move-up", step)} />
+          <MenuItem title="Mover etapa para baixo" onClick={() => onMenuAction("move-down", step)} />
+          <MenuItem title="Duplicar etapa" onClick={() => onMenuAction("duplicate", step)} />
+          <MenuItem title="Excluir etapa" onClick={() => onMenuAction("delete", step)} />
+          <MenuItem
+            title={step.isActive ? "Desativar etapa" : "Ativar etapa"}
+            onClick={() => onToggle(step, !step.isActive)}
+          />
+        </Menu>
+      </MenuButton>
     </article>
   );
 }
@@ -178,7 +230,7 @@ type StepModalProps = {
     channelHint: string;
     pauseUntilDone: boolean;
     isActive: boolean;
-  }) => Promise<void>;
+  }, options: { state: StepModalState }) => Promise<void>;
   pending: boolean;
   disabled: boolean;
 };
@@ -213,15 +265,15 @@ function StepModal({ open, state, onClose, onSubmit, pending, disabled }: StepMo
       setPauseUntilDone(step.pauseUntilDone);
       setIsActive(step.isActive);
     } else {
-      setTitle("");
-      setShortDescription("");
+      setTitle(state?.initialValues?.title ?? "");
+      setShortDescription(state?.initialValues?.shortDescription ?? "");
       setType(state?.presetType ?? "general_task");
       setAssigneeMode("owner");
-      setDueDays(0);
-      setDueHours(0);
+      setDueDays(state?.initialValues?.dueOffsetDays ?? 0);
+      setDueHours(state?.initialValues?.dueOffsetHours ?? 0);
       setPriority("Normal");
       setChannelHint("");
-      setPauseUntilDone(false);
+      setPauseUntilDone(state?.initialValues?.pauseUntilDone ?? false);
       setIsActive(true);
     }
   }, [open, state]);
@@ -257,19 +309,22 @@ function StepModal({ open, state, onClose, onSubmit, pending, disabled }: StepMo
             if (formDisabled) {
               return;
             }
-            void onSubmit({
-              id: state.step?.id,
-              title,
-              shortDescription,
-              type,
-              assigneeMode,
-              dueOffsetDays: Number.isFinite(dueDays) ? dueDays : 0,
-              dueOffsetHours: Number.isFinite(dueHours) ? dueHours : 0,
-              priority,
-              channelHint,
-              pauseUntilDone,
-              isActive,
-            });
+            void onSubmit(
+              {
+                id: state.step?.id,
+                title,
+                shortDescription,
+                type,
+                assigneeMode,
+                dueOffsetDays: Number.isFinite(dueDays) ? dueDays : 0,
+                dueOffsetHours: Number.isFinite(dueHours) ? dueHours : 0,
+                priority,
+                channelHint,
+                pauseUntilDone,
+                isActive,
+              },
+              { state }
+            );
           }}
         >
           <div className={styles.formGridTwoColumns}>
@@ -399,8 +454,8 @@ function StepModal({ open, state, onClose, onSubmit, pending, disabled }: StepMo
 }
 
 const TAB_LABELS: Record<TabKey, string> = {
-  passos: "Passos",
-  regras: "Regras & notificações",
+  etapas: "Etapas",
+  regras: "Regras e notificações",
   inscricoes: "Inscrições",
 };
 
@@ -436,7 +491,7 @@ const ENROLLMENT_STATUS: Record<string, string> = {
 
 export default function SequenceEditorPage({ orgId, membershipId, membershipRole, data }: SequenceEditorPageProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabKey>("passos");
+  const [activeTab, setActiveTab] = useState<TabKey>("etapas");
   const [stepModal, setStepModal] = useState<StepModalState | null>(null);
   const [localSteps, setLocalSteps] = useState<SequenceStepRecord[]>(data.steps);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(data.steps[0]?.id ?? null);
@@ -502,19 +557,24 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     rep: "Representante",
   };
 
-  const handleStepSubmit = async (values: {
-    id?: string;
-    title: string;
-    shortDescription: string;
-    type: SequenceStepRecord["type"];
-    assigneeMode: SequenceStepRecord["assigneeMode"];
-    dueOffsetDays: number;
-    dueOffsetHours: number;
-    priority: string;
-    channelHint: string;
-    pauseUntilDone: boolean;
-    isActive: boolean;
-  }) => {
+  const sequenceTitle = data.sequence.name?.trim() || "Nova Sequência";
+
+  const handleStepSubmit = async (
+    values: {
+      id?: string;
+      title: string;
+      shortDescription: string;
+      type: SequenceStepRecord["type"];
+      assigneeMode: SequenceStepRecord["assigneeMode"];
+      dueOffsetDays: number;
+      dueOffsetHours: number;
+      priority: string;
+      channelHint: string;
+      pauseUntilDone: boolean;
+      isActive: boolean;
+    },
+    { state }: { state: StepModalState }
+  ) => {
     if (!currentVersion) {
       return;
     }
@@ -525,7 +585,7 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     }
 
     startTransition(async () => {
-      await upsertSequenceStepAction({
+      const newStepId = await upsertSequenceStepAction({
         sequenceId: data.sequence.id,
         versionId: currentVersion.id,
         stepId: values.id,
@@ -540,6 +600,40 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
         pauseUntilDone: values.pauseUntilDone,
         isActive: values.isActive,
       });
+
+      if (!values.id && state.position && newStepId) {
+        const baseOrder = localSteps.map((step) => step.id);
+        const referenceIndex = state.position.referenceId
+          ? baseOrder.findIndex((id) => id === state.position?.referenceId)
+          : baseOrder.length - 1;
+        let targetIndex = baseOrder.length;
+
+        if (state.position.kind === "before" && referenceIndex >= 0) {
+          targetIndex = referenceIndex;
+        }
+
+        if (state.position.kind === "after" && referenceIndex >= 0) {
+          targetIndex = referenceIndex + 1;
+        }
+
+        if (state.position.kind === "end") {
+          targetIndex = baseOrder.length;
+        }
+
+        const reorderedIds = [...baseOrder, newStepId].filter((id) => id !== newStepId);
+        const boundedIndex = Math.max(0, Math.min(targetIndex, reorderedIds.length));
+        reorderedIds.splice(boundedIndex, 0, newStepId);
+
+        await reorderSequenceStepsAction(
+          data.sequence.id,
+          currentVersion.id,
+          reorderedIds
+        );
+        setSelectedStepId(newStepId);
+      } else if (values.id) {
+        setSelectedStepId(values.id);
+      }
+
       router.refresh();
       setStepModal(null);
     });
@@ -609,6 +703,149 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     });
   };
 
+  const handleMoveStep = (step: SequenceStepRecord, direction: "up" | "down") => {
+    if (disableStepActions) {
+      return;
+    }
+
+    const currentIndex = localSteps.findIndex((item) => item.id === step.id);
+    if (currentIndex === -1) {
+      return;
+    }
+
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+    if (targetIndex < 0 || targetIndex >= localSteps.length) {
+      return;
+    }
+
+    const reordered = arrayMove(localSteps, currentIndex, targetIndex);
+    setLocalSteps(reordered);
+
+    if (!currentVersion) {
+      return;
+    }
+
+    startTransition(async () => {
+      await reorderSequenceStepsAction(
+        data.sequence.id,
+        currentVersion.id,
+        reordered.map((item) => item.id)
+      );
+      router.refresh();
+    });
+  };
+
+  const handleStepMenuAction = (action: StepMenuAction, step: SequenceStepRecord) => {
+    switch (action) {
+      case "add-wait":
+        openStepModal({
+          mode: "create",
+          presetType: step.type,
+          position: { kind: "after", referenceId: step.id },
+          initialValues: {
+            title: "Tempo de espera",
+            shortDescription: "Defina um intervalo antes da próxima etapa.",
+            dueOffsetDays: Math.max(1, step.dueOffsetDays),
+            dueOffsetHours: step.dueOffsetHours,
+            pauseUntilDone: true,
+          },
+        });
+        break;
+      case "add-before":
+        openStepModal({
+          mode: "create",
+          presetType: step.type,
+          position: { kind: "before", referenceId: step.id },
+        });
+        break;
+      case "add-after":
+        openStepModal({
+          mode: "create",
+          presetType: step.type,
+          position: { kind: "after", referenceId: step.id },
+        });
+        break;
+      case "move-up":
+        handleMoveStep(step, "up");
+        break;
+      case "move-down":
+        handleMoveStep(step, "down");
+        break;
+      case "duplicate":
+        handleDuplicate(step);
+        break;
+      case "delete":
+        handleDelete(step);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleNoteBlur = (step: SequenceStepRecord, note: string) => {
+    if (!currentVersion) {
+      return;
+    }
+
+    if (disableStepActions) {
+      return;
+    }
+
+    const normalizedCurrent = step.shortDescription ?? "";
+    if (normalizedCurrent === note) {
+      return;
+    }
+
+    startTransition(async () => {
+      await upsertSequenceStepAction({
+        sequenceId: data.sequence.id,
+        versionId: currentVersion.id,
+        stepId: step.id,
+        title: step.title,
+        shortDescription: note,
+        type: step.type,
+        assigneeMode: step.assigneeMode,
+        dueOffsetDays: step.dueOffsetDays,
+        dueOffsetHours: step.dueOffsetHours,
+        priority: step.priority ?? "Normal",
+        channelHint: step.channelHint ?? "",
+        pauseUntilDone: step.pauseUntilDone,
+        isActive: step.isActive,
+      });
+      router.refresh();
+    });
+  };
+
+  const handlePauseToggleChange = (step: SequenceStepRecord, pause: boolean) => {
+    if (!currentVersion) {
+      return;
+    }
+
+    if (disableStepActions) {
+      return;
+    }
+
+    startTransition(async () => {
+      await upsertSequenceStepAction({
+        sequenceId: data.sequence.id,
+        versionId: currentVersion.id,
+        stepId: step.id,
+        title: step.title,
+        shortDescription: step.shortDescription ?? "",
+        type: step.type,
+        assigneeMode: step.assigneeMode,
+        dueOffsetDays: step.dueOffsetDays,
+        dueOffsetHours: step.dueOffsetHours,
+        priority: step.priority ?? "Normal",
+        channelHint: step.channelHint ?? "",
+        pauseUntilDone: pause,
+        isActive: step.isActive,
+      });
+      router.refresh();
+    });
+  };
+
   const handleToggle = (step: SequenceStepRecord, isActive: boolean) => {
     if (disableStepActions) {
       return;
@@ -646,6 +883,15 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
         setActivationError(message);
       }
     });
+  };
+
+  const handleSaveSequence = () => {
+    trackEvent(
+      "sequence_editor_save_clicked",
+      { sequenceId: data.sequence.id },
+      { groups: { orgId, sequenceId: data.sequence.id } }
+    );
+    router.refresh();
   };
 
   const handleRulesSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -736,6 +982,16 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     [localSteps, selectedStepId]
   );
 
+  const [noteDraft, setNoteDraft] = useState("");
+
+  useEffect(() => {
+    if (selectedStep) {
+      setNoteDraft(selectedStep.shortDescription ?? "");
+    } else {
+      setNoteDraft("");
+    }
+  }, [selectedStep?.id, selectedStep?.shortDescription]);
+
   const disableStepActions = sequenceActive || isPending || activationPending;
   const disableRulesForm = sequenceActive || activationPending;
   const disableEnrollmentForm = sequenceActive || activationPending;
@@ -753,80 +1009,67 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
 
   return (
     <section className={styles.page} aria-labelledby="sequence-editor-title">
-      <header className={styles.pageHeader}>
-        <BreadcrumbsBar type={BreadcrumbsBar.types.NAVIGATION} className={styles.breadcrumbs}>
-          <BreadcrumbItem
-            text="Sequências"
-            isClickable
+      <header className={styles.topBar}>
+        <div className={styles.topBarMain}>
+          <button
+            type="button"
+            className={styles.backLink}
             onClick={() => router.push("/sequences")}
-          />
-          <BreadcrumbItem text={data.sequence.name} isCurrent />
-        </BreadcrumbsBar>
+          >
+            <NavigationChevronLeft aria-hidden />
+            <span>Todas as sequências</span>
+          </button>
 
-        <div className={styles.headerContent}>
-          <div className={styles.headerIdentity}>
-            <Avatar
-              type={Avatar.types.TEXT}
-              size={Avatar.sizes.LARGE}
-              text={data.sequence.name.slice(0, 1).toUpperCase()}
-            />
-            <div className={styles.headerText}>
-              <div className={styles.headerTitleRow}>
-                <h1 id="sequence-editor-title">{data.sequence.name}</h1>
-                <Label
-                  kind={Label.kinds.FILL}
-                  color={Label.colors.PRIMARY}
-                  className={styles.statusBadge}
-                  text={sequenceStatusLabel[data.sequence.status]}
-                />
-              </div>
-              <div className={styles.headerMeta}>
-                <span>Versão atual #{currentVersion.versionNumber}</span>
-                <span>
-                  Alvo padrão: {data.sequence.defaultTargetType === "contact" ? "Contatos" : "Membros"}
-                </span>
-                {duePreview ? (
-                  <span>Próxima due estimada: {new Date(duePreview).toLocaleString("pt-BR")}</span>
-                ) : null}
-                <span>Seu perfil: {roleLabel[membershipRole]}</span>
-              </div>
-              <Text type={Text.types.TEXT2} className={styles.headerDescription}>
-                {data.sequence.description?.trim() ||
-                  "Organize a cadência de tarefas, defina regras de disparo e acompanhe inscrições em tempo real."}
-              </Text>
+          <div className={styles.titleGroup}>
+            <h1 id="sequence-editor-title">{sequenceTitle}</h1>
+            <div className={styles.titleMeta}>
+              <Label
+                kind={Label.kinds.FILL}
+                color={Label.colors.PRIMARY}
+                text={sequenceStatusLabel[data.sequence.status]}
+              />
+              <span>Versão #{currentVersion.versionNumber}</span>
+              <span>
+                Público: {data.sequence.defaultTargetType === "contact" ? "Contatos" : "Membros"}
+              </span>
+              <span>Perfil: {roleLabel[membershipRole]}</span>
+              {duePreview ? (
+                <span>Próxima due: {new Date(duePreview).toLocaleString("pt-BR")}</span>
+              ) : null}
             </div>
+            <Text type={Text.types.TEXT2} className={styles.titleDescription}>
+              {data.sequence.description?.trim() ||
+                "Crie uma cadência automatizada para organizar tarefas e notificações."}
+            </Text>
           </div>
+        </div>
 
-          <div className={styles.headerActions}>
-            <div className={styles.activationGroup}>
-              <span className={styles.activationLabel}>Ativação</span>
-              <div className={styles.activationToggle}>
-                <Toggle
-                  isSelected={sequenceActive}
-                  onChange={(value) => handleActivationToggle(value)}
-                  disabled={activationPending || isPending}
-                  onOverrideText="Ativada"
-                  offOverrideText="Desativada"
-                  ariaLabel="Alternar ativação da sequência"
-                />
-                <span className={styles.activationState}>{sequenceActive ? "Ativada" : "Desativada"}</span>
-              </div>
-              <p className={styles.activationHint}>
-                {sequenceActive
-                  ? "Edições bloqueadas enquanto a sequência estiver ativa."
-                  : "Revise passos e regras antes de ativar novamente."}
-              </p>
-              {activationError ? <p className={styles.activationError}>{activationError}</p> : null}
+        <div className={styles.topBarActions}>
+          <div className={styles.activationControl}>
+            <div className={styles.activationToggle}>
+              <span data-active={!sequenceActive}>Inativa</span>
+              <Toggle
+                isSelected={sequenceActive}
+                onChange={(value) => handleActivationToggle(value)}
+                disabled={activationPending || isPending}
+                ariaLabel="Alternar ativação da sequência"
+              />
+              <span data-active={sequenceActive}>Ativa</span>
             </div>
-            <Button
-              kind={Button.kinds.SECONDARY}
-              leftIcon="Add"
-              onClick={() => openStepModal({ mode: "create", presetType: "general_task" })}
-              disabled={disableStepActions}
-            >
-              Novo passo
-            </Button>
+            <p className={styles.activationHint}>
+              {sequenceActive
+                ? "Edições bloqueadas enquanto a sequência estiver ativa."
+                : "Revise etapas e regras antes de ativar novamente."}
+            </p>
+            {activationError ? <p className={styles.activationError}>{activationError}</p> : null}
           </div>
+          <Button
+            kind={Button.kinds.PRIMARY}
+            onClick={handleSaveSequence}
+            disabled={activationPending || isPending}
+          >
+            Salvar sequência
+          </Button>
         </div>
       </header>
 
@@ -848,23 +1091,29 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
       </nav>
 
       <div role="tabpanel" id={`${activeTab}-panel`} className={styles.tabPanel}>
-        {activeTab === "passos" ? (
+        {activeTab === "etapas" ? (
           <div className={styles.stepsLayout}>
             <div className={styles.stepsColumn}>
               <div className={styles.stepsHeader}>
                 <div>
-                  <p className={styles.stepsTitle}>Passos ({localSteps.length})</p>
+                  <p className={styles.stepsTitle}>Quando inscrito</p>
                   <span className={styles.stepsSubtitle}>
-                    Arraste para reordenar ou clique para visualizar detalhes.
+                    {localSteps.length} etapa(s) dão início à cadência desta sequência.
                   </span>
                 </div>
                 <Button
                   kind={Button.kinds.SECONDARY}
-                  onClick={() => openStepModal({ mode: "create", presetType: "general_task" })}
+                  onClick={() =>
+                    openStepModal({
+                      mode: "create",
+                      presetType: "general_task",
+                      position: { kind: "end" },
+                    })
+                  }
                   disabled={disableStepActions}
                 >
-                  Adicionar passo
-                  </Button>
+                  Adicionar etapa
+                </Button>
               </div>
 
               {localSteps.length === 0 ? (
@@ -877,7 +1126,13 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                         key={template.id}
                         type="button"
                         className={styles.stepTemplateCard}
-                        onClick={() => openStepModal({ mode: "create", presetType: template.id })}
+                        onClick={() =>
+                          openStepModal({
+                            mode: "create",
+                            presetType: template.id,
+                            position: { kind: "end" },
+                          })
+                        }
                         disabled={disableStepActions}
                       >
                         <strong>{template.title}</strong>
@@ -900,103 +1155,90 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                           disableActions={disableStepActions}
                           onSelect={(selected) => setSelectedStepId(selected.id)}
                           onToggle={handleToggle}
+                          onMenuAction={handleStepMenuAction}
                         />
                       ))}
                     </div>
                   </SortableContext>
                 </DndContext>
               )}
+              <button
+                type="button"
+                className={styles.addStepLink}
+                onClick={() =>
+                  openStepModal({
+                    mode: "create",
+                    presetType: "general_task",
+                    position: { kind: "end" },
+                  })
+                }
+                disabled={disableStepActions}
+              >
+                <Add aria-hidden />
+                Adicionar
+              </button>
             </div>
 
             <aside className={styles.detailsColumn} aria-live="polite">
               {selectedStep ? (
-                <div className={styles.detailCard}>
-                  <header className={styles.detailHeader}>
+                <div className={styles.detailsPanel}>
+                  <header className={styles.detailsHeader}>
                     <div>
                       <h2>{selectedStep.title}</h2>
-                      <span className={styles.detailSubtitle}>{STEP_TYPE_LABEL[selectedStep.type]}</span>
+                      <span className={styles.detailsSubtitle}>{STEP_TYPE_LABEL[selectedStep.type]}</span>
                     </div>
                     <Label
                       kind={Label.kinds.FILL}
                       color={selectedStep.isActive ? Label.colors.POSITIVE : Label.colors.AMERICAN_GRAY}
-                      text={selectedStep.isActive ? "Ativo" : "Inativo"}
+                      text={selectedStep.isActive ? "Ativa" : "Inativa"}
                     />
                   </header>
 
-                  <div className={styles.detailMetaGrid}>
-                    <div>
-                      <span className={styles.detailMetaLabel}>Responsável</span>
-                      <span className={styles.detailMetaValue}>
-                        {selectedStep.assigneeMode === "owner"
-                          ? "Dono do contato"
-                          : selectedStep.assigneeMode === "org"
-                          ? "Organização"
-                          : "Membro específico"}
-                      </span>
-                    </div>
-                    <div>
-                      <span className={styles.detailMetaLabel}>Prazo</span>
-                      <span className={styles.detailMetaValue}>
-                        {selectedStep.dueOffsetDays} dia(s) · {selectedStep.dueOffsetHours} hora(s)
-                      </span>
-                    </div>
-                    <div>
-                      <span className={styles.detailMetaLabel}>Canal sugerido</span>
-                      <span className={styles.detailMetaValue}>{selectedStep.channelHint || "Não definido"}</span>
-                    </div>
-                    <div>
-                      <span className={styles.detailMetaLabel}>Bloqueio</span>
-                      <span className={styles.detailMetaValue}>
-                        {selectedStep.pauseUntilDone ? "Sequência pausa até concluir" : "Continua mesmo pendente"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className={styles.detailDescription}>
-                    <Text type={Text.types.TEXT2} weight={Text.weights.BOLD}>
-                      Descrição
-                    </Text>
+                  <div className={styles.noteSection}>
                     <TextArea
-                      value={selectedStep.shortDescription ?? "Sem descrição cadastrada."}
-                      readOnly
-                      aria-label="Descrição do passo selecionado"
-                      className={styles.detailTextarea}
+                      value={noteDraft}
+                      onChange={(event) => setNoteDraft(event.target.value)}
+                      onBlur={() => handleNoteBlur(selectedStep, noteDraft)}
+                      placeholder="Adicione a nota que aparecerá no lembrete desta tarefa."
+                      aria-label="Nota da etapa selecionada"
+                      disabled={disableStepActions}
+                      className={styles.noteInput}
                     />
+                    <div className={styles.noteToolbar} aria-hidden>
+                      <Tooltip content="Inserir conteúdo" position="top">
+                        <button type="button" className={styles.toolbarButton} disabled={disableStepActions}>
+                          <Add aria-hidden />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="Formato de texto" position="top">
+                        <button type="button" className={styles.toolbarButton} disabled={disableStepActions}>
+                          <TextFormatting aria-hidden />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="Inserir código" position="top">
+                        <button type="button" className={styles.toolbarButton} disabled={disableStepActions}>
+                          <Code aria-hidden />
+                        </button>
+                      </Tooltip>
+                    </div>
                   </div>
 
-                  <div className={styles.detailActions}>
-                    <Button
-                      onClick={() => openStepModal({ mode: "edit", step: selectedStep })}
+                  <div className={styles.pauseRow}>
+                    <div className={styles.pauseCopy}>
+                      <span className={styles.pauseLabel}>Pausar sequência até que a etapa seja marcada como concluída</span>
+                      <p className={styles.pauseHint}>Os inscritos aguardam antes de avançar para a próxima etapa.</p>
+                    </div>
+                    <Toggle
+                      isSelected={selectedStep.pauseUntilDone}
+                      onChange={(value) => handlePauseToggleChange(selectedStep, value)}
                       disabled={disableStepActions}
-                    >
-                      Editar passo
-                    </Button>
-                    <Button
-                      kind={Button.kinds.SECONDARY}
-                      onClick={() => handleDuplicate(selectedStep)}
-                      disabled={disableStepActions}
-                    >
-                      Duplicar
-                    </Button>
-                    <Button
-                      kind={Button.kinds.SECONDARY}
-                      onClick={() => handleToggle(selectedStep, !selectedStep.isActive)}
-                      disabled={disableStepActions}
-                    >
-                      {selectedStep.isActive ? "Desativar" : "Ativar"}
-                    </Button>
-                    <Button
-                      kind={Button.kinds.TERTIARY}
-                      onClick={() => handleDelete(selectedStep)}
-                      disabled={disableStepActions}
-                    >
-                      Remover
-                    </Button>
+                      ariaLabel="Pausar sequência até a conclusão desta etapa"
+                    />
                   </div>
                 </div>
               ) : (
                 <div className={styles.detailPlaceholder}>
-                  <Text type={Text.types.TEXT2}>Selecione um passo para visualizar os detalhes.</Text>
+                  <Text type={Text.types.TEXT2}>Selecione uma etapa para visualizar os detalhes.</Text>
                 </div>
               )}
             </aside>

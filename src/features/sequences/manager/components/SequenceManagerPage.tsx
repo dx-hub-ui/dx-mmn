@@ -4,11 +4,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, type ComponentType } from "react";
 import clsx from "clsx";
 import {
+  Avatar,
   Button,
+  Chips,
   Dialog,
   type DialogProps,
   type DialogType,
   DialogContentContainer,
+  IconButton,
   Label,
   Modal,
   ModalContent,
@@ -16,9 +19,16 @@ import {
   ModalHeader,
   RadioButton,
   Search,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
   TextField,
+  Tooltip,
 } from "@vibe/core";
-import { Open } from "@vibe/icons";
+import { Feedback, LearnMore, Team } from "@vibe/icons";
 import { createSequenceDraftAction } from "@/app/(app)/sequences/actions";
 import { trackEvent } from "@/lib/telemetry";
 import { useSentrySequenceScope } from "@/lib/observability/sentryClient";
@@ -33,6 +43,40 @@ import styles from "./sequence-manager.module.css";
 
 const STATUS_OPTIONS: (SequenceStatus | "todos")[] = ["todos", "active", "paused", "draft", "archived"];
 const TARGET_OPTIONS: (SequenceTargetType | "todos")[] = ["todos", "contact", "member"];
+
+const STATUS_LABEL: Record<SequenceStatus, string> = {
+  active: "Ativa",
+  paused: "Pausada",
+  draft: "Rascunho",
+  archived: "Desativada",
+};
+
+const STATUS_ORDER: Record<SequenceStatus, number> = {
+  active: 0,
+  paused: 1,
+  draft: 2,
+  archived: 3,
+};
+
+type SortColumn =
+  | "name"
+  | "status"
+  | "creator"
+  | "steps"
+  | "days"
+  | "activeEnrollments"
+  | "totalEnrollments"
+  | "openRate"
+  | "replyRate"
+  | "clickRate"
+  | "modified";
+
+type SortState = {
+  column: SortColumn;
+  direction: "asc" | "desc";
+};
+
+const DEFAULT_SORT: SortState = { column: "modified", direction: "desc" };
 
 type SequenceManagerPageProps = {
   sequences: SequenceManagerItem[];
@@ -52,6 +96,28 @@ type NewSequenceModalProps = {
   onTargetChange: (value: SequenceTargetType) => void;
   onSubmit: () => void;
 };
+
+function StatusChip({ status }: { status: SequenceStatus }) {
+  const map = {
+    active: { color: "positive", label: STATUS_LABEL.active },
+    paused: { color: "warning", label: STATUS_LABEL.paused },
+    draft: { color: undefined, label: STATUS_LABEL.draft },
+    archived: { color: undefined, label: STATUS_LABEL.archived, disabled: true },
+  } as const;
+
+  const cfg = map[status];
+
+  return (
+    <Chips
+      id={`status-${status}`}
+      ariaLabel={`Status: ${cfg.label}`}
+      label={cfg.label}
+      color={cfg.color}
+      readOnly
+      disabled={cfg.disabled}
+    />
+  );
+}
 
 function NewSequenceModal({
   open,
@@ -88,9 +154,9 @@ function NewSequenceModal({
           />
 
           <fieldset className={styles.modalFieldset} disabled={pending}>
-            <legend>Alvo padrão</legend>
-            <p className={styles.modalHint}>Escolha quem poderá ser inscrito automaticamente.</p>
-            <div className={styles.modalRadioGroup} role="radiogroup" aria-label="Tipo de alvo da sequência">
+            <legend>Tipo de público</legend>
+            <p className={styles.modalHint}>Escolha o público padrão que será inscrito nesta sequência.</p>
+            <div className={styles.modalRadioGroup} role="radiogroup" aria-label="Tipo de público">
               <RadioButton
                 name="sequence-target"
                 value="contact"
@@ -136,6 +202,31 @@ function formatDate(value: string | null) {
   }
 }
 
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("pt-BR").format(value);
+}
+
+function formatPercent(value: number | null) {
+  if (value === null || Number.isNaN(value)) {
+    return "—";
+  }
+
+  return `${value.toFixed(1)}%`;
+}
+
+function getCreatorInitials(name: string) {
+  const parts = name.trim().split(" ").filter(Boolean);
+  if (parts.length === 0) {
+    return "?";
+  }
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+}
+
 export default function SequenceManagerPage({
   sequences,
   orgId,
@@ -154,6 +245,13 @@ export default function SequenceManagerPage({
     targetType: "todos",
   });
   const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
+  const [sort, setSort] = useState<SortState>(DEFAULT_SORT);
+  const [isSkeletonVisible, setSkeletonVisible] = useState(true);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setSkeletonVisible(false), 280);
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   const PopoverDialog = Dialog as unknown as ComponentType<DialogProps & { type?: DialogType }>;
 
@@ -247,38 +345,123 @@ export default function SequenceManagerPage({
 
   const filtered = useMemo(() => filterSequences(sequences, filters), [sequences, filters]);
 
-  const statusLabel: Record<SequenceStatus, string> = {
-    active: "Ativa",
-    paused: "Pausada",
-    draft: "Rascunho",
-    archived: "Arquivada",
+  const sorted = useMemo(() => {
+    const sortedItems = [...filtered];
+
+    const directionFactor = sort.direction === "asc" ? 1 : -1;
+
+    sortedItems.sort((a, b) => {
+      const compare = (valueA: number | string | null, valueB: number | string | null) => {
+        if (valueA === valueB) {
+          return 0;
+        }
+
+        if (valueA === null || valueA === undefined) {
+          return -1 * directionFactor;
+        }
+
+        if (valueB === null || valueB === undefined) {
+          return 1 * directionFactor;
+        }
+
+        if (typeof valueA === "number" && typeof valueB === "number") {
+          return valueA > valueB ? directionFactor : -directionFactor;
+        }
+
+        return String(valueA).localeCompare(String(valueB), "pt-BR", { sensitivity: "base" }) * directionFactor;
+      };
+
+      switch (sort.column) {
+        case "name":
+          return compare(a.name, b.name);
+        case "status":
+          return compare(STATUS_ORDER[a.status], STATUS_ORDER[b.status]);
+        case "creator":
+          return compare(a.creator?.name ?? null, b.creator?.name ?? null);
+        case "steps":
+          return compare(a.stepsTotal, b.stepsTotal);
+        case "days":
+          return compare(a.estimatedDays ?? a.stepsTotal, b.estimatedDays ?? b.stepsTotal);
+        case "activeEnrollments":
+          return compare(a.activeEnrollments, b.activeEnrollments);
+        case "totalEnrollments":
+          return compare(a.totalEnrollments, b.totalEnrollments);
+        case "openRate":
+          return compare(a.openRate ?? null, b.openRate ?? null);
+        case "replyRate":
+          return compare(a.replyRate ?? null, b.replyRate ?? null);
+        case "clickRate":
+          return compare(a.clickRate ?? null, b.clickRate ?? null);
+        case "modified":
+        default:
+          return compare(Date.parse(a.updatedAt), Date.parse(b.updatedAt));
+      }
+    });
+
+    return sortedItems;
+  }, [filtered, sort]);
+
+  const handleSortChange = (column: SortColumn) => {
+    setSort((prev) => {
+      if (prev.column === column) {
+        const nextDirection = prev.direction === "asc" ? "desc" : "asc";
+        return { column, direction: nextDirection };
+      }
+      return { column, direction: "desc" };
+    });
   };
 
-  const targetLabel: Record<SequenceTargetType, string> = {
-    contact: "Contato",
-    member: "Membro",
-  };
-
-  const badgeClass: Record<SequenceStatus, string> = {
-    active: styles.badgeActive,
-    paused: styles.badgePaused,
-    draft: styles.badgeDraft,
-    archived: styles.badgeArchived,
-  };
+  const renderEmptyState = (
+    <div className={styles.emptyState} role="status">
+      <strong>Nenhuma sequência encontrada</strong>
+      <span>Refine os filtros, tente outra busca ou crie uma nova sequência.</span>
+      <Button kind={Button.kinds.PRIMARY} onClick={handleOpenModal} disabled={isCreating}>
+        Nova sequência
+      </Button>
+    </div>
+  );
 
   return (
-    <>
-      <section className={styles.page} aria-labelledby="sequence-manager-title">
-        <header className={styles.pageHeader}>
-          <div className={styles.titleRow}>
-            <h1 id="sequence-manager-title">Sequências</h1>
-            <Label kind={Label.kinds.FILL} color={Label.colors.PRIMARY} className={styles.betaLabel} text="Beta" />
+    <section className={styles.page} aria-labelledby="sequence-manager-title">
+      <header className={styles.header}>
+        <div className={styles.headerTop}>
+          <h1 id="sequence-manager-title" className={styles.headerTitle}>
+            Sequências
+          </h1>
+          <Label
+            kind={Label.kinds.FILL}
+            color={Label.colors.PRIMARY}
+            text="Beta"
+            className={styles.betaChip}
+          />
+          <div className={styles.headerActions}>
+            <Tooltip content="Aprender mais">
+              <IconButton
+                size={IconButton.sizes.SMALL}
+                ariaLabel="Abrir documentação"
+                kind={IconButton.kinds.SECONDARY}
+                onClick={() => window.open("https://vibe.monday.com/?path=/docs/components-table--docs", "_blank")}
+              >
+                <LearnMore />
+              </IconButton>
+            </Tooltip>
+            <Tooltip content="Enviar feedback">
+              <IconButton
+                size={IconButton.sizes.SMALL}
+                ariaLabel="Enviar feedback"
+                kind={IconButton.kinds.SECONDARY}
+                onClick={() => router.push("/support/feedback?from=sequences")}
+              >
+                <Feedback />
+              </IconButton>
+            </Tooltip>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <div className={styles.pageBody}>
-        <div className={styles.toolbar} role="toolbar" aria-label="Controles de sequências">
-          <div className={styles.toolbarPrimary}>
+      <div className={styles.toolbarWrapper}>
+        <div className={clsx(styles.sequence-manager_toolbar)} role="toolbar" aria-label="Controles de sequências">
+          <div className={styles.toolbarLeft}>
             <Button
               kind={Button.kinds.PRIMARY}
               leftIcon="Add"
@@ -299,40 +482,32 @@ export default function SequenceManagerPage({
               onClickOutside={() => setFiltersDialogOpen(false)}
               onDialogDidHide={() => setFiltersDialogOpen(false)}
               content={
-                <DialogContentContainer className={styles.filterDialog}>
-                  <div className={styles.filterHeader}>
-                    <span className={styles.filterTitle}>Filtros</span>
-                    <button
-                      type="button"
-                      className={styles.clearFilters}
-                      onClick={() => {
-                        setFilters((prev) => ({
-                          ...prev,
-                          status: "todos",
-                          targetType: "todos",
-                        }));
-                        setFiltersDialogOpen(false);
-                      }}
-                    >
-                      Limpar tudo
-                    </button>
-                  </div>
+                <DialogContentContainer className={styles.filtersDialog}>
+                  <button
+                    type="button"
+                    className={styles.resetFilters}
+                    onClick={() => {
+                      setFilters({ search: "", status: "todos", targetType: "todos" });
+                      setFiltersDialogOpen(false);
+                    }}
+                  >
+                    Limpar filtros
+                  </button>
 
                   <div className={styles.filterGroup}>
                     <span className={styles.filterLabel}>Status</span>
                     <div className={styles.filterOptions}>
                       {STATUS_OPTIONS.map((option) => {
-                        const isSelected = filters.status === option;
+                        const selected = filters.status === option;
                         return (
                           <button
                             key={option}
                             type="button"
-                            className={clsx(styles.filterOption, {
-                              [styles.filterOptionSelected]: isSelected,
-                            })}
+                            className={styles.filterChip}
+                            data-selected={selected ? "true" : undefined}
                             onClick={() => setFilters((prev) => ({ ...prev, status: option }))}
                           >
-                            {option === "todos" ? "Todos" : statusLabel[option as SequenceStatus]}
+                            {option === "todos" ? "Todos" : STATUS_LABEL[option as SequenceStatus]}
                           </button>
                         );
                       })}
@@ -340,20 +515,19 @@ export default function SequenceManagerPage({
                   </div>
 
                   <div className={styles.filterGroup}>
-                    <span className={styles.filterLabel}>Alvo</span>
+                    <span className={styles.filterLabel}>Criada para</span>
                     <div className={styles.filterOptions}>
                       {TARGET_OPTIONS.map((option) => {
-                        const isSelected = filters.targetType === option;
+                        const selected = filters.targetType === option;
                         return (
                           <button
                             key={option}
                             type="button"
-                            className={clsx(styles.filterOption, {
-                              [styles.filterOptionSelected]: isSelected,
-                            })}
+                            className={styles.filterChip}
+                            data-selected={selected ? "true" : undefined}
                             onClick={() => setFilters((prev) => ({ ...prev, targetType: option }))}
                           >
-                            {option === "todos" ? "Todos" : targetLabel[option as SequenceTargetType]}
+                            {option === "todos" ? "Todos" : option === "contact" ? "Contatos" : "Membros"}
                           </button>
                         );
                       })}
@@ -374,76 +548,245 @@ export default function SequenceManagerPage({
             </PopoverDialog>
           </div>
 
-          <div className={styles.toolbarFilters}>
+          <div className={styles.toolbarRight}>
             <Search
               value={filters.search}
-              placeholder="Buscar por sequência, status ou tipo"
+              placeholder="Buscar por nome ou status"
               onChange={(value) => setFilters((prev) => ({ ...prev, search: value }))}
-              className={styles.search}
+              className={styles.searchField}
+              ariaLabel="Buscar sequência"
             />
           </div>
         </div>
+      </div>
 
-        <div className={styles.tableCard} role="region" aria-live="polite">
-          {filtered.length === 0 ? (
-            <div className={styles.emptyState}>
-              <span className={styles.emptyTitle}>Nenhuma sequência encontrada</span>
-              <p>Revise os filtros ou crie uma nova sequência para começar.</p>
-              <Button kind={Button.kinds.PRIMARY} onClick={handleOpenModal} disabled={isCreating}>
-                Nova sequência
-              </Button>
-            </div>
-          ) : (
-            <table
-              className={clsx(styles.table, styles["table_d1c05c112f"])}
-              role="grid"
-              aria-labelledby="sequence-manager-title"
+      <div className={styles.tableSection}>
+        <div className={clsx(styles.sequence-table-card)}>
+          <div className={styles.tableScroll}>
+            <Table
+              columns={[
+                { id: "name", title: "Nome da sequência", width: { min: "240px", max: "320px" } },
+                { id: "status", title: "Status", width: "140px" },
+                { id: "creator", title: "Criada por", width: { min: "180px", max: "220px" } },
+                { id: "board", title: "Quadro" },
+                { id: "steps", title: "Etapas", width: "90px" },
+                { id: "days", title: "Dias", width: "90px" },
+                {
+                  id: "activeEnrollments",
+                  title: "Inscrições ativas",
+                  width: "140px",
+                  infoContent: "Número de inscrições atualmente em andamento.",
+                },
+                {
+                  id: "totalEnrollments",
+                  title: "Inscrições totais",
+                  width: "140px",
+                  infoContent: "Inscrições acumuladas desde a criação da sequência.",
+                },
+                {
+                  id: "openRate",
+                  title: "Taxa de abertura",
+                  width: "150px",
+                  infoContent: "Percentual de contatos que abriram os envios desta sequência.",
+                },
+                {
+                  id: "replyRate",
+                  title: "Taxa de resposta",
+                  width: "150px",
+                  infoContent: "Percentual de respostas geradas pelas interações da sequência.",
+                },
+                {
+                  id: "clickRate",
+                  title: "Taxa de cliques",
+                  width: "150px",
+                  infoContent: "Percentual de cliques em links enviados pela sequência.",
+                },
+                { id: "modified", title: "Última modificação", width: { min: "160px", max: "200px" } },
+              ]}
+              dataState={{ isLoading: isSkeletonVisible }}
+              errorState={
+                <div className={styles.errorState} role="alert">
+                  <strong>Erro ao carregar</strong>
+                  <span>Tente atualizar a página para tentar novamente.</span>
+                </div>
+              }
+              emptyState={renderEmptyState}
+              className={clsx(styles.sequenceTable, "sequence-table")}
+              size={Table.sizes.MEDIUM}
+              withoutBorder
             >
-              <thead>
-                <tr>
-                  <th scope="col">Sequência</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Alvo padrão</th>
-                  <th scope="col">Passos</th>
-                  <th scope="col">Inscrições ativas</th>
-                  <th scope="col">Conclusão</th>
-                  <th scope="col">Última ativação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((item) => {
+              <TableHeader>
+                <TableHeaderCell
+                  className={styles.tableHeaderCell}
+                  title="Nome da sequência"
+                  sortState={sort.column === "name" ? sort.direction : "none"}
+                  onSortClicked={() => handleSortChange("name")}
+                  sortButtonAriaLabel="Ordenar por nome"
+                  sticky
+                />
+                <TableHeaderCell
+                  className={styles.tableHeaderCell}
+                  title="Status"
+                  sortState={sort.column === "status" ? sort.direction : "none"}
+                  onSortClicked={() => handleSortChange("status")}
+                  sortButtonAriaLabel="Ordenar por status"
+                />
+                <TableHeaderCell
+                  className={styles.tableHeaderCell}
+                  title="Criada por"
+                  sortState={sort.column === "creator" ? sort.direction : "none"}
+                  onSortClicked={() => handleSortChange("creator")}
+                  sortButtonAriaLabel="Ordenar por criador"
+                />
+                <TableHeaderCell className={styles.tableHeaderCell} title="Quadro" />
+                <TableHeaderCell
+                  className={styles.tableHeaderCell}
+                  title="Etapas"
+                  sortState={sort.column === "steps" ? sort.direction : "none"}
+                  onSortClicked={() => handleSortChange("steps")}
+                  sortButtonAriaLabel="Ordenar por quantidade de etapas"
+                />
+                <TableHeaderCell
+                  className={styles.tableHeaderCell}
+                  title="Dias"
+                  sortState={sort.column === "days" ? sort.direction : "none"}
+                  onSortClicked={() => handleSortChange("days")}
+                  sortButtonAriaLabel="Ordenar por duração"
+                />
+                <TableHeaderCell
+                  className={styles.tableHeaderCell}
+                  title="Inscrições ativas"
+                  infoContent="Número de inscrições atualmente em andamento."
+                  sortState={sort.column === "activeEnrollments" ? sort.direction : "none"}
+                  onSortClicked={() => handleSortChange("activeEnrollments")}
+                  sortButtonAriaLabel="Ordenar por inscrições ativas"
+                />
+                <TableHeaderCell
+                  className={styles.tableHeaderCell}
+                  title="Inscrições totais"
+                  infoContent="Inscrições acumuladas desde a criação da sequência."
+                  sortState={sort.column === "totalEnrollments" ? sort.direction : "none"}
+                  onSortClicked={() => handleSortChange("totalEnrollments")}
+                  sortButtonAriaLabel="Ordenar por inscrições totais"
+                />
+                <TableHeaderCell
+                  className={styles.tableHeaderCell}
+                  title="Taxa de abertura"
+                  infoContent="Percentual de contatos que abriram os envios desta sequência."
+                  sortState={sort.column === "openRate" ? sort.direction : "none"}
+                  onSortClicked={() => handleSortChange("openRate")}
+                  sortButtonAriaLabel="Ordenar por taxa de abertura"
+                />
+                <TableHeaderCell
+                  className={styles.tableHeaderCell}
+                  title="Taxa de resposta"
+                  infoContent="Percentual de respostas geradas pelas interações da sequência."
+                  sortState={sort.column === "replyRate" ? sort.direction : "none"}
+                  onSortClicked={() => handleSortChange("replyRate")}
+                  sortButtonAriaLabel="Ordenar por taxa de resposta"
+                />
+                <TableHeaderCell
+                  className={styles.tableHeaderCell}
+                  title="Taxa de cliques"
+                  infoContent="Percentual de cliques em links enviados pela sequência."
+                  sortState={sort.column === "clickRate" ? sort.direction : "none"}
+                  onSortClicked={() => handleSortChange("clickRate")}
+                  sortButtonAriaLabel="Ordenar por taxa de cliques"
+                />
+                <TableHeaderCell
+                  className={styles.tableHeaderCell}
+                  title="Última modificação"
+                  sortState={sort.column === "modified" ? sort.direction : "none"}
+                  onSortClicked={() => handleSortChange("modified")}
+                  sortButtonAriaLabel="Ordenar por data de modificação"
+                />
+              </TableHeader>
+
+              <TableBody>
+                {sorted.map((item) => {
+                  const creatorName = item.creator?.name ?? "Equipe";
+                  const initials = getCreatorInitials(creatorName);
+                  const estimatedDays = item.estimatedDays ?? item.stepsTotal;
+                  const boardLabel = item.boardName ?? "Contatos";
+
                   return (
-                    <tr key={item.id}>
-                      <th scope="row" className={styles.nameCell}>
-                        <button
-                          type="button"
-                          className={styles.sequenceButton}
-                          onClick={() => router.push(`/sequences/${item.id}`)}
-                          aria-label={`Abrir sequência ${item.name}`}
-                        >
-                          <span className={styles.sequenceName}>{item.name}</span>
-                          <Open size={16} className={styles.openIcon} aria-hidden />
-                        </button>
-                      </th>
-                      <td>
-                        <span className={clsx(styles.badge, badgeClass[item.status])}>{statusLabel[item.status]}</span>
-                      </td>
-                      <td className={styles.metaCell}>
-                        <span>{targetLabel[item.targetType]}</span>
-                      </td>
-                      <td>{item.stepsTotal}</td>
-                      <td>{item.activeEnrollments}</td>
-                      <td>{item.completionRate.toFixed(1)}%</td>
-                      <td>{formatDate(item.lastActivationAt)}</td>
-                    </tr>
+                    <TableRow
+                      key={item.id}
+                      className={styles.tableRow}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Abrir sequência ${item.name}`}
+                      onClick={() => router.push(`/sequences/${item.id}`)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          router.push(`/sequences/${item.id}`);
+                        }
+                      }}
+                    >
+                      <TableCell sticky>
+                        <div className={styles.nameCellContent}>
+                          <button
+                            type="button"
+                            className={styles.sequenceNameButton}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              router.push(`/sequences/${item.id}`);
+                            }}
+                            aria-label={`Editar ${item.name}`}
+                          >
+                            <span>{item.name}</span>
+                            <small>{item.targetType === "contact" ? "Público: Contatos" : "Público: Membros"}</small>
+                          </button>
+                        </div>
+                      </TableCell>
+                      <TableCell className={styles.statusCell}>
+                        <StatusChip status={item.status} />
+                      </TableCell>
+                      <TableCell>
+                        <div className={styles.creatorCell}>
+                          <Avatar
+                            type={Avatar.types.TEXT}
+                            size={Avatar.sizes.SMALL}
+                            ariaLabel={`Criado por ${creatorName}`}
+                            text={initials}
+                            src={item.creator?.avatarUrl ?? undefined}
+                          />
+                          <div className={styles.creatorName}>
+                            <span className={styles.creatorLabel}>{creatorName}</span>
+                            <span className={styles.creatorHint}>Responsável</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={styles.boardTag}>
+                          <Team aria-hidden />
+                          {boardLabel}
+                        </span>
+                      </TableCell>
+                      <TableCell className={styles.metricCell}>{formatNumber(item.stepsTotal)}</TableCell>
+                      <TableCell className={styles.metricCell}>{formatNumber(estimatedDays)}</TableCell>
+                      <TableCell className={styles.metricCell}>{formatNumber(item.activeEnrollments)}</TableCell>
+                      <TableCell className={styles.metricCell}>{formatNumber(item.totalEnrollments)}</TableCell>
+                      <TableCell className={clsx(styles.metricCell, item.openRate === null && styles.metricMuted)}>
+                        {formatPercent(item.openRate)}
+                      </TableCell>
+                      <TableCell className={clsx(styles.metricCell, item.replyRate === null && styles.metricMuted)}>
+                        {formatPercent(item.replyRate)}
+                      </TableCell>
+                      <TableCell className={clsx(styles.metricCell, item.clickRate === null && styles.metricMuted)}>
+                        {formatPercent(item.clickRate)}
+                      </TableCell>
+                      <TableCell className={styles.metricCell}>{formatDate(item.updatedAt)}</TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
-        </div>
-      </section>
+      </div>
+
       <NewSequenceModal
         open={newModalOpen}
         name={newSequenceName}
@@ -455,6 +798,6 @@ export default function SequenceManagerPage({
         onTargetChange={setNewSequenceTarget}
         onSubmit={handleSubmitNewSequence}
       />
-    </>
+    </section>
   );
 }

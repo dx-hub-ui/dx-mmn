@@ -256,30 +256,37 @@ export async function upsertSequenceStepAction(input: UpsertStepInput) {
 
     const nextOrder = lastStep ? (lastStep.step_order as number) + 1 : 1;
 
-    const { error: insertError } = await supabase.from("sequence_steps").insert({
-      sequence_version_id: input.versionId,
-      org_id: membership.organization_id,
-      step_order: nextOrder,
-      title: input.title,
-      short_description: input.shortDescription ?? null,
-      body: null,
-      step_type: input.type,
-      assignee_mode: input.assigneeMode,
-      assignee_membership_id: input.assigneeMembershipId ?? null,
-      due_offset_days: input.dueOffsetDays,
-      due_offset_hours: input.dueOffsetHours,
-      priority: input.priority ?? null,
-      tags: input.tags ?? [],
-      checklist: null,
-      dependencies: [],
-      channel_hint: input.channelHint ?? null,
-      is_active: input.isActive,
-      pause_until_done: input.pauseUntilDone,
-    });
+    const { data: inserted, error: insertError } = await supabase
+      .from("sequence_steps")
+      .insert({
+        sequence_version_id: input.versionId,
+        org_id: membership.organization_id,
+        step_order: nextOrder,
+        title: input.title,
+        short_description: input.shortDescription ?? null,
+        body: null,
+        step_type: input.type,
+        assignee_mode: input.assigneeMode,
+        assignee_membership_id: input.assigneeMembershipId ?? null,
+        due_offset_days: input.dueOffsetDays,
+        due_offset_hours: input.dueOffsetHours,
+        priority: input.priority ?? null,
+        tags: input.tags ?? [],
+        checklist: null,
+        dependencies: [],
+        channel_hint: input.channelHint ?? null,
+        is_active: input.isActive,
+        pause_until_done: input.pauseUntilDone,
+      })
+      .select("id")
+      .single();
 
     if (insertError) {
       throw insertError;
     }
+
+    revalidatePath(`/sequences/${input.sequenceId}`);
+    return inserted?.id as string;
   } else {
     const { error: updateError } = await supabase
       .from("sequence_steps")
@@ -306,6 +313,7 @@ export async function upsertSequenceStepAction(input: UpsertStepInput) {
   }
 
   revalidatePath(`/sequences/${input.sequenceId}`);
+  return input.stepId as string;
 }
 
 export async function reorderSequenceStepsAction(
