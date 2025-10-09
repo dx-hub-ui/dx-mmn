@@ -1,5 +1,18 @@
 # Changelog
 
+# 2025-11-08
+
+### Changed
+- Página `/sequences` remodelada para o layout Monday-like com breadcrumbs, cartões de métricas, filtros via `@vibe/core` e tabela com badges de status e resumo do alvo padrão.
+- Editor de sequências atualizado com cabeçalho contextual, experiência em duas colunas para passos, painel de detalhes enriquecido, formulários de regras reorganizados e estado vazio de inscrições alinhado ao Vibe.
+
+### Fixed
+- Ajustamos as etiquetas de status (`Label` do `@vibe/core`) do manager e do editor para usar a prop `text`, garantindo tipagem correta no build e mantendo a renderização alinhada ao design system.
+
+### Documentation
+- `docs/sequences_module.md` revisto com a nova hierarquia visual do manager e editor, destacando navegação por abas, templates de passos e resumo de métricas.
+- Acrescentada orientação sobre o uso da prop `text` em `Label` para preservar consistência tipográfica nas etiquetas de status do módulo de sequências.
+
 # 2025-11-07
 
 ### Changed
