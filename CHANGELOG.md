@@ -5,6 +5,7 @@
 ### Fixed
 - Ajustamos a página `/` para não mais chamar `supabase.auth.refreshSession` no servidor, evitando o erro "Cookies can only be modified in a Server Action or Route Handler" ao acessar a aplicação.
 - Ajustamos o `FOREIGN KEY` de `public.memberships.user_id` para apontar a `public.profiles(id)` com `ON DELETE CASCADE`, permitindo que o Supabase exponha o relacionamento `profile:profiles` e eliminando o erro `PGRST200` ao carregar memberships com dados de perfil.
+- A consulta de contatos da página `/crm` agora especifica o relacionamento `memberships!contacts_owner_membership_id_fkey`, removendo o erro `PGRST201` causado pela ambiguidade entre os vínculos `invited_by` e `owner_membership_id`.
 
 ### Documentation
 - README e `docs/dev_setup_crm.md` atualizados com a nova relação `profiles ↔ memberships` e o impacto da migração `009_fix_memberships_profiles_fk.sql`.

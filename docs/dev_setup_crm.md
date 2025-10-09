@@ -40,6 +40,8 @@ A aplicação fica disponível em `http://localhost:3000`. Usuários seed: `owne
 
 > **Relacionamento Profiles ↔ Memberships:** para habilitar o select aninhado `profile:profiles` usado nas APIs (`supabase.from("memberships").select(...)`), a migração `009_fix_memberships_profiles_fk.sql` substitui o `FOREIGN KEY` de `memberships.user_id` para apontar diretamente a `public.profiles(id)` com `ON DELETE CASCADE`. Isso mantém o PostgREST ciente da relação espelhada, evita o erro `PGRST200` durante joins e continua removendo memberships automaticamente quando o perfil associado for apagado pelos gatilhos de deleção.
 
+> **Joins de contatos ↔ memberships:** ao criar selects aninhados entre `contacts` e `memberships`, especifique o `foreign key` explicitamente (`memberships!contacts_owner_membership_id_fkey`) para evitar o erro `PGRST201` que ocorre quando o PostgREST encontra múltiplos relacionamentos possíveis (`invited_by` e `owner_membership_id`). O board `/crm` já usa essa convenção no helper `listContacts`.
+
 > **Onboarding automático:** o gatilho SQL `handle_new_user` cria uma organização padrão e um membership `org` para cada usuário novo, além de espelhar os metadados em `public.profiles`. Ao remover um usuário em `auth.users`, o gatilho `handle_deleted_user` limpa o respectivo perfil.
 
 ## 5. Scripts úteis
