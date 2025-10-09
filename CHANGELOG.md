@@ -1,3 +1,11 @@
+# 2025-11-14
+
+### Fixed
+- Ajustamos a consulta principal de contatos para usar `const` e satisfazer o lint `prefer-const`, garantindo que o fallback sem relacionamento siga aprovando no `pnpm run build` mesmo quando o Supabase não possui `contacts_referred_by_contact_id_fkey`.
+
+### Documentation
+- `docs/crm_readme.md` recebeu nota operacional explicando a dependência do lint `prefer-const` durante o fallback de contatos.
+
 # 2025-11-13
 
 ### Fixed

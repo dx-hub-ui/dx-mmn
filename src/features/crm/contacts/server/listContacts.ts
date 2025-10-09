@@ -182,7 +182,7 @@ export async function listContacts(
       filters
     );
 
-  let primaryResult = await buildQuery(CONTACTS_SELECT_WITH_REFERRER);
+  const primaryResult = await buildQuery(CONTACTS_SELECT_WITH_REFERRER);
 
   if (primaryResult.error && primaryResult.error.code === "PGRST200") {
     const fallbackResult = await buildQuery(CONTACTS_SELECT_CORE);
