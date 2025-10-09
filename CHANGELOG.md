@@ -1,3 +1,8 @@
+# 2025-11-21
+
+### Fixed
+- Ajustamos os estados de loading da tabela de sequências para usar apenas os tipos suportados pelo `@vibe/core/Table`, liberando o `pnpm run build` sem quebrar os skeletons responsivos das métricas.
+
 # 2025-11-20
 
 ### Changed

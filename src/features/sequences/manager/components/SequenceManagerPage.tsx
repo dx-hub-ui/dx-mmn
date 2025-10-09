@@ -77,17 +77,16 @@ const DEFAULT_SORT: SortState = { column: "updatedAt", direction: "desc" };
 
 type TableLoadingStateType = NonNullable<TableColumn["loadingStateType"]>;
 
-const SKELETON_WIDTH_BY_TYPE: Partial<Record<TableLoadingStateType, number | string>> = {
+const SKELETON_WIDTH_BY_TYPE: Record<TableLoadingStateType, number | string> = {
   circle: 32,
-  "short-text": "30%",
   "medium-text": "55%",
   "long-text": "80%",
-  number: 48,
+  rectangle: 48,
 };
 
 const SKELETON_HEIGHT_BY_TYPE: Partial<Record<TableLoadingStateType, number>> = {
   circle: 32,
-  number: 16,
+  rectangle: 16,
 };
 
 const numberFormatter = new Intl.NumberFormat("pt-BR");
@@ -451,13 +450,23 @@ export default function SequenceManagerPage({
   const tableColumns = useMemo<TableColumn[]>(
     () => [
       { id: "name", title: "Nome da sequência", width: "2.4fr", loadingStateType: "long-text" },
-      { id: "status", title: "Status", width: "1fr", loadingStateType: "short-text" },
+      { id: "status", title: "Status", width: "1fr", loadingStateType: "rectangle" },
       { id: "createdBy", title: "Criada por", width: 180, loadingStateType: "circle" },
       { id: "board", title: "Quadro", width: 160, loadingStateType: "medium-text" },
-      { id: "steps", title: "Etapas", width: 96, loadingStateType: "number" },
-      { id: "days", title: "Dias", width: 96, loadingStateType: "number" },
-      { id: "activeEnrollments", title: "Inscrições ativas", width: 160, loadingStateType: "number" },
-      { id: "totalEnrollments", title: "Inscrições totais", width: 160, loadingStateType: "number" },
+      { id: "steps", title: "Etapas", width: 96, loadingStateType: "rectangle" },
+      { id: "days", title: "Dias", width: 96, loadingStateType: "rectangle" },
+      {
+        id: "activeEnrollments",
+        title: "Inscrições ativas",
+        width: 160,
+        loadingStateType: "rectangle",
+      },
+      {
+        id: "totalEnrollments",
+        title: "Inscrições totais",
+        width: 160,
+        loadingStateType: "rectangle",
+      },
       { id: "openRate", title: "Taxa de abertura", width: 160, loadingStateType: "medium-text" },
       { id: "replyRate", title: "Taxa de resposta", width: 160, loadingStateType: "medium-text" },
       { id: "clickRate", title: "Taxa de cliques", width: 160, loadingStateType: "medium-text" },
