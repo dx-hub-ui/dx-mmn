@@ -1,8 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, FormEvent } from "react";
-import { Button } from "@vibe/core";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useCallback, useEffect, useMemo, useRef, useState, type HTMLAttributes } from "react";
+import {
+  Button,
+  TabsContext,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+  Table,
+  TableHeader,
+  TableHeaderCell,
+  TableBody,
+  TableRow,
+  TableCell,
+  Skeleton,
+} from "@vibe/core";
+import type { TableColumn, TableRowProps } from "@vibe/core";
 import {
   ContactRecord,
   ContactStageId,
@@ -32,12 +46,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short",
 
 const DEFAULT_VIEW: SavedViewId = "meus";
 
-const GROUPING_OPTIONS = [
-  { id: "none", label: "Sem agrupamento" },
-  { id: "stage", label: "Agrupar por estágio" },
-  { id: "owner", label: "Agrupar por dono" },
-] as const;
-
 const STAGE_TONES: Record<string, string> = {
   blue: styles.stagePillBlue,
   green: styles.stagePillGreen,
@@ -47,7 +55,25 @@ const STAGE_TONES: Record<string, string> = {
   red: styles.stagePillRed,
 };
 
-type GroupingId = (typeof GROUPING_OPTIONS)[number]["id"];
+const STAGE_ORDER = new Map(CONTACT_STAGES.map((stage, index) => [stage.id, index] as const));
+
+const Tabs = TabsContext;
+
+type TableLoadingStateType = NonNullable<TableColumn["loadingStateType"]>;
+
+const SKELETON_WIDTH_BY_TYPE: Partial<Record<TableLoadingStateType, number>> = {
+  circle: 28,
+  rectangle: 48,
+  "medium-text": 140,
+};
+
+const SKELETON_HEIGHT_BY_TYPE: Partial<Record<TableLoadingStateType, number>> = {
+  circle: 28,
+  rectangle: 16,
+};
+
+type InteractiveRowProps = TableRowProps & HTMLAttributes<HTMLDivElement>;
+const InteractiveTableRow = TableRow as unknown as (props: InteractiveRowProps) => JSX.Element;
 
 type OrganizationInfo = {
   id: string;
@@ -57,16 +83,23 @@ type OrganizationInfo = {
 
 type FeedbackState = { type: "success" | "error"; message: string } | null;
 
+type SortColumn =
+  | "name"
+  | "owner"
+  | "stage"
+  | "lastTouch"
+  | "nextAction"
+  | "referredBy"
+  | "whatsapp"
+  | "tags"
+  | "score";
+
 type ContactsBoardPageProps = {
   organization: OrganizationInfo;
   currentMembership: MembershipSummary;
   memberships: MembershipSummary[];
   initialContacts: ContactRecord[];
 };
-
-type VirtualRow =
-  | { type: "group"; id: string; label: string; count: number }
-  | { type: "contact"; contact: ContactRecord };
 
 type ContactUpdateSource = "board" | "modal" | "kanban" | "bulk";
 
@@ -151,6 +184,96 @@ function matchesFilters(contact: ContactRecord, filters: ContactFilters): boolea
   return true;
 }
 
+function TableLoadingSkeletonCell({ type = "long-text" }: { type?: TableLoadingStateType }) {
+  const skeletonType =
+    type === "circle"
+      ? Skeleton.types.CIRCLE
+      : type === "rectangle"
+      ? Skeleton.types.RECTANGLE
+      : Skeleton.types.TEXT;
+
+  const width = SKELETON_WIDTH_BY_TYPE[type];
+  const height = SKELETON_HEIGHT_BY_TYPE[type];
+
+  const wrapperClassName = [
+    styles.tableSkeletonWrapper,
+    type === "medium-text" ? styles.tableSkeletonWrapperMedium : "",
+    type === "circle" ? styles.tableSkeletonWrapperCircle : "",
+    type === "rectangle" ? styles.tableSkeletonWrapperRectangle : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    <TableCell>
+      <Skeleton
+        type={skeletonType}
+        width={width}
+        height={height}
+        fullWidth={type === "long-text"}
+        wrapperClassName={wrapperClassName}
+        className={styles.tableSkeleton}
+      />
+    </TableCell>
+  );
+}
+
+function compareStrings(a: string | null | undefined, b: string | null | undefined): number {
+  return (a ?? "").localeCompare(b ?? "", "pt-BR", { sensitivity: "base" });
+}
+
+function compareNumbers(a: number | null | undefined, b: number | null | undefined): number {
+  if (a == null && b == null) {
+    return 0;
+  }
+  if (a == null) {
+    return 1;
+  }
+  if (b == null) {
+    return -1;
+  }
+  return a - b;
+}
+
+function compareDateStrings(a: string | null, b: string | null): number {
+  const aTime = a ? new Date(a).getTime() : null;
+  const bTime = b ? new Date(b).getTime() : null;
+  return compareNumbers(aTime, bTime);
+}
+
+function compareContactByColumn(a: ContactRecord, b: ContactRecord, column: SortColumn): number {
+  switch (column) {
+    case "name":
+      return compareStrings(a.name, b.name);
+    case "owner":
+      return compareStrings(a.owner?.displayName, b.owner?.displayName);
+    case "stage":
+      return compareNumbers(STAGE_ORDER.get(a.stage) ?? Number.MAX_SAFE_INTEGER, STAGE_ORDER.get(b.stage) ?? Number.MAX_SAFE_INTEGER);
+    case "lastTouch":
+      return compareDateStrings(a.lastTouchAt, b.lastTouchAt);
+    case "nextAction":
+      return compareDateStrings(a.nextActionAt, b.nextActionAt);
+    case "referredBy":
+      return compareStrings(a.referredBy?.name ?? null, b.referredBy?.name ?? null);
+    case "whatsapp":
+      return compareStrings(a.whatsapp ?? null, b.whatsapp ?? null);
+    case "tags":
+      return compareStrings(a.tags.join(", "), b.tags.join(", "));
+    case "score":
+      return compareNumbers(a.score, b.score);
+    default:
+      return 0;
+  }
+}
+
+function sortContacts(
+  contacts: ContactRecord[],
+  sorting: { column: SortColumn; direction: "asc" | "desc" }
+): ContactRecord[] {
+  const multiplier = sorting.direction === "asc" ? 1 : -1;
+  return [...contacts].sort((a, b) => multiplier * compareContactByColumn(a, b, sorting.column));
+}
+
 export default function ContactsBoardPage({
   organization,
   currentMembership,
@@ -162,7 +285,8 @@ export default function ContactsBoardPage({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [savedView, setSavedView] = useState<SavedViewId | null>(DEFAULT_VIEW);
   const [filters, setFilters] = useState<ContactFilters>({});
-  const [grouping, setGrouping] = useState<GroupingId>("none");
+  const [sorting, setSorting] = useState<{ column: SortColumn; direction: "asc" | "desc" } | null>(null);
+  const [activeTab, setActiveTab] = useState(0);
   const [selection, setSelection] = useState<Set<string>>(() => new Set());
   const [editingContactId, setEditingContactId] = useState<string | null>(null);
   const [editingForm, setEditingForm] = useState<EditableContactForm | null>(null);
@@ -174,7 +298,6 @@ export default function ContactsBoardPage({
   const [reportsOpen, setReportsOpen] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [formErrors, setFormErrors] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"board" | "kanban">("board");
   const [modalState, setModalState] = useState<{ contactId: string; index: number } | null>(null);
   const [modalDetail, setModalDetail] = useState<ContactDetail | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
@@ -182,7 +305,6 @@ export default function ContactsBoardPage({
   const [modalTab, setModalTab] = useState<ContactModalTab>("activities");
   const [modalForm, setModalForm] = useState<EditableContactForm | null>(null);
   const [modalSaving, setModalSaving] = useState(false);
-  const scrollParentRef = useRef<HTMLDivElement | null>(null);
 
   const emitContactTelemetry = useCallback(
     (previous: ContactRecord | undefined, updated: ContactRecord, source: ContactUpdateSource) => {
@@ -273,16 +395,6 @@ export default function ContactsBoardPage({
     [handleBulkUpdate]
   );
 
-  const availableTags = useMemo(() => {
-    const tags = new Set<string>();
-    for (const contact of contacts) {
-      for (const tag of contact.tags) {
-        tags.add(tag);
-      }
-    }
-    return Array.from(tags).sort((a, b) => a.localeCompare(b));
-  }, [contacts]);
-
   useEffect(() => {
     trackEvent("crm/board_view_loaded", { organizationId: organization.id, total: contacts.length });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -298,8 +410,13 @@ export default function ContactsBoardPage({
       // keep search empty; filter handled by saved view
     }
 
-    return base.filter((contact) => matchesFilters(contact, enrichedFilters));
-  }, [savedView, contacts, currentMembership, memberships, filters]);
+    const filtered = base.filter((contact) => matchesFilters(contact, enrichedFilters));
+    if (!sorting) {
+      return filtered;
+    }
+
+    return sortContacts(filtered, sorting);
+  }, [savedView, contacts, currentMembership, memberships, filters, sorting]);
 
   const loadModalDetail = useCallback(
     async (contactId: string) => {
@@ -526,55 +643,6 @@ export default function ContactsBoardPage({
     [applyContactUpdate]
   );
 
-  const rows: VirtualRow[] = useMemo(() => {
-    if (grouping === "stage") {
-      const grouped = CONTACT_STAGES.map((stage) => {
-        const groupedContacts = visibleContacts.filter((contact) => contact.stage === stage.id);
-        return groupedContacts.length > 0
-          ? [
-              { type: "group" as const, id: `stage-${stage.id}`, label: `${stage.label} (${groupedContacts.length})`, count: groupedContacts.length },
-              ...groupedContacts.map((contact) => ({ type: "contact" as const, contact })),
-            ]
-          : [];
-      });
-      return grouped.flat();
-    }
-
-    if (grouping === "owner") {
-      const ownersMap = new Map<string, ContactRecord[]>();
-      for (const contact of visibleContacts) {
-        const key = contact.owner?.displayName ?? "Sem dono";
-        if (!ownersMap.has(key)) {
-          ownersMap.set(key, []);
-        }
-        ownersMap.get(key)!.push(contact);
-      }
-      const sortedOwners = Array.from(ownersMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-      const groupedRows: VirtualRow[] = [];
-      for (const [label, ownerContacts] of sortedOwners) {
-        groupedRows.push({ type: "group", id: `owner-${label}`, label: `${label} (${ownerContacts.length})`, count: ownerContacts.length });
-        groupedRows.push(
-          ...ownerContacts.map((contact) => ({ type: "contact" as const, contact }))
-        );
-      }
-      return groupedRows;
-    }
-
-    return visibleContacts.map((contact) => ({ type: "contact", contact }));
-  }, [grouping, visibleContacts]);
-
-  const virtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => scrollParentRef.current,
-    estimateSize: (index) => (rows[index]?.type === "group" ? 44 : 72),
-    overscan: 12,
-  });
-
-  const virtualItems = virtualizer.getVirtualItems();
-  const totalHeight = virtualizer.getTotalSize();
-  const paddingTop = virtualItems.length > 0 ? virtualItems[0].start : 0;
-  const paddingBottom = virtualItems.length > 0 ? totalHeight - virtualItems[virtualItems.length - 1].end : 0;
-
   const toggleSelection = useCallback(
     (contactId: string) => {
       setSelection((current) => {
@@ -712,17 +780,51 @@ export default function ContactsBoardPage({
     }
   }, [contacts, editingContactId, editingForm, emitContactTelemetry, submitContactForm, cancelEdit]);
 
-  const onSubmitCreate = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    handleCreate();
-  };
-
-  const onSubmitEdit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    handleUpdate();
-  };
 
   const isRowEditing = (contactId: string) => editingContactId === contactId;
+
+  const tableColumns = useMemo<TableColumn[]>(
+    () => [
+      { id: "select", title: "", width: 48, loadingStateType: "circle" },
+      { id: "name", title: "Contato", width: "2fr", loadingStateType: "long-text" },
+      { id: "owner", title: "Dono", width: "1fr", loadingStateType: "medium-text" },
+      { id: "stage", title: "Estágio", width: "1fr", loadingStateType: "medium-text" },
+      { id: "lastTouch", title: "Último toque", width: "1fr", loadingStateType: "medium-text" },
+      { id: "nextAction", title: "Próximo passo", width: "1.4fr", loadingStateType: "long-text" },
+      { id: "referredBy", title: "Indicado por", width: "1fr", loadingStateType: "medium-text" },
+      { id: "whatsapp", title: "WhatsApp", width: "1fr", loadingStateType: "medium-text" },
+      { id: "tags", title: "Tags", width: "1.4fr", loadingStateType: "long-text" },
+      { id: "score", title: "Score", width: 96, loadingStateType: "circle" },
+      { id: "actions", title: "Ações", width: 140, loadingStateType: "medium-text" },
+    ],
+    []
+  );
+  const skeletonRows = useMemo(() => Array.from({ length: 5 }, (_, index) => index), []);
+  const headerCheckboxRef = useRef<HTMLInputElement | null>(null);
+  const isSelectAllChecked =
+    visibleContacts.length > 0 && visibleContacts.every((contact) => selection.has(contact.id));
+  const hasSelection = selection.size > 0;
+  const showSkeleton = (isRefreshing || isLoading) && visibleContacts.length === 0;
+
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate =
+        selection.size > 0 && selection.size < visibleContacts.length;
+    }
+  }, [selection, visibleContacts.length]);
+
+  const sortStateFor = useCallback(
+    (column: SortColumn): "asc" | "desc" | "none" =>
+      sorting?.column === column ? sorting.direction : "none",
+    [sorting]
+  );
+
+  const handleSortColumn = useCallback(
+    (column: SortColumn, direction: "asc" | "desc" | "none") => {
+      setSorting(direction === "none" ? null : { column, direction });
+    },
+    [setSorting]
+  );
 
   return (
     <section className={styles.page} aria-labelledby="crm-board-heading">
@@ -731,7 +833,8 @@ export default function ContactsBoardPage({
           <div className={styles.titleBlock}>
             <h1 id="crm-board-heading">Contatos — {organization.name}</h1>
             <span className={styles.subtitle}>
-              Pipeline operacional para equipe multinível. {visibleContacts.length} de {contacts.length} contato(s) visível(is).
+              Pipeline operacional para equipe multinível. {visibleContacts.length} de {contacts.length} contato(s)
+              visível(is).
             </span>
           </div>
           <div className={styles.actionsRow}>
@@ -751,590 +854,577 @@ export default function ContactsBoardPage({
         </div>
       </header>
 
-      <div className={styles.toolbar}>
-        <div className={styles.searchGroup}>
-          <label htmlFor="crm-search" className={styles.srOnly}>
-            Buscar contatos
-          </label>
-          <input
-            id="crm-search"
-            type="search"
-            className={styles.searchInput}
-            placeholder="Buscar por nome, e-mail, telefone ou tags"
-            value={filters.search ?? ""}
-            onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))}
-          />
-          <select
-            className={styles.selectControl}
-            value={grouping}
-            aria-label="Agrupamento"
-            onChange={(event) => setGrouping(event.target.value as GroupingId)}
-          >
-            {GROUPING_OPTIONS.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className={styles.filtersRow}>
-          <select
-            multiple
-            className={styles.selectControl}
-            value={filters.stages ?? []}
-            aria-label="Filtrar por estágio"
-            onChange={(event) => {
-              const selected = Array.from(event.target.selectedOptions).map((option) => option.value as ContactStageId);
-              setFilters((current) => ({ ...current, stages: selected.length > 0 ? selected : undefined }));
-            }}
-          >
-            {CONTACT_STAGES.map((stage) => (
-              <option key={stage.id} value={stage.id}>
-                {stage.label}
-              </option>
-            ))}
-          </select>
-          <select
-            multiple
-            className={styles.selectControl}
-            value={filters.ownerIds ?? []}
-            aria-label="Filtrar por dono"
-            onChange={(event) => {
-              const selected = Array.from(event.target.selectedOptions).map((option) => option.value);
-              setFilters((current) => ({ ...current, ownerIds: selected.length > 0 ? selected : undefined }));
-            }}
-          >
-            {memberships.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.displayName}
-              </option>
-            ))}
-          </select>
-          <select
-            multiple
-            className={styles.selectControl}
-            value={filters.referredByContactIds ?? []}
-            aria-label="Filtrar por indicado por"
-            onChange={(event) => {
-              const selected = Array.from(event.target.selectedOptions).map((option) => option.value);
-              setFilters((current) => ({
-                ...current,
-                referredByContactIds: selected.length > 0 ? selected : undefined,
-              }));
-            }}
-          >
-            {contacts.map((contact) => (
-              <option key={contact.id} value={contact.id}>
-                {contact.name}
-              </option>
-            ))}
-          </select>
-          <select
-            multiple
-            className={styles.selectControl}
-            value={filters.tags ?? []}
-            aria-label="Filtrar por tags"
-            onChange={(event) => {
-              const selected = Array.from(event.target.selectedOptions).map((option) => option.value);
-              setFilters((current) => ({ ...current, tags: selected.length > 0 ? selected : undefined }));
-            }}
-          >
-            {availableTags.map((tag) => (
-              <option key={tag} value={tag}>
-                {tag}
-              </option>
-            ))}
-          </select>
-          <input
-            type="date"
-            className={styles.selectControl}
-            aria-label="Próximo passo - início"
-            value={filters.nextActionBetween?.start ?? ""}
-            onChange={(event) => {
-              const start = event.target.value || null;
-              setFilters((current) => ({
-                ...current,
-                nextActionBetween:
-                  start || current.nextActionBetween?.end
-                    ? { start, end: current.nextActionBetween?.end ?? null }
-                    : undefined,
-              }));
-            }}
-          />
-          <input
-            type="date"
-            className={styles.selectControl}
-            aria-label="Próximo passo - fim"
-            value={filters.nextActionBetween?.end ?? ""}
-            onChange={(event) => {
-              const end = event.target.value || null;
-              setFilters((current) => ({
-                ...current,
-                nextActionBetween:
-                  end || current.nextActionBetween?.start
-                    ? { start: current.nextActionBetween?.start ?? null, end }
-                    : undefined,
-              }));
-            }}
-          />
-          <div className={styles.viewModeToggle} role="group" aria-label="Modo de visualização">
-            <button
-              type="button"
-              className={styles.viewModeButton}
-              aria-pressed={viewMode === "board"}
-              onClick={() => setViewMode("board")}
-            >
+      <div className={styles.content}>
+        <Tabs activeTabId={activeTab}>
+          <TabList>
+            <Tab value={0} active={activeTab === 0} onClick={() => setActiveTab(0)}>
               Tabela
-            </button>
-            <button
-              type="button"
-              className={styles.viewModeButton}
-              aria-pressed={viewMode === "kanban"}
-              onClick={() => setViewMode("kanban")}
-            >
+            </Tab>
+            <Tab value={1} active={activeTab === 1} onClick={() => setActiveTab(1)}>
               Kanban
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.boardShell}>
-        <nav className={styles.viewsNav} aria-label="Views salvas">
-          {SAVED_VIEWS.map((view) => (
-            <button
-              key={view.id}
-              type="button"
-              className={styles.viewButton}
-              aria-pressed={savedView === view.id}
-              onClick={() => setSavedView((current) => (current === view.id ? null : view.id))}
-            >
-              {view.label}
-            </button>
-          ))}
-        </nav>
-
-        {feedback && (
-          <div className={feedback.type === "success" ? styles.loadingState : styles.errorState} role="status">
-            {feedback.message}
-          </div>
-        )}
-
-        {viewMode === "board" && isCreating && (
-          <form className={styles.rowItem} onSubmit={onSubmitCreate} aria-label="Criar contato">
-            <div className={styles.checkboxCell}>
-              <Button kind={Button.kinds.TERTIARY} onClick={() => setIsCreating(false)} type="button">
-                Cancelar
-              </Button>
-            </div>
-            <div className={styles.nameCell}>
-              <input
-                className={styles.inlineInput}
-                placeholder="Nome"
-                value={createForm.name}
-                onChange={(event) => setCreateForm((current) => ({ ...current, name: event.target.value }))}
-                required
-              />
-              <input
-                className={styles.inlineInput}
-                placeholder="E-mail"
-                value={createForm.email}
-                onChange={(event) => setCreateForm((current) => ({ ...current, email: event.target.value }))}
-              />
-            </div>
-            <select
-              className={styles.inlineSelect}
-              value={createForm.ownerMembershipId}
-              onChange={(event) => setCreateForm((current) => ({ ...current, ownerMembershipId: event.target.value }))}
-            >
-              {memberships.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.displayName}
-                </option>
-              ))}
-            </select>
-            <select
-              className={styles.inlineSelect}
-              value={createForm.stage}
-              onChange={(event) => setCreateForm((current) => ({ ...current, stage: event.target.value as ContactStageId }))}
-            >
-              {CONTACT_STAGES.map((stage) => (
-                <option key={stage.id} value={stage.id}>
-                  {stage.label}
-                </option>
-              ))}
-            </select>
-            <input
-              className={styles.inlineInput}
-              placeholder="Último toque"
-              value={formatDateTime(new Date().toISOString())}
-              readOnly
-            />
-            <div className={styles.nameCell}>
-              <input
-                className={styles.inlineInput}
-                type="date"
-                value={createForm.nextActionAt}
-                onChange={(event) => setCreateForm((current) => ({ ...current, nextActionAt: event.target.value }))}
-              />
-              <textarea
-                className={styles.inlineTextarea}
-                placeholder="Próximo passo"
-                value={createForm.nextActionNote}
-                onChange={(event) => setCreateForm((current) => ({ ...current, nextActionNote: event.target.value }))}
-              />
-            </div>
-            <select
-              className={styles.inlineSelect}
-              value={createForm.referredByContactId}
-              onChange={(event) => setCreateForm((current) => ({ ...current, referredByContactId: event.target.value }))}
-            >
-              <option value="">Indicado por</option>
-              {contacts.map((contact) => (
-                <option key={contact.id} value={contact.id}>
-                  {contact.name}
-                </option>
-              ))}
-            </select>
-            <div className={styles.nameCell}>
-              <input
-                className={styles.inlineInput}
-                placeholder="Telefone/WhatsApp"
-                value={createForm.whatsapp}
-                onChange={(event) => setCreateForm((current) => ({ ...current, whatsapp: event.target.value }))}
-              />
-            <input
-              className={styles.inlineInput}
-              placeholder="Tags (separadas por vírgula)"
-              value={createForm.tags}
-              onChange={(event) => setCreateForm((current) => ({ ...current, tags: event.target.value }))}
-            />
-          </div>
-          <input
-            className={styles.inlineInput}
-            placeholder="Score"
-            type="number"
-            min={0}
-            max={100}
-            value={createForm.score}
-            onChange={(event) => setCreateForm((current) => ({ ...current, score: event.target.value }))}
-          />
-          <div className={styles.rowActions}>
-            <Button kind={Button.kinds.PRIMARY} type="submit" loading={isLoading}>
-              Salvar
-            </Button>
-          </div>
-          {formErrors && <div className={styles.metaLine}>{formErrors}</div>}
-        </form>
-        )}
-
-        {viewMode === "board" && (
-          <>
-            <div className={styles.tableHead} role="row">
-              <div className={styles.checkboxCell}>
-                <input
-                  type="checkbox"
-                  aria-label="Selecionar todos"
-                  checked={visibleContacts.length > 0 && visibleContacts.every((contact) => selection.has(contact.id))}
-              onChange={toggleSelectAll}
-            />
-          </div>
-          <span>Nome</span>
-          <span>Dono</span>
-          <span>Estágio</span>
-          <span>Último toque</span>
-          <span>Próximo passo</span>
-          <span>Indicado por</span>
-          <span>Telefone</span>
-          <span>Tags</span>
-          <span>Score</span>
-          <span>Ações</span>
-        </div>
-            <div ref={scrollParentRef} className={styles.tableScrollArea} role="grid">
-              <div className={styles.tableBody}>
-                <div className={styles.virtualSpacer} style={{ height: totalHeight }}>
-                  <div style={{ transform: `translateY(${paddingTop}px)`, paddingBottom: `${paddingBottom}px` }}>
-                    {virtualItems.map((virtualRow) => {
-                  const row = rows[virtualRow.index];
-                  if (!row) return null;
-
-                  if (row.type === "group") {
-                    return (
-                      <div
-                        key={row.id}
-                        className={styles.groupHeader}
-                        style={{
-                          transform: `translateY(${virtualRow.start - paddingTop}px)`,
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                        }}
-                      >
-                        {row.label}
-                      </div>
-                    );
-                  }
-
-                  const contact = row.contact;
-                  const stageDefinition = CONTACT_STAGES.find((stage) => stage.id === contact.stage);
-                  const pillClass = stageDefinition ? STAGE_TONES[stageDefinition.tone] : styles.stagePillGray;
-                  const isSelected = selection.has(contact.id);
-                  const isEditingRow = isRowEditing(contact.id);
-
-                  return isEditingRow && editingForm ? (
-                    <form
-                      key={contact.id}
-                      className={styles.rowItem}
-                      onSubmit={onSubmitEdit}
-                      style={{
-                        transform: `translateY(${virtualRow.start - paddingTop}px)`,
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                      }}
-                      aria-label={`Editar ${contact.name}`}
-                    >
-                      <div className={styles.checkboxCell}>
-                        <Button kind={Button.kinds.TERTIARY} onClick={cancelEdit} type="button">
-                          Cancelar
-                        </Button>
-                      </div>
-                      <div className={styles.nameCell}>
-                        <input
-                          className={styles.inlineInput}
-                          value={editingForm.name}
-                          onChange={(event) =>
-                            setEditingForm((current) =>
-                              current ? { ...current, name: event.target.value } : current
-                            )
-                          }
-                        />
-                        <input
-                          className={styles.inlineInput}
-                          value={editingForm.email}
-                          onChange={(event) =>
-                            setEditingForm((current) =>
-                              current ? { ...current, email: event.target.value } : current
-                            )
-                          }
-                        />
-                      </div>
-                      <select
-                        className={styles.inlineSelect}
-                        value={editingForm.ownerMembershipId}
-                        onChange={(event) =>
-                          setEditingForm((current) =>
-                            current ? { ...current, ownerMembershipId: event.target.value } : current
-                          )
-                        }
-                      >
-                        {memberships.map((member) => (
-                          <option key={member.id} value={member.id}>
-                            {member.displayName}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        className={styles.inlineSelect}
-                        value={editingForm.stage}
-                        onChange={(event) =>
-                          setEditingForm((current) =>
-                            current ? { ...current, stage: event.target.value as ContactStageId } : current
-                          )
-                        }
-                      >
-                        {CONTACT_STAGES.map((stage) => (
-                          <option key={stage.id} value={stage.id}>
-                            {stage.label}
-                          </option>
-                        ))}
-                      </select>
-                      <span>{formatDateTime(contact.lastTouchAt)}</span>
-                      <div className={styles.nameCell}>
-                        <input
-                          className={styles.inlineInput}
-                          type="date"
-                          value={editingForm.nextActionAt}
-                          onChange={(event) =>
-                            setEditingForm((current) =>
-                              current ? { ...current, nextActionAt: event.target.value } : current
-                            )
-                          }
-                        />
-                        <textarea
-                          className={styles.inlineTextarea}
-                          value={editingForm.nextActionNote}
-                          onChange={(event) =>
-                            setEditingForm((current) =>
-                              current ? { ...current, nextActionNote: event.target.value } : current
-                            )
-                          }
-                        />
-                      </div>
-                      <select
-                        className={styles.inlineSelect}
-                        value={editingForm.referredByContactId}
-                        onChange={(event) =>
-                          setEditingForm((current) =>
-                            current ? { ...current, referredByContactId: event.target.value } : current
-                          )
-                        }
-                      >
-                        <option value="">—</option>
-                        {contacts
-                          .filter((candidate) => candidate.id !== contact.id)
-                          .map((candidate) => (
-                            <option key={candidate.id} value={candidate.id}>
-                              {candidate.name}
-                            </option>
-                          ))}
-                      </select>
-                      {editingForm.stage === "perdido" && (
-                        <div className={styles.nameCell}>
-                          <textarea
-                            className={styles.inlineTextarea}
-                            placeholder="Motivo da perda"
-                            value={editingForm.lostReason}
-                            onChange={(event) =>
-                              setEditingForm((current) =>
-                                current ? { ...current, lostReason: event.target.value } : current
-                              )
+            </Tab>
+          </TabList>
+          <TabPanels activeTabId={activeTab}>
+            <TabPanel index={0}>
+              <div className={styles.tablePanel}>
+                <div className={styles.tableControls}>
+                  <div className={styles.savedViews}>
+                        {SAVED_VIEWS.map((view) => (
+                          <Button
+                            key={view.id}
+                            kind={savedView === view.id ? Button.kinds.PRIMARY : Button.kinds.TERTIARY}
+                            className={`${styles.savedViewButton} ${
+                              savedView === view.id ? styles.savedViewButtonActive : ""
+                            }`}
+                            onClick={() =>
+                              setSavedView((current) => (current === view.id ? null : view.id))
                             }
-                          />
-                          <input
-                            className={styles.inlineInput}
-                            type="date"
-                            value={editingForm.lostReviewAt}
-                            onChange={(event) =>
-                              setEditingForm((current) =>
-                                current ? { ...current, lostReviewAt: event.target.value } : current
-                              )
-                            }
-                          />
-                        </div>
-                      )}
-                      <div className={styles.nameCell}>
-                        <input
-                          className={styles.inlineInput}
-                          value={editingForm.whatsapp}
-                          onChange={(event) =>
-                            setEditingForm((current) =>
-                              current ? { ...current, whatsapp: event.target.value } : current
-                            )
-                          }
-                        />
-                        <input
-                          className={styles.inlineInput}
-                          value={editingForm.tags}
-                          onChange={(event) =>
-                            setEditingForm((current) =>
-                              current ? { ...current, tags: event.target.value } : current
-                            )
-                          }
-                        />
-                      </div>
-                      <input
-                        className={styles.inlineInput}
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={editingForm.score}
-                        onChange={(event) =>
-                          setEditingForm((current) =>
-                            current ? { ...current, score: event.target.value } : current
-                          )
-                        }
-                      />
-                      <div className={styles.rowActions}>
-                        <Button kind={Button.kinds.PRIMARY} type="submit" loading={isLoading}>
-                          Salvar
-                        </Button>
-                      </div>
-                      {formErrors && <div className={styles.metaLine}>{formErrors}</div>}
-                    </form>
-                  ) : (
-                    <div
-                      key={contact.id}
-                      className={styles.rowItem}
-                      data-selected={isSelected}
-                      style={{
-                        transform: `translateY(${virtualRow.start - paddingTop}px)`,
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                      }}
-                      role="row"
-                      tabIndex={0}
-                      onDoubleClick={() => handleOpenContact(contact.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          handleOpenContact(contact.id);
-                        }
-                        if (event.key.toLowerCase() === "o") {
-                          event.preventDefault();
-                          handleOpenContact(contact.id);
-                        }
-                      }}
-                    >
-                      <div className={styles.checkboxCell}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          aria-label={`Selecionar ${contact.name}`}
-                          onChange={() => toggleSelection(contact.id)}
-                        />
-                      </div>
-                      <div className={styles.nameCell}>
-                        <button
-                          type="button"
-                          className={styles.nameLink}
-                          onClick={() => handleOpenContact(contact.id)}
-                        >
-                          {contact.name}
-                        </button>
-                        <span className={styles.metaLine}>{contact.email ?? "—"}</span>
-                      </div>
-                      <span>{contact.owner?.displayName ?? "—"}</span>
-                      <span className={`${styles.stagePill} ${pillClass}`}>{stageDefinition?.label ?? contact.stage}</span>
-                      <span>{formatDateTime(contact.lastTouchAt)}</span>
-                      <div className={styles.nameCell}>
-                        <span>{formatDate(contact.nextActionAt)}</span>
-                        <span className={styles.metaLine}>{contact.nextActionNote ?? "—"}</span>
-                      </div>
-                      <span>{contact.referredBy?.name ?? "—"}</span>
-                      <span>{contact.whatsapp ?? "—"}</span>
-                      <div className={styles.tagsCell}>
-                        {contact.tags.length === 0 ? "—" : contact.tags.map((tag) => <span key={tag} className={styles.tagPill}>{tag}</span>)}
-                      </div>
-                      <span>{contact.score ?? "—"}</span>
-                      <div className={styles.rowActions}>
-                        <Button kind={Button.kinds.TERTIARY} onClick={() => beginEdit(contact)}>
-                          Editar
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-                    {rows.length === 0 && !isCreating && (
-                      <div className={styles.emptyState}>Nenhum contato para os filtros selecionados.</div>
-                    )}
+                          >
+                            {view.label}
+                          </Button>
+                        ))}
+                  </div>
+                  <div className={styles.searchRow}>
+                    <label htmlFor="crm-search" className={styles.srOnly}>
+                      Buscar contatos
+                    </label>
+                    <input
+                      id="crm-search"
+                      type="search"
+                      className={styles.searchInput}
+                      placeholder="Buscar por nome, e-mail, telefone ou tags"
+                      value={filters.search ?? ""}
+                      onChange={(event) =>
+                        setFilters((current) => ({ ...current, search: event.target.value }))
+                      }
+                    />
                   </div>
                 </div>
-              </div>
-            </div>
-          </>
-        )}
 
-        {viewMode === "kanban" && (
-          <ContactsKanban
-            contacts={visibleContacts}
-            onStageChange={handleKanbanStageChange}
-            onOpenContact={handleOpenContact}
-          />
-        )}
+                    {feedback && (
+                      <div
+                        className={`${styles.feedbackBanner} ${
+                          feedback.type === "success" ? styles.feedbackSuccess : styles.feedbackError
+                        }`}
+                        role="status"
+                      >
+                    {feedback.message}
+                  </div>
+                )}
+
+                <Table
+                  columns={tableColumns}
+                  dataState={{ isLoading: showSkeleton }}
+                  emptyState={<div className={styles.emptyState}>Nenhum contato encontrado.</div>}
+                  errorState={
+                    <div className={styles.errorState}>Não foi possível carregar os contatos.</div>
+                  }
+                >
+                  <TableHeader>
+                    <TableHeaderCell
+                      title={
+                        <input
+                          ref={headerCheckboxRef}
+                          type="checkbox"
+                          aria-label="Selecionar todos os contatos"
+                          checked={isSelectAllChecked}
+                          onChange={toggleSelectAll}
+                        />
+                      }
+                      sticky
+                    />
+                    <TableHeaderCell
+                      title="Contato"
+                      sortState={sortStateFor("name")}
+                      onSortClicked={(direction) => handleSortColumn("name", direction)}
+                      sortButtonAriaLabel="Ordenar por contato"
+                      sticky
+                    />
+                    <TableHeaderCell
+                      title="Dono"
+                      sortState={sortStateFor("owner")}
+                      onSortClicked={(direction) => handleSortColumn("owner", direction)}
+                      sortButtonAriaLabel="Ordenar por dono"
+                    />
+                    <TableHeaderCell
+                      title="Estágio"
+                      sortState={sortStateFor("stage")}
+                      onSortClicked={(direction) => handleSortColumn("stage", direction)}
+                      sortButtonAriaLabel="Ordenar por estágio"
+                    />
+                    <TableHeaderCell
+                      title="Último toque"
+                      sortState={sortStateFor("lastTouch")}
+                      onSortClicked={(direction) => handleSortColumn("lastTouch", direction)}
+                      sortButtonAriaLabel="Ordenar por último toque"
+                    />
+                    <TableHeaderCell
+                      title="Próximo passo"
+                      sortState={sortStateFor("nextAction")}
+                      onSortClicked={(direction) => handleSortColumn("nextAction", direction)}
+                      sortButtonAriaLabel="Ordenar por próximo passo"
+                    />
+                    <TableHeaderCell
+                      title="Indicado por"
+                      sortState={sortStateFor("referredBy")}
+                      onSortClicked={(direction) => handleSortColumn("referredBy", direction)}
+                      sortButtonAriaLabel="Ordenar por indicado por"
+                    />
+                    <TableHeaderCell
+                      title="WhatsApp"
+                      sortState={sortStateFor("whatsapp")}
+                      onSortClicked={(direction) => handleSortColumn("whatsapp", direction)}
+                      sortButtonAriaLabel="Ordenar por WhatsApp"
+                    />
+                    <TableHeaderCell
+                      title="Tags"
+                      sortState={sortStateFor("tags")}
+                      onSortClicked={(direction) => handleSortColumn("tags", direction)}
+                      sortButtonAriaLabel="Ordenar por tags"
+                    />
+                    <TableHeaderCell
+                      title="Score"
+                      sortState={sortStateFor("score")}
+                      onSortClicked={(direction) => handleSortColumn("score", direction)}
+                      sortButtonAriaLabel="Ordenar por score"
+                    />
+                    <TableHeaderCell title="Ações" />
+                  </TableHeader>
+
+                  <TableBody>
+                    {[
+                      ...(isCreating
+                        ? [
+                          <TableRow className={styles.tableRow} key="create-row">
+                        <TableCell>
+                          <Button kind={Button.kinds.TERTIARY} onClick={() => setIsCreating(false)}>
+                            Cancelar
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                          <div className={styles.nameCell}>
+                            <input
+                              className={styles.inlineInput}
+                              placeholder="Nome"
+                              value={createForm.name}
+                              onChange={(event) =>
+                                setCreateForm((current) => ({ ...current, name: event.target.value }))
+                              }
+                              required
+                            />
+                            <input
+                              className={styles.inlineInput}
+                              placeholder="E-mail"
+                              value={createForm.email}
+                              onChange={(event) =>
+                                setCreateForm((current) => ({ ...current, email: event.target.value }))
+                              }
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <select
+                            className={styles.inlineSelect}
+                            value={createForm.ownerMembershipId}
+                            onChange={(event) =>
+                              setCreateForm((current) => ({ ...current, ownerMembershipId: event.target.value }))
+                            }
+                          >
+                            {memberships.map((member) => (
+                              <option key={member.id} value={member.id}>
+                                {member.displayName}
+                              </option>
+                            ))}
+                          </select>
+                        </TableCell>
+                        <TableCell>
+                          <select
+                            className={styles.inlineSelect}
+                            value={createForm.stage}
+                            onChange={(event) =>
+                              setCreateForm((current) => ({ ...current, stage: event.target.value as ContactStageId }))
+                            }
+                          >
+                            {CONTACT_STAGES.map((stage) => (
+                              <option key={stage.id} value={stage.id}>
+                                {stage.label}
+                              </option>
+                            ))}
+                          </select>
+                        </TableCell>
+                        <TableCell>
+                          <span>{formatDateTime(new Date().toISOString())}</span>
+                        </TableCell>
+                        <TableCell>
+                          <div className={styles.nameCell}>
+                            <input
+                              className={styles.inlineInput}
+                              type="date"
+                              value={createForm.nextActionAt}
+                              onChange={(event) =>
+                                setCreateForm((current) => ({ ...current, nextActionAt: event.target.value }))
+                              }
+                            />
+                            <textarea
+                              className={styles.inlineTextarea}
+                              placeholder="Próximo passo"
+                              value={createForm.nextActionNote}
+                              onChange={(event) =>
+                                setCreateForm((current) => ({ ...current, nextActionNote: event.target.value }))
+                              }
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <select
+                            className={styles.inlineSelect}
+                            value={createForm.referredByContactId}
+                            onChange={(event) =>
+                              setCreateForm((current) => ({ ...current, referredByContactId: event.target.value }))
+                            }
+                          >
+                            <option value="">Indicado por</option>
+                            {contacts.map((contactOption) => (
+                              <option key={contactOption.id} value={contactOption.id}>
+                                {contactOption.name}
+                              </option>
+                            ))}
+                          </select>
+                        </TableCell>
+                        <TableCell>
+                          <input
+                            className={styles.inlineInput}
+                            placeholder="Telefone/WhatsApp"
+                            value={createForm.whatsapp}
+                            onChange={(event) =>
+                              setCreateForm((current) => ({ ...current, whatsapp: event.target.value }))
+                            }
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <input
+                            className={styles.inlineInput}
+                            placeholder="Tags (separadas por vírgula)"
+                            value={createForm.tags}
+                            onChange={(event) =>
+                              setCreateForm((current) => ({ ...current, tags: event.target.value }))
+                            }
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <input
+                            className={styles.inlineInput}
+                            placeholder="Score"
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={createForm.score}
+                            onChange={(event) =>
+                              setCreateForm((current) => ({ ...current, score: event.target.value }))
+                            }
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className={styles.rowActions}>
+                            <Button kind={Button.kinds.PRIMARY} onClick={handleCreate} loading={isLoading}>
+                              Salvar
+                            </Button>
+                          </div>
+                          {formErrors && <div className={styles.formError}>{formErrors}</div>}
+                        </TableCell>
+                          </TableRow>,
+                          ]
+                        : []),
+                      ...(showSkeleton
+                        ? skeletonRows.map((rowIndex) => (
+                          <TableRow key={`skeleton-${rowIndex}`} className={styles.tableRow}>
+                            {tableColumns.map((column) => (
+                              <TableLoadingSkeletonCell
+                                key={column.id}
+                                type={column.loadingStateType}
+                              />
+                            ))}
+                          </TableRow>
+                        ))
+                        : visibleContacts.map((contact) => {
+                          const stageDefinition = CONTACT_STAGES.find(
+                            (stage) => stage.id === contact.stage
+                          );
+                          const pillClass =
+                            stageDefinition ? STAGE_TONES[stageDefinition.tone] : styles.stagePillGray;
+                          const isSelected = selection.has(contact.id);
+
+                          if (isRowEditing(contact.id) && editingForm) {
+                            return (
+                              <TableRow key={contact.id} className={styles.tableRow}>
+                                <TableCell>
+                                  <Button kind={Button.kinds.TERTIARY} onClick={cancelEdit}>
+                                    Cancelar
+                                  </Button>
+                                </TableCell>
+                                <TableCell>
+                                  <div className={styles.nameCell}>
+                                    <input
+                                      className={styles.inlineInput}
+                                      value={editingForm.name}
+                                      onChange={(event) =>
+                                        setEditingForm((current) =>
+                                          current ? { ...current, name: event.target.value } : current
+                                        )
+                                      }
+                                    />
+                                    <input
+                                      className={styles.inlineInput}
+                                      value={editingForm.email}
+                                      onChange={(event) =>
+                                        setEditingForm((current) =>
+                                          current ? { ...current, email: event.target.value } : current
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <select
+                                    className={styles.inlineSelect}
+                                    value={editingForm.ownerMembershipId}
+                                    onChange={(event) =>
+                                      setEditingForm((current) =>
+                                        current ? { ...current, ownerMembershipId: event.target.value } : current
+                                      )
+                                    }
+                                  >
+                                    {memberships.map((member) => (
+                                      <option key={member.id} value={member.id}>
+                                        {member.displayName}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </TableCell>
+                                <TableCell>
+                                  <select
+                                    className={styles.inlineSelect}
+                                    value={editingForm.stage}
+                                    onChange={(event) =>
+                                      setEditingForm((current) =>
+                                        current ? { ...current, stage: event.target.value as ContactStageId } : current
+                                      )
+                                    }
+                                  >
+                                    {CONTACT_STAGES.map((stage) => (
+                                      <option key={stage.id} value={stage.id}>
+                                        {stage.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </TableCell>
+                                <TableCell>{formatDateTime(contact.lastTouchAt)}</TableCell>
+                                <TableCell>
+                                  <div className={styles.nameCell}>
+                                    <input
+                                      className={styles.inlineInput}
+                                      type="date"
+                                      value={editingForm.nextActionAt}
+                                      onChange={(event) =>
+                                        setEditingForm((current) =>
+                                          current ? { ...current, nextActionAt: event.target.value } : current
+                                        )
+                                      }
+                                    />
+                                    <textarea
+                                      className={styles.inlineTextarea}
+                                      value={editingForm.nextActionNote}
+                                      onChange={(event) =>
+                                        setEditingForm((current) =>
+                                          current ? { ...current, nextActionNote: event.target.value } : current
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <select
+                                    className={styles.inlineSelect}
+                                    value={editingForm.referredByContactId}
+                                    onChange={(event) =>
+                                      setEditingForm((current) =>
+                                        current ? { ...current, referredByContactId: event.target.value } : current
+                                      )
+                                    }
+                                  >
+                                    <option value="">—</option>
+                                    {contacts
+                                      .filter((candidate) => candidate.id !== contact.id)
+                                      .map((candidate) => (
+                                        <option key={candidate.id} value={candidate.id}>
+                                          {candidate.name}
+                                        </option>
+                                      ))}
+                                  </select>
+                                  {editingForm.stage === "perdido" && (
+                                    <div className={styles.nameCell}>
+                                      <textarea
+                                        className={styles.inlineTextarea}
+                                        placeholder="Motivo da perda"
+                                        value={editingForm.lostReason}
+                                        onChange={(event) =>
+                                          setEditingForm((current) =>
+                                            current ? { ...current, lostReason: event.target.value } : current
+                                          )
+                                        }
+                                      />
+                                      <input
+                                        className={styles.inlineInput}
+                                        type="date"
+                                        value={editingForm.lostReviewAt}
+                                        onChange={(event) =>
+                                          setEditingForm((current) =>
+                                            current ? { ...current, lostReviewAt: event.target.value } : current
+                                          )
+                                        }
+                                      />
+                                    </div>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <input
+                                    className={styles.inlineInput}
+                                    value={editingForm.whatsapp}
+                                    onChange={(event) =>
+                                      setEditingForm((current) =>
+                                        current ? { ...current, whatsapp: event.target.value } : current
+                                      )
+                                    }
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <input
+                                    className={styles.inlineInput}
+                                    value={editingForm.tags}
+                                    onChange={(event) =>
+                                      setEditingForm((current) =>
+                                        current ? { ...current, tags: event.target.value } : current
+                                      )
+                                    }
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <input
+                                    className={styles.inlineInput}
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    value={editingForm.score}
+                                    onChange={(event) =>
+                                      setEditingForm((current) =>
+                                        current ? { ...current, score: event.target.value } : current
+                                      )
+                                    }
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <div className={styles.rowActions}>
+                                    <Button kind={Button.kinds.SECONDARY} onClick={cancelEdit}>
+                                      Descartar
+                                    </Button>
+                                    <Button kind={Button.kinds.PRIMARY} onClick={handleUpdate} loading={isLoading}>
+                                      Salvar
+                                    </Button>
+                                  </div>
+                                  {formErrors && <div className={styles.formError}>{formErrors}</div>}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          }
+
+                          return (
+                            <InteractiveTableRow
+                              key={contact.id}
+                              className={styles.tableRow}
+                              data-selected={isSelected}
+                              onDoubleClick={() => handleOpenContact(contact.id)}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                  event.preventDefault();
+                                  handleOpenContact(contact.id);
+                                }
+                                if (event.key.toLowerCase() === "o") {
+                                  event.preventDefault();
+                                  handleOpenContact(contact.id);
+                                }
+                              }}
+                              tabIndex={0}
+                            >
+                              <TableCell>
+                                <input
+                                  type="checkbox"
+                                  aria-label={`Selecionar ${contact.name}`}
+                                  checked={isSelected}
+                                  onChange={() => toggleSelection(contact.id)}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <button
+                                  type="button"
+                                  className={styles.nameLink}
+                                  onClick={() => handleOpenContact(contact.id)}
+                                >
+                                  {contact.name}
+                                </button>
+                                <span className={styles.metaLine}>{contact.email ?? "—"}</span>
+                              </TableCell>
+                              <TableCell>{contact.owner?.displayName ?? "—"}</TableCell>
+                              <TableCell>
+                                <span className={`${styles.stagePill} ${pillClass}`}>
+                                  {stageDefinition?.label ?? contact.stage}
+                                </span>
+                              </TableCell>
+                              <TableCell>{formatDateTime(contact.lastTouchAt)}</TableCell>
+                              <TableCell>
+                                <div className={styles.nameCell}>
+                                  <span>{formatDate(contact.nextActionAt)}</span>
+                                  <span className={styles.metaLine}>{contact.nextActionNote ?? "—"}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell>{contact.referredBy?.name ?? "—"}</TableCell>
+                              <TableCell>{contact.whatsapp ?? "—"}</TableCell>
+                              <TableCell>
+                                <div className={styles.tagsCell}>
+                                  {contact.tags.length === 0
+                                    ? "—"
+                                    : contact.tags.map((tag) => (
+                                        <span key={tag} className={styles.tagPill}>
+                                          {tag}
+                                        </span>
+                                      ))}
+                                </div>
+                              </TableCell>
+                              <TableCell>{contact.score ?? "—"}</TableCell>
+                              <TableCell>
+                                <Button kind={Button.kinds.TERTIARY} onClick={() => beginEdit(contact)}>
+                                  Editar
+                                </Button>
+                              </TableCell>
+                            </InteractiveTableRow>
+                          );
+                        })
+                      ),
+                    ]}
+                  </TableBody>
+                </Table>
+              </div>
+            </TabPanel>
+            <TabPanel index={1}>
+              <div className={styles.kanbanPanel}>
+                <ContactsKanban
+                  contacts={visibleContacts}
+                  onStageChange={handleKanbanStageChange}
+                  onOpenContact={handleOpenContact}
+                />
+              </div>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
       </div>
 
       <ContactModal
@@ -1358,7 +1448,7 @@ export default function ContactsBoardPage({
         onOpenContact={handleOpenContact}
         saving={modalSaving}
       />
-      {viewMode === "board" && selectedIdsArray.length > 0 ? (
+      {activeTab === 0 && hasSelection ? (
         <BulkActionsBar
           organizationId={organization.id}
           actorMembershipId={currentMembership.id}
