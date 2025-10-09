@@ -71,6 +71,7 @@ das reps via "Minhas tarefas".
 - **Larguras fixas** para skeletons de texto médio/longos garantem que o componente aceite valores numéricos (pixels) esperados pelo Vibe, mantendo o visual proporcional sem depender de porcentagens que quebrariam o `pnpm run build`.
 - **Busca focada** apenas no nome da sequência, com `aria-label="Buscar sequência pelo nome"` aplicado diretamente no componente `@vibe/core/Search` para manter a acessibilidade sem props camelCase não suportadas.
 - **Estado de erro da tabela** define `errorState` e `dataState.isError` explícitos no `@vibe/core/Table`, exibindo mensagem acessível com CTA de recarregar e evitando que o build falhe por props obrigatórias ausentes.
+- **Linhas navegáveis** utilizam o wrapper `SequenceTableDataRow`, que reproduz o grid do `@vibe/core/TableRow`, aplica foco visível e trata `Enter`/`Espaço` para abrir `/sequences/[id]` sem recorrer a props inexistentes (como `tabIndex`) que quebram o `pnpm run build`.
 - **Editor atualizado** com cabeçalho contextual, avatar inicial, tabs alinhadas ao Vibe e workspace em duas colunas: lista ordenável de passos à esquerda e painel detalhado com meta-informações, descrição e ações rápidas à direita.
 - **Templates de passo** apresentados em cards reutilizáveis (“Tarefa geral”, “Tarefa de ligação”), facilitando a criação do primeiro passo e reforçando a arquitetura multicanal.
 - **Formulário de regras & notificações** reorganizado em grid, com campos agrupados por contexto (janela de trabalho, cooldown, estratégia de publicação) e CTA fixo de salvar.

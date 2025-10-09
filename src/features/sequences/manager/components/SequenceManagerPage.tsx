@@ -8,6 +8,7 @@ import {
   useTransition,
   type ComponentType,
   type KeyboardEvent,
+  type ReactNode,
 } from "react";
 import clsx from "clsx";
 import {
@@ -319,6 +320,34 @@ function SequenceTableSkeletonRow({ columns }: { columns: TableColumn[] }) {
   );
 }
 
+type SequenceTableDataRowProps = {
+  children: ReactNode;
+  onActivate: () => void;
+  ariaLabel: string;
+};
+
+function SequenceTableDataRow({ children, onActivate, ariaLabel }: SequenceTableDataRowProps) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter" || event.key === " " || event.key === "Space" || event.key === "Spacebar") {
+      event.preventDefault();
+      onActivate();
+    }
+  };
+
+  return (
+    <div
+      role="row"
+      tabIndex={0}
+      className={styles.tableRow}
+      onClick={onActivate}
+      onKeyDown={handleKeyDown}
+      aria-label={ariaLabel}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function SequenceManagerPage({
   sequences,
   orgId,
@@ -562,13 +591,6 @@ export default function SequenceManagerPage({
 
   const handleRowClick = (sequenceId: string) => {
     router.push(`/sequences/${sequenceId}`);
-  };
-
-  const handleRowKeyDown = (event: KeyboardEvent<HTMLDivElement>, sequenceId: string) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      handleRowClick(sequenceId);
-    }
   };
 
   const tableEmptyState = (
@@ -882,13 +904,10 @@ export default function SequenceManagerPage({
                           const clickRate = item.clickRate ?? null;
 
                           return (
-                            <TableRow
+                            <SequenceTableDataRow
                               key={item.id}
-                              className={styles.tableRow}
-                              tabIndex={0}
-                              onClick={() => handleRowClick(item.id)}
-                              onKeyDown={(event) => handleRowKeyDown(event, item.id)}
-                              aria-label={`Abrir sequência ${item.name}`}
+                              onActivate={() => handleRowClick(item.id)}
+                              ariaLabel={`Abrir sequência ${item.name}`}
                             >
                               <TableCell className={styles.nameCell}>
                                 <span className={styles.sequenceName}>{item.name}</span>
@@ -927,7 +946,7 @@ export default function SequenceManagerPage({
                               <TableCell className={styles.metricCell}>{formatPercent(replyRate)}</TableCell>
                               <TableCell className={styles.metricCell}>{formatPercent(clickRate)}</TableCell>
                               <TableCell className={styles.metricCell}>{formatDate(item.updatedAt)}</TableCell>
-                            </TableRow>
+                            </SequenceTableDataRow>
                           );
                         })}
                   </TableBody>

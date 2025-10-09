@@ -1,6 +1,7 @@
 # 2025-11-23
 
 ### Fixed
+- Reestruturamos as linhas clicáveis da tabela de sequências com um wrapper acessível (`SequenceTableDataRow`) que replica o grid do Vibe e trata a navegação por teclado, eliminando o uso de props inexistentes (`tabIndex`) no `TableRow` e evitando novos erros no `pnpm run build`.
 - Corrigimos a busca da lista de sequências para usar o atributo padrão `aria-label` do `@vibe/core/Search`, evitando novos erros de tipagem no `pnpm run build` e preservando a acessibilidade da barra de filtros.
 - Adicionamos o `errorState` obrigatório ao `@vibe/core/Table` da lista de sequências com fallback acessível e CTA de recarregar, impedindo que o build volte a falhar por props ausentes.
 

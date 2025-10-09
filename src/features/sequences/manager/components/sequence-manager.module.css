@@ -198,13 +198,25 @@
 }
 
 .tableRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--table-grid-template-columns);
+  min-width: 100%;
+  width: fit-content;
+  height: var(--table-row-size, 56px);
   cursor: pointer;
   transition: background-color 120ms ease-in-out, box-shadow 120ms ease-in-out;
   outline: none;
+  border: none;
 }
 
-.tableRow:hover,
-.tableRow:focus-visible {
+.tableRow > [role="cell"] {
+  background-color: var(--vibe-color-bg-primary, var(--dx-surface, #ffffff));
+  transition: background-color 120ms ease-in-out;
+}
+
+.tableRow:hover > [role="cell"],
+.tableRow:focus-visible > [role="cell"] {
   background: var(--vibe-color-bg-hover, rgba(0, 0, 0, 0.04));
 }
 
