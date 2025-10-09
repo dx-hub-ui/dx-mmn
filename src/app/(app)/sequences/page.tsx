@@ -68,7 +68,6 @@ export default async function SequencesPage({
     <SequenceManagerPage
       sequences={sequences}
       orgId={membership.organization_id}
-      organizationName={membership.organization.name}
       membershipRole={membership.role}
       autoOpenNewModal={openNewModal}
     />

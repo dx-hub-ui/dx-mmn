@@ -3,19 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import clsx from "clsx";
-import {
-  BreadcrumbItem,
-  BreadcrumbsBar,
-  Button,
-  Label,
-  Modal,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  RadioButton,
-  Search,
-  TextField,
-} from "@vibe/core";
+import { Button, Label, Modal, ModalContent, ModalFooter, ModalHeader, RadioButton, Search, TextField } from "@vibe/core";
+import { Open } from "@vibe/icons";
 import { createSequenceDraftAction } from "@/app/(app)/sequences/actions";
 import { trackEvent } from "@/lib/telemetry";
 import { useSentrySequenceScope } from "@/lib/observability/sentryClient";
@@ -34,7 +23,6 @@ const TARGET_OPTIONS: (SequenceTargetType | "todos")[] = ["todos", "contact", "m
 type SequenceManagerPageProps = {
   sequences: SequenceManagerItem[];
   orgId: string;
-  organizationName: string;
   membershipRole: "org" | "leader" | "rep";
   autoOpenNewModal?: boolean;
 };
@@ -139,7 +127,6 @@ function formatDate(value: string | null) {
 export default function SequenceManagerPage({
   sequences,
   orgId,
-  organizationName,
   membershipRole,
   autoOpenNewModal = false,
 }: SequenceManagerPageProps) {
@@ -251,19 +238,6 @@ export default function SequenceManagerPage({
 
   const filtered = useMemo(() => filterSequences(sequences, filters), [sequences, filters]);
 
-  const statusTotals = useMemo(
-    () =>
-      sequences.reduce<Record<SequenceStatus | "total", number>>(
-        (acc, item) => {
-          acc.total += 1;
-          acc[item.status] += 1;
-          return acc;
-        },
-        { total: 0, active: 0, paused: 0, draft: 0, archived: 0 }
-      ),
-    [sequences]
-  );
-
   const allSelected = filtered.length > 0 && filtered.every((item) => selection.has(item.id));
   const selectionCount = selection.size;
 
@@ -316,55 +290,14 @@ export default function SequenceManagerPage({
   return (
     <>
       <section className={styles.page} aria-labelledby="sequence-manager-title">
-      <header className={styles.pageHeader}>
-        <BreadcrumbsBar type={BreadcrumbsBar.types.NAVIGATION} className={styles.breadcrumbs}>
-          <BreadcrumbItem text="Workspaces" />
-          <BreadcrumbItem text={organizationName} />
-          <BreadcrumbItem text="Sequências" isCurrent />
-        </BreadcrumbsBar>
-
-        <div className={styles.headerContent}>
-          <div className={styles.headerText}>
-            <div className={styles.titleRow}>
-              <h1 id="sequence-manager-title">Sequências</h1>
-              <Label
-                kind={Label.kinds.FILL}
-                color={Label.colors.PRIMARY}
-                className={styles.betaLabel}
-                text="Beta"
-              />
-            </div>
-            <p>
-              Crie cadências multicanal e acompanhe o progresso das automações da organização {organizationName}.
-            </p>
+        <header className={styles.pageHeader}>
+          <div className={styles.titleRow}>
+            <h1 id="sequence-manager-title">Sequências</h1>
+            <Label kind={Label.kinds.FILL} color={Label.colors.PRIMARY} className={styles.betaLabel} text="Beta" />
           </div>
+        </header>
 
-          <dl className={styles.metrics} aria-label="Resumo das sequências">
-            <div>
-              <dt>Total</dt>
-              <dd>{statusTotals.total}</dd>
-            </div>
-            <div>
-              <dt>Ativas</dt>
-              <dd>{statusTotals.active}</dd>
-            </div>
-            <div>
-              <dt>Pausadas</dt>
-              <dd>{statusTotals.paused}</dd>
-            </div>
-            <div>
-              <dt>Rascunhos</dt>
-              <dd>{statusTotals.draft}</dd>
-            </div>
-            <div>
-              <dt>Arquivadas</dt>
-              <dd>{statusTotals.archived}</dd>
-            </div>
-          </dl>
-        </div>
-      </header>
-
-      <div className={styles.pageBody}>
+        <div className={styles.pageBody}>
         <div className={styles.toolbar} role="toolbar" aria-label="Controles de sequências">
           <div className={styles.toolbarPrimary}>
             <Button
@@ -460,7 +393,11 @@ export default function SequenceManagerPage({
               </Button>
             </div>
           ) : (
-            <table className={styles.table} role="grid" aria-labelledby="sequence-manager-title">
+            <table
+              className={clsx(styles.table, styles["table_d1c05c112f"])}
+              role="grid"
+              aria-labelledby="sequence-manager-title"
+            >
               <thead>
                 <tr>
                   <th className={styles.checkboxCell} scope="col">
@@ -478,15 +415,10 @@ export default function SequenceManagerPage({
                   <th scope="col">Inscrições ativas</th>
                   <th scope="col">Conclusão</th>
                   <th scope="col">Última ativação</th>
-                  <th scope="col" className={styles.actionsHeader}>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((item) => {
-                  const disabledHintId = item.isActive
-                    ? `sequence-${item.id}-edit-hint`
-                    : undefined;
-
                   return (
                     <tr key={item.id}>
                       <td className={styles.checkboxCell}>
@@ -498,7 +430,15 @@ export default function SequenceManagerPage({
                         />
                       </td>
                       <th scope="row" className={styles.nameCell}>
-                        <span className={styles.sequenceName}>{item.name}</span>
+                        <button
+                          type="button"
+                          className={styles.sequenceButton}
+                          onClick={() => router.push(`/sequences/${item.id}`)}
+                          aria-label={`Abrir sequência ${item.name}`}
+                        >
+                          <span className={styles.sequenceName}>{item.name}</span>
+                          <Open size={16} className={styles.openIcon} aria-hidden />
+                        </button>
                         <span className={styles.sequenceMeta}>Versão #{item.activeVersionNumber || 1}</span>
                       </th>
                       <td>
@@ -511,30 +451,6 @@ export default function SequenceManagerPage({
                       <td>{item.activeEnrollments}</td>
                       <td>{item.completionRate.toFixed(1)}%</td>
                       <td>{formatDate(item.lastActivationAt)}</td>
-                      <td className={styles.actionsCell}>
-                        <Button
-                          kind={Button.kinds.SECONDARY}
-                          size={Button.sizes.SMALL}
-                          onClick={() => router.push(`/sequences/${item.id}`)}
-                          disabled={item.isActive}
-                          aria-label={
-                            item.isActive
-                              ? `Desative ${item.name} para editar`
-                              : `Editar sequência ${item.name}`
-                          }
-                          aria-describedby={disabledHintId}
-                        >
-                          Editar
-                        </Button>
-                        {item.isActive ? (
-                          <span
-                            id={disabledHintId}
-                            className={styles.actionsHint}
-                          >
-                            Desative para editar
-                          </span>
-                        ) : null}
-                      </td>
                     </tr>
                   );
                 })}
@@ -542,7 +458,7 @@ export default function SequenceManagerPage({
             </table>
           )}
         </div>
-      </div>
+        </div>
       </section>
       <NewSequenceModal
         open={newModalOpen}
