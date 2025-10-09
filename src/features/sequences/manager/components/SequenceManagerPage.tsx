@@ -77,10 +77,10 @@ const DEFAULT_SORT: SortState = { column: "updatedAt", direction: "desc" };
 
 type TableLoadingStateType = NonNullable<TableColumn["loadingStateType"]>;
 
-const SKELETON_WIDTH_BY_TYPE: Record<TableLoadingStateType, number | string> = {
+const SKELETON_WIDTH_BY_TYPE: Record<TableLoadingStateType, number> = {
   circle: 32,
-  "medium-text": "55%",
-  "long-text": "80%",
+  "medium-text": 160,
+  "long-text": 240,
   rectangle: 48,
 };
 
@@ -299,7 +299,7 @@ function SequenceTableSkeletonRow({ columns }: { columns: TableColumn[] }) {
             ? Skeleton.types.RECTANGLE
             : Skeleton.types.TEXT;
 
-        const width = SKELETON_WIDTH_BY_TYPE[type] ?? "70%";
+        const width = SKELETON_WIDTH_BY_TYPE[type] ?? 192;
         const height =
           SKELETON_HEIGHT_BY_TYPE[type] ?? (type === "circle" ? 32 : type === "rectangle" ? 16 : 12);
 

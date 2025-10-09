@@ -68,6 +68,7 @@ das reps via "Minhas tarefas".
 
 - **Lista de sequências** agora exibe barra superior Monday-style com título + tag Beta, botões "Aprender mais"/"Feedback", busca dedicada pelo nome e filtros agrupados em popover (`DialogType=popover`). A grade foi reconstruída com `@vibe/core/Table`, chips de status do Vibe, tag "Contatos" com ícone de equipe, colunas métricas alinhadas à direita (inscrições e taxas com tooltips "?") e skeleton inicial antes da hidratação.
 - **Skeletons compatíveis** com o `@vibe/core/Table`, usando apenas os tipos `"long-text"`, `"medium-text"`, `"rectangle"` e `"circle"` para que o build não quebre quando a lista ainda está carregando. As colunas de métricas adotam `Skeleton.types.RECTANGLE`, eliminando comparações com variantes inexistentes como `"short-text"`.
+- **Larguras fixas** para skeletons de texto médio/longos garantem que o componente aceite valores numéricos (pixels) esperados pelo Vibe, mantendo o visual proporcional sem depender de porcentagens que quebrariam o `pnpm run build`.
 - **Busca focada** apenas no nome da sequência para simplificar a descoberta e alinhar com a barra de filtros principal.
 - **Editor atualizado** com cabeçalho contextual, avatar inicial, tabs alinhadas ao Vibe e workspace em duas colunas: lista ordenável de passos à esquerda e painel detalhado com meta-informações, descrição e ações rápidas à direita.
 - **Templates de passo** apresentados em cards reutilizáveis (“Tarefa geral”, “Tarefa de ligação”), facilitando a criação do primeiro passo e reforçando a arquitetura multicanal.

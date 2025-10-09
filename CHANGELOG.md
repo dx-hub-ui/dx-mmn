@@ -1,3 +1,8 @@
+# 2025-11-22
+
+### Fixed
+- Ajustamos as larguras dos skeletons da tabela de sequências para números em pixels compatíveis com o `@vibe/core/Skeleton`, evitando que o build falhe ao interpretar porcentagens nas props `width`.
+
 # 2025-11-21
 
 ### Fixed
