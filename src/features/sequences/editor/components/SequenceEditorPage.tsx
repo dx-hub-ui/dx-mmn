@@ -25,9 +25,21 @@ import {
   Button,
   EmptyState,
   Label,
+  Menu,
+  MenuButton,
+  MenuDivider,
+  MenuItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
   Text,
   TextArea,
   Toggle,
+  type TableColumn,
 } from "@vibe/core";
 import { trackEvent } from "@/lib/telemetry";
 import { useSentrySequenceScope } from "@/lib/observability/sentryClient";
@@ -59,12 +71,14 @@ type SequenceEditorPageProps = {
   data: SequenceEditorData;
 };
 
-type TabKey = "passos" | "regras" | "inscricoes";
+type TabKey = "etapas" | "regras" | "inscricoes";
 
 type StepModalState = {
   mode: "create" | "edit";
   step?: SequenceStepRecord;
   presetType?: SequenceStepRecord["type"];
+  anchorStepId?: string;
+  position?: "before" | "after";
 };
 
 type SortableStepProps = {
@@ -75,6 +89,15 @@ type SortableStepProps = {
   disableActions: boolean;
   onSelect: (step: SequenceStepRecord) => void;
   onToggle: (step: SequenceStepRecord, isActive: boolean) => void;
+  onDuplicate: (step: SequenceStepRecord) => void;
+  onDelete: (step: SequenceStepRecord) => void;
+  onAddBefore: (step: SequenceStepRecord) => void;
+  onAddAfter: (step: SequenceStepRecord) => void;
+  onAddWait: (step: SequenceStepRecord) => void;
+  onMoveUp: (step: SequenceStepRecord) => void;
+  onMoveDown: (step: SequenceStepRecord) => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 };
 
 const STEP_TYPE_LABEL: Record<SequenceStepRecord["type"], string> = {
@@ -82,7 +105,24 @@ const STEP_TYPE_LABEL: Record<SequenceStepRecord["type"], string> = {
   call_task: "Tarefa de ligação",
 };
 
-function SortableStep({ step, index, isSelected, disableReorder, disableActions, onSelect, onToggle }: SortableStepProps) {
+function SortableStep({
+  step,
+  index,
+  isSelected,
+  disableReorder,
+  disableActions,
+  onSelect,
+  onToggle,
+  onDuplicate,
+  onDelete,
+  onAddBefore,
+  onAddAfter,
+  onAddWait,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
+}: SortableStepProps) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: step.id, disabled: disableReorder });
 
   const style = {
@@ -108,55 +148,92 @@ function SortableStep({ step, index, isSelected, disableReorder, disableActions,
         }
       }}
     >
-      <header className={styles.stepHeader}>
-        <span className={styles.stepOrder}>{index + 1}</span>
-        <div className={styles.stepHeaderInfo}>
-          <h3>{step.title}</h3>
-          <span>{STEP_TYPE_LABEL[step.type]}</span>
-        </div>
+      <div className={styles.stepCardInner}>
         <button
           type="button"
           className={styles.dragHandle}
-          aria-label="Reordenar passo"
+          aria-label="Reordenar etapa"
           {...attributes}
           {...(disableReorder ? {} : listeners)}
           disabled={disableReorder}
         >
-          ☰
+          ⋮⋮
         </button>
-      </header>
-
-      <div className={styles.stepMeta}>
-        <span>
-          Vencimento em {step.dueOffsetDays} dia(s) e {step.dueOffsetHours} hora(s)
-        </span>
-        <span>
-          Responsável: {step.assigneeMode === "owner" ? "Dono do contato" : step.assigneeMode === "org" ? "Organização" : "Personalizado"}
-        </span>
-        {step.channelHint ? <span>Canal sugerido: {step.channelHint}</span> : null}
-        {step.pauseUntilDone ? <span>Bloqueia sequência até concluir</span> : null}
-      </div>
-
-      <div className={styles.stepStatusRow}>
-        <Label
-          kind={Label.kinds.FILL}
-          color={step.isActive ? Label.colors.POSITIVE : Label.colors.AMERICAN_GRAY}
-          text={step.isActive ? "Ativo" : "Inativo"}
-        />
-        <Button
-          kind={Button.kinds.TERTIARY}
-          size={Button.sizes.SMALL}
-          onClick={(event) => {
-            event.stopPropagation();
-            if (disableActions) {
-              return;
-            }
-            onToggle(step, !step.isActive);
-          }}
+        <div className={styles.stepCardContent}>
+          <div className={styles.stepTitleRow}>
+            <span className={styles.stepOrder}>{`${index + 1}.`}</span>
+            <div className={styles.stepTextGroup}>
+              <h3>{step.title.trim() || STEP_TYPE_LABEL[step.type]}</h3>
+              <p>{step.shortDescription?.trim() || "Sem descrição"}</p>
+            </div>
+          </div>
+          <span className={styles.stepType}>{STEP_TYPE_LABEL[step.type]}</span>
+        </div>
+        <MenuButton
+          className={styles.stepMenuButton}
+          ariaLabel={`Ações para ${step.title}`}
           disabled={disableActions}
+          closeMenuOnItemClick
+          component={({ onClick }) => (
+            <button
+              type="button"
+              className={styles.stepMenuTrigger}
+              onClick={(event) => {
+                event.stopPropagation();
+                onClick(event);
+              }}
+              aria-label={`Abrir menu de ações da etapa ${index + 1}`}
+            >
+              ⋯
+            </button>
+          )}
         >
-          {step.isActive ? "Desativar" : "Ativar"}
-        </Button>
+          <Menu>
+            <MenuItem
+              title="Adicionar tempo de espera"
+              disabled={disableActions}
+              onClick={() => onAddWait(step)}
+            />
+            <MenuItem
+              title={step.isActive ? "Desativar etapa" : "Ativar etapa"}
+              disabled={disableActions}
+              onClick={() => onToggle(step, !step.isActive)}
+            />
+            <MenuDivider />
+            <MenuItem
+              title="Adicionar etapa antes"
+              disabled={disableActions}
+              onClick={() => onAddBefore(step)}
+            />
+            <MenuItem
+              title="Adicionar etapa depois"
+              disabled={disableActions}
+              onClick={() => onAddAfter(step)}
+            />
+            <MenuDivider />
+            <MenuItem
+              title="Mover etapa para cima"
+              disabled={disableActions || !canMoveUp}
+              onClick={() => onMoveUp(step)}
+            />
+            <MenuItem
+              title="Mover etapa para baixo"
+              disabled={disableActions || !canMoveDown}
+              onClick={() => onMoveDown(step)}
+            />
+            <MenuDivider />
+            <MenuItem
+              title="Duplicar etapa"
+              disabled={disableActions}
+              onClick={() => onDuplicate(step)}
+            />
+            <MenuItem
+              title="Excluir etapa"
+              disabled={disableActions}
+              onClick={() => onDelete(step)}
+            />
+          </Menu>
+        </MenuButton>
       </div>
     </article>
   );
@@ -178,6 +255,8 @@ type StepModalProps = {
     channelHint: string;
     pauseUntilDone: boolean;
     isActive: boolean;
+    anchorStepId?: string;
+    position?: "before" | "after";
   }) => Promise<void>;
   pending: boolean;
   disabled: boolean;
@@ -269,6 +348,8 @@ function StepModal({ open, state, onClose, onSubmit, pending, disabled }: StepMo
               channelHint,
               pauseUntilDone,
               isActive,
+              anchorStepId: state?.anchorStepId,
+              position: state?.position,
             });
           }}
         >
@@ -399,7 +480,7 @@ function StepModal({ open, state, onClose, onSubmit, pending, disabled }: StepMo
 }
 
 const TAB_LABELS: Record<TabKey, string> = {
-  passos: "Passos",
+  etapas: "Etapas",
   regras: "Regras & notificações",
   inscricoes: "Inscrições",
 };
@@ -434,19 +515,32 @@ const ENROLLMENT_STATUS: Record<string, string> = {
   terminated: "Encerrada",
 };
 
+const ENROLLMENT_COLUMNS: TableColumn[] = [
+  { id: "targetId", title: "ID", loadingStateType: "medium-text" },
+  { id: "targetType", title: "Tipo", loadingStateType: "medium-text" },
+  { id: "status", title: "Status", loadingStateType: "medium-text" },
+  { id: "enrolledAt", title: "Inscrito em", loadingStateType: "long-text" },
+  { id: "actions", title: "Ações", loadingStateType: "circle" },
+];
+
 export default function SequenceEditorPage({ orgId, membershipId, membershipRole, data }: SequenceEditorPageProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<TabKey>("passos");
+  const [activeTab, setActiveTab] = useState<TabKey>("etapas");
   const [stepModal, setStepModal] = useState<StepModalState | null>(null);
   const [localSteps, setLocalSteps] = useState<SequenceStepRecord[]>(data.steps);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(data.steps[0]?.id ?? null);
   const [enrollmentTargetType, setEnrollmentTargetType] = useState<SequenceTargetType>("contact");
   const [enrollmentTargets, setEnrollmentTargets] = useState("");
   const [rulesNotes, setRulesNotes] = useState(data.currentVersion?.notes ?? "");
+  const [noteDraft, setNoteDraft] = useState("");
+  const [pauseDraft, setPauseDraft] = useState(false);
+  const [enrollmentBusy, setEnrollmentBusy] = useState(false);
+  const [enrollmentSort, setEnrollmentSort] = useState<{ column: string; direction: "asc" | "desc" } | null>(null);
   const [isPending, startTransition] = useTransition();
   const [sequenceActive, setSequenceActive] = useState(data.sequence.isActive);
   const [activationError, setActivationError] = useState<string | null>(null);
   const [activationPending, startActivationTransition] = useTransition();
+  const [stepError, setStepError] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -502,6 +596,8 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     rep: "Representante",
   };
 
+  const sequenceTitle = data.sequence.name?.trim() || "Nova Sequência";
+
   const handleStepSubmit = async (values: {
     id?: string;
     title: string;
@@ -514,6 +610,8 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     channelHint: string;
     pauseUntilDone: boolean;
     isActive: boolean;
+    anchorStepId?: string;
+    position?: "before" | "after";
   }) => {
     if (!currentVersion) {
       return;
@@ -523,6 +621,16 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
       setStepModal(null);
       return;
     }
+
+    const anchorIndex = values.anchorStepId
+      ? localSteps.findIndex((step) => step.id === values.anchorStepId)
+      : -1;
+    const insertAtIndex =
+      !values.id && values.position && anchorIndex >= 0
+        ? values.position === "before"
+          ? anchorIndex
+          : anchorIndex + 1
+        : null;
 
     startTransition(async () => {
       await upsertSequenceStepAction({
@@ -539,6 +647,7 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
         channelHint: values.channelHint,
         pauseUntilDone: values.pauseUntilDone,
         isActive: values.isActive,
+        insertAtIndex: insertAtIndex ?? undefined,
       });
       router.refresh();
       setStepModal(null);
@@ -579,6 +688,41 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     });
   };
 
+  const moveStep = (step: SequenceStepRecord, direction: "up" | "down") => {
+    const currentIndex = localSteps.findIndex((item) => item.id === step.id);
+    if (currentIndex === -1) {
+      return;
+    }
+
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= localSteps.length) {
+      return;
+    }
+
+    const reordered = arrayMove(localSteps, currentIndex, targetIndex).map((item, index) => ({
+      ...item,
+      order: index + 1,
+    }));
+
+    setLocalSteps(reordered);
+
+    if (!currentVersion || sequenceActive) {
+      return;
+    }
+
+    startTransition(async () => {
+      await reorderSequenceStepsAction(
+        data.sequence.id,
+        currentVersion.id,
+        reordered.map((item) => item.id)
+      );
+      router.refresh();
+    });
+  };
+
+  const handleMoveStepUp = (step: SequenceStepRecord) => moveStep(step, "up");
+  const handleMoveStepDown = (step: SequenceStepRecord) => moveStep(step, "down");
+
   const openStepModal = (state: StepModalState) => {
     if (disableStepActions) {
       return;
@@ -593,6 +737,19 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     startTransition(async () => {
       await duplicateSequenceStepAction(data.sequence.id, step.id);
       router.refresh();
+    });
+  };
+
+  const handleAddStepRelative = (step: SequenceStepRecord, position: "before" | "after") => {
+    openStepModal({ mode: "create", presetType: step.type, anchorStepId: step.id, position });
+  };
+
+  const handleAddWaitAfter = (step: SequenceStepRecord) => {
+    openStepModal({
+      mode: "create",
+      presetType: step.type,
+      anchorStepId: step.id,
+      position: "after",
     });
   };
 
@@ -701,10 +858,15 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
       .map((value) => value.trim())
       .filter(Boolean);
 
+    setEnrollmentBusy(true);
     startTransition(async () => {
-      await enrollTargetsAction(data.sequence.id, currentVersion.id, enrollmentTargetType, targets);
-      setEnrollmentTargets("");
-      router.refresh();
+      try {
+        await enrollTargetsAction(data.sequence.id, currentVersion.id, enrollmentTargetType, targets);
+        setEnrollmentTargets("");
+        router.refresh();
+      } finally {
+        setEnrollmentBusy(false);
+      }
     });
   };
 
@@ -736,9 +898,97 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     [localSteps, selectedStepId]
   );
 
+  const sortedEnrollments = useMemo(() => {
+    const items = [...data.enrollments];
+    if (!enrollmentSort) {
+      return items;
+    }
+
+    const direction = enrollmentSort.direction === "asc" ? 1 : -1;
+
+    return items.sort((a, b) => {
+      switch (enrollmentSort.column) {
+        case "targetId":
+          return direction * a.targetId.localeCompare(b.targetId, "pt-BR", { numeric: true });
+        case "targetType": {
+          const labelA = a.targetType === "contact" ? "Contato" : "Membro";
+          const labelB = b.targetType === "contact" ? "Contato" : "Membro";
+          return direction * labelA.localeCompare(labelB, "pt-BR");
+        }
+        case "status": {
+          const labelA = ENROLLMENT_STATUS[a.status] ?? a.status;
+          const labelB = ENROLLMENT_STATUS[b.status] ?? b.status;
+          return direction * labelA.localeCompare(labelB, "pt-BR");
+        }
+        case "enrolledAt":
+          return (
+            direction *
+            (new Date(a.enrolledAt).getTime() - new Date(b.enrolledAt).getTime())
+          );
+        default:
+          return 0;
+      }
+    });
+  }, [data.enrollments, enrollmentSort]);
+
+  useEffect(() => {
+    if (!selectedStep) {
+      setNoteDraft("");
+      setPauseDraft(false);
+      setStepError(null);
+      return;
+    }
+    setNoteDraft(selectedStep.shortDescription ?? "");
+    setPauseDraft(selectedStep.pauseUntilDone);
+    setStepError(null);
+  }, [selectedStep]);
+
   const disableStepActions = sequenceActive || isPending || activationPending;
   const disableRulesForm = sequenceActive || activationPending;
   const disableEnrollmentForm = sequenceActive || activationPending;
+  const hasStepDraftChanges =
+    Boolean(selectedStep) &&
+    (noteDraft !== (selectedStep?.shortDescription ?? "") || pauseDraft !== (selectedStep?.pauseUntilDone ?? false));
+
+  const handleSaveSelectedStep = () => {
+    if (!selectedStep || !currentVersion) {
+      return;
+    }
+
+    if (sequenceActive) {
+      return;
+    }
+
+    setStepError(null);
+
+    startTransition(async () => {
+      try {
+        await upsertSequenceStepAction({
+          sequenceId: data.sequence.id,
+          versionId: currentVersion.id,
+          stepId: selectedStep.id,
+          title: selectedStep.title,
+          shortDescription: noteDraft,
+          type: selectedStep.type,
+          assigneeMode: selectedStep.assigneeMode,
+          dueOffsetDays: selectedStep.dueOffsetDays,
+          dueOffsetHours: selectedStep.dueOffsetHours,
+          priority: selectedStep.priority ?? undefined,
+          channelHint: selectedStep.channelHint ?? undefined,
+          pauseUntilDone: pauseDraft,
+          isActive: selectedStep.isActive,
+        });
+        router.refresh();
+      } catch (error) {
+        console.error("[sequences] falha ao salvar etapa", error);
+        setStepError(
+          error instanceof Error && error.message
+            ? error.message
+            : "Não foi possível salvar as alterações da etapa."
+        );
+      }
+    });
+  };
 
   if (!currentVersion) {
     return (
@@ -756,11 +1006,10 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
       <header className={styles.pageHeader}>
         <BreadcrumbsBar type={BreadcrumbsBar.types.NAVIGATION} className={styles.breadcrumbs}>
           <BreadcrumbItem
-            text="Sequências"
+            text="← Todas as sequências"
             isClickable
             onClick={() => router.push("/sequences")}
           />
-          <BreadcrumbItem text={data.sequence.name} isCurrent />
         </BreadcrumbsBar>
 
         <div className={styles.headerContent}>
@@ -768,11 +1017,11 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
             <Avatar
               type={Avatar.types.TEXT}
               size={Avatar.sizes.LARGE}
-              text={data.sequence.name.slice(0, 1).toUpperCase()}
+              text={sequenceTitle.slice(0, 1).toUpperCase()}
             />
             <div className={styles.headerText}>
               <div className={styles.headerTitleRow}>
-                <h1 id="sequence-editor-title">{data.sequence.name}</h1>
+                <h1 id="sequence-editor-title">{sequenceTitle}</h1>
                 <Label
                   kind={Label.kinds.FILL}
                   color={Label.colors.PRIMARY}
@@ -799,32 +1048,29 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
 
           <div className={styles.headerActions}>
             <div className={styles.activationGroup}>
-              <span className={styles.activationLabel}>Ativação</span>
               <div className={styles.activationToggle}>
+                <span className={styles.activationSideLabel}>Inativa</span>
                 <Toggle
                   isSelected={sequenceActive}
                   onChange={(value) => handleActivationToggle(value)}
                   disabled={activationPending || isPending}
-                  onOverrideText="Ativada"
-                  offOverrideText="Desativada"
                   ariaLabel="Alternar ativação da sequência"
                 />
-                <span className={styles.activationState}>{sequenceActive ? "Ativada" : "Desativada"}</span>
+                <span className={styles.activationSideLabel}>Ativa</span>
               </div>
               <p className={styles.activationHint}>
                 {sequenceActive
                   ? "Edições bloqueadas enquanto a sequência estiver ativa."
-                  : "Revise passos e regras antes de ativar novamente."}
+                  : "Revise etapas e regras antes de ativar novamente."}
               </p>
               {activationError ? <p className={styles.activationError}>{activationError}</p> : null}
             </div>
             <Button
-              kind={Button.kinds.SECONDARY}
-              leftIcon="Add"
-              onClick={() => openStepModal({ mode: "create", presetType: "general_task" })}
-              disabled={disableStepActions}
+              kind={Button.kinds.PRIMARY}
+              onClick={handleSaveSelectedStep}
+              disabled={disableStepActions || !hasStepDraftChanges}
             >
-              Novo passo
+              Salvar sequência
             </Button>
           </div>
         </div>
@@ -848,12 +1094,12 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
       </nav>
 
       <div role="tabpanel" id={`${activeTab}-panel`} className={styles.tabPanel}>
-        {activeTab === "passos" ? (
+        {activeTab === "etapas" ? (
           <div className={styles.stepsLayout}>
             <div className={styles.stepsColumn}>
               <div className={styles.stepsHeader}>
                 <div>
-                  <p className={styles.stepsTitle}>Passos ({localSteps.length})</p>
+                  <p className={styles.stepsTitle}>Etapas ({localSteps.length})</p>
                   <span className={styles.stepsSubtitle}>
                     Arraste para reordenar ou clique para visualizar detalhes.
                   </span>
@@ -863,13 +1109,13 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                   onClick={() => openStepModal({ mode: "create", presetType: "general_task" })}
                   disabled={disableStepActions}
                 >
-                  Adicionar passo
-                  </Button>
+                  Adicionar etapa
+                </Button>
               </div>
 
               {localSteps.length === 0 ? (
                 <div className={styles.stepsEmpty}>
-                  <h3>Adicione o primeiro passo</h3>
+                  <h3>Adicione a primeira etapa</h3>
                   <p>Escolha um template e personalize a cadência conforme a sua operação.</p>
                   <div className={styles.stepTemplates}>
                     {STEP_TEMPLATES.map((template) => (
@@ -900,104 +1146,104 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                           disableActions={disableStepActions}
                           onSelect={(selected) => setSelectedStepId(selected.id)}
                           onToggle={handleToggle}
+                          onDuplicate={handleDuplicate}
+                          onDelete={handleDelete}
+                          onAddBefore={(selected) => handleAddStepRelative(selected, "before")}
+                          onAddAfter={(selected) => handleAddStepRelative(selected, "after")}
+                          onAddWait={handleAddWaitAfter}
+                          onMoveUp={handleMoveStepUp}
+                          onMoveDown={handleMoveStepDown}
+                          canMoveUp={index > 0}
+                          canMoveDown={index < localSteps.length - 1}
                         />
                       ))}
                     </div>
                   </SortableContext>
                 </DndContext>
               )}
+              <button
+                type="button"
+                className={styles.addStepLink}
+                onClick={() => openStepModal({ mode: "create", presetType: "general_task" })}
+                disabled={disableStepActions}
+              >
+                + Adicionar
+              </button>
             </div>
 
             <aside className={styles.detailsColumn} aria-live="polite">
               {selectedStep ? (
                 <div className={styles.detailCard}>
                   <header className={styles.detailHeader}>
-                    <div>
+                    <div className={styles.detailHeaderText}>
                       <h2>{selectedStep.title}</h2>
                       <span className={styles.detailSubtitle}>{STEP_TYPE_LABEL[selectedStep.type]}</span>
                     </div>
                     <Label
                       kind={Label.kinds.FILL}
                       color={selectedStep.isActive ? Label.colors.POSITIVE : Label.colors.AMERICAN_GRAY}
-                      text={selectedStep.isActive ? "Ativo" : "Inativo"}
+                      text={selectedStep.isActive ? "Ativa" : "Inativa"}
                     />
                   </header>
 
-                  <div className={styles.detailMetaGrid}>
-                    <div>
-                      <span className={styles.detailMetaLabel}>Responsável</span>
-                      <span className={styles.detailMetaValue}>
-                        {selectedStep.assigneeMode === "owner"
-                          ? "Dono do contato"
-                          : selectedStep.assigneeMode === "org"
-                          ? "Organização"
-                          : "Membro específico"}
-                      </span>
+                  {stepError ? (
+                    <div className={styles.detailError} role="alert">
+                      {stepError}
                     </div>
-                    <div>
-                      <span className={styles.detailMetaLabel}>Prazo</span>
-                      <span className={styles.detailMetaValue}>
-                        {selectedStep.dueOffsetDays} dia(s) · {selectedStep.dueOffsetHours} hora(s)
-                      </span>
-                    </div>
-                    <div>
-                      <span className={styles.detailMetaLabel}>Canal sugerido</span>
-                      <span className={styles.detailMetaValue}>{selectedStep.channelHint || "Não definido"}</span>
-                    </div>
-                    <div>
-                      <span className={styles.detailMetaLabel}>Bloqueio</span>
-                      <span className={styles.detailMetaValue}>
-                        {selectedStep.pauseUntilDone ? "Sequência pausa até concluir" : "Continua mesmo pendente"}
-                      </span>
-                    </div>
-                  </div>
+                  ) : null}
 
-                  <div className={styles.detailDescription}>
-                    <Text type={Text.types.TEXT2} weight={Text.weights.BOLD}>
-                      Descrição
-                    </Text>
+                  <div className={styles.noteSection}>
                     <TextArea
-                      value={selectedStep.shortDescription ?? "Sem descrição cadastrada."}
-                      readOnly
-                      aria-label="Descrição do passo selecionado"
+                      value={noteDraft}
+                      onChange={(event) => setNoteDraft(event.target.value)}
+                      disabled={disableStepActions}
+                      placeholder="Adicione a nota que aparecerá no lembrete desta tarefa."
                       className={styles.detailTextarea}
+                      aria-label="Nota da etapa selecionada"
                     />
+                    <div className={styles.noteToolbar} role="toolbar" aria-label="Ferramentas de formatação">
+                      <button type="button" className={styles.noteToolbarButton} disabled>
+                        +
+                      </button>
+                      <button type="button" className={styles.noteToolbarButton} disabled>
+                        Aa
+                      </button>
+                      <button type="button" className={styles.noteToolbarButton} disabled>
+                        {}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className={styles.detailActions}>
-                    <Button
-                      onClick={() => openStepModal({ mode: "edit", step: selectedStep })}
-                      disabled={disableStepActions}
-                    >
-                      Editar passo
-                    </Button>
-                    <Button
-                      kind={Button.kinds.SECONDARY}
-                      onClick={() => handleDuplicate(selectedStep)}
-                      disabled={disableStepActions}
-                    >
-                      Duplicar
-                    </Button>
-                    <Button
-                      kind={Button.kinds.SECONDARY}
-                      onClick={() => handleToggle(selectedStep, !selectedStep.isActive)}
-                      disabled={disableStepActions}
-                    >
-                      {selectedStep.isActive ? "Desativar" : "Ativar"}
-                    </Button>
-                    <Button
-                      kind={Button.kinds.TERTIARY}
-                      onClick={() => handleDelete(selectedStep)}
-                      disabled={disableStepActions}
-                    >
-                      Remover
-                    </Button>
+                  <div className={styles.detailFooter}>
+                    <div className={styles.pauseRow}>
+                      <span>Pausar sequência até que a etapa seja marcada como concluída</span>
+                      <Toggle
+                        isSelected={pauseDraft}
+                        onChange={(value) => setPauseDraft(value)}
+                        disabled={disableStepActions}
+                        ariaLabel="Pausar sequência até concluir esta etapa"
+                      />
+                    </div>
+
+                    <div className={styles.detailActions}>
+                      <Button
+                        onClick={handleSaveSelectedStep}
+                        disabled={disableStepActions || !hasStepDraftChanges}
+                      >
+                        Salvar etapa
+                      </Button>
+                      <Button
+                        kind={Button.kinds.SECONDARY}
+                        onClick={() => openStepModal({ mode: "edit", step: selectedStep })}
+                        disabled={disableStepActions}
+                      >
+                        Editar etapa
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <div className={styles.detailPlaceholder}>
-                  <Text type={Text.types.TEXT2}>Selecione um passo para visualizar os detalhes.</Text>
-                </div>
+                <div className={styles.detailPlaceholder}>Selecione uma etapa para visualizar detalhes.</div>
               )}
             </aside>
           </div>
@@ -1098,8 +1344,8 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
             <form className={styles.inlineForm} onSubmit={handleEnroll}>
               <fieldset
                 className={styles.inlineFieldset}
-                disabled={disableEnrollmentForm}
-                aria-disabled={disableEnrollmentForm}
+                disabled={disableEnrollmentForm || enrollmentBusy}
+                aria-disabled={disableEnrollmentForm || enrollmentBusy}
               >
                 <div className={styles.formField}>
                   <label htmlFor="enrollment-type">Tipo de alvo</label>
@@ -1121,46 +1367,82 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                     placeholder="ex: cont-1, cont-2"
                   />
                 </div>
-                <Button type="submit" disabled={disableEnrollmentForm || isPending}>
+                <Button type="submit" disabled={disableEnrollmentForm || enrollmentBusy}>
                   Inscrever
                 </Button>
               </fieldset>
             </form>
 
-            {data.enrollments.length === 0 ? (
-              <EmptyState
-                title="Adicione pessoas a esta sequência"
-                description="Selecione contatos manualmente ou deixe as automações trazerem novas inscrições."
-              />
-            ) : (
-              <table className={styles.enrollmentsTable} aria-label="Inscrições ativas">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Tipo</th>
-                    <th>Status</th>
-                    <th>Inscrito em</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.enrollments.map((enrollment) => (
-                    <tr key={enrollment.id}>
-                      <td>{enrollment.targetId}</td>
-                      <td>{enrollment.targetType === "contact" ? "Contato" : "Membro"}</td>
-                      <td>{ENROLLMENT_STATUS[enrollment.status]}</td>
-                      <td>{new Date(enrollment.enrolledAt).toLocaleString("pt-BR")}</td>
-                      <td>
+            <TableContainer className={styles.enrollmentsTableShell}>
+              <Table
+                columns={ENROLLMENT_COLUMNS}
+                dataState={{ isLoading: enrollmentBusy }}
+                emptyState={
+                  <EmptyState
+                    title="Adicione pessoas a esta sequência"
+                    description="Selecione contatos manualmente ou deixe as automações trazerem novas inscrições."
+                  />
+                }
+                errorState={
+                  <EmptyState
+                    title="Não foi possível carregar as inscrições"
+                    description="Atualize a página e tente novamente."
+                  />
+                }
+                withoutBorder
+              >
+                <TableHeader>
+                  <TableRow>
+                    {ENROLLMENT_COLUMNS.map((column) => (
+                      <TableHeaderCell
+                        key={column.id}
+                        title={column.title}
+                        sortState={
+                          column.id !== "actions"
+                            ? enrollmentSort?.column === column.id
+                              ? enrollmentSort.direction
+                              : "none"
+                            : undefined
+                        }
+                        onSortClicked={
+                          column.id !== "actions"
+                            ? (direction) =>
+                                setEnrollmentSort(
+                                  direction === "none"
+                                    ? null
+                                    : { column: column.id, direction }
+                                )
+                            : undefined
+                        }
+                      />
+                    ))}
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  {sortedEnrollments.map((enrollment) => (
+                    <TableRow key={enrollment.id}>
+                      <TableCell>{enrollment.targetId}</TableCell>
+                      <TableCell>{enrollment.targetType === "contact" ? "Contato" : "Membro"}</TableCell>
+                      <TableCell>{ENROLLMENT_STATUS[enrollment.status]}</TableCell>
+                      <TableCell>{new Date(enrollment.enrolledAt).toLocaleString("pt-BR")}</TableCell>
+                      <TableCell>
                         <div className={styles.enrollmentActions}>
                           {enrollment.status !== "paused" ? (
                             <Button
                               kind={Button.kinds.TERTIARY}
-                              onClick={() =>
+                              onClick={() => {
+                                setEnrollmentBusy(true);
                                 startTransition(async () => {
-                                  await pauseEnrollmentAction(data.sequence.id, enrollment.id);
-                                  router.refresh();
-                                })
-                              }
+                                  try {
+                                    await pauseEnrollmentAction(data.sequence.id, enrollment.id);
+                                    router.refresh();
+                                  } finally {
+                                    setEnrollmentBusy(false);
+                                  }
+                                });
+                              }}
+                              disabled={disableEnrollmentForm || enrollmentBusy}
                             >
                               Pausar
                             </Button>
@@ -1168,34 +1450,46 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                           {enrollment.status === "paused" ? (
                             <Button
                               kind={Button.kinds.TERTIARY}
-                              onClick={() =>
+                              onClick={() => {
+                                setEnrollmentBusy(true);
                                 startTransition(async () => {
-                                  await resumeEnrollmentAction(data.sequence.id, enrollment.id);
-                                  router.refresh();
-                                })
-                              }
+                                  try {
+                                    await resumeEnrollmentAction(data.sequence.id, enrollment.id);
+                                    router.refresh();
+                                  } finally {
+                                    setEnrollmentBusy(false);
+                                  }
+                                });
+                              }}
+                              disabled={disableEnrollmentForm || enrollmentBusy}
                             >
                               Retomar
                             </Button>
                           ) : null}
                           <Button
                             kind={Button.kinds.TERTIARY}
-                            onClick={() =>
+                            onClick={() => {
+                              setEnrollmentBusy(true);
                               startTransition(async () => {
-                                await removeEnrollmentAction(data.sequence.id, enrollment.id);
-                                router.refresh();
-                              })
-                            }
+                                try {
+                                  await removeEnrollmentAction(data.sequence.id, enrollment.id);
+                                  router.refresh();
+                                } finally {
+                                  setEnrollmentBusy(false);
+                                }
+                              });
+                            }}
+                            disabled={disableEnrollmentForm || enrollmentBusy}
                           >
                             Encerrar
                           </Button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </div>
         ) : null}
       </div>
