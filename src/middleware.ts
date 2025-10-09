@@ -1,14 +1,34 @@
 // middleware.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import * as Sentry from "@sentry/nextjs";
 
 export async function middleware(req: NextRequest) {
+  const headers = new Headers(req.headers);
+  const requestId = headers.get("x-request-id") ?? crypto.randomUUID();
+  headers.set("x-request-id", requestId);
+  Sentry.configureScope((scope: any) => {
+    scope.setTag("request_id", requestId);
+    scope.setTransactionName(req.nextUrl.pathname);
+  });
+
   const { pathname, search } = req.nextUrl;
   if (pathname.startsWith("/auth/") || pathname === "/sign-in" || pathname === "/") {
-    return NextResponse.next();
+    const response = NextResponse.next({
+      request: {
+        headers,
+      },
+    });
+    response.headers.set("x-request-id", requestId);
+    return response;
   }
 
-  const response = NextResponse.next();
+  const response = NextResponse.next({
+    request: {
+      headers,
+    },
+  });
+  response.headers.set("x-request-id", requestId);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -80,6 +100,7 @@ export async function middleware(req: NextRequest) {
     response.cookies.getAll().forEach((cookie) => {
       redirectResponse.cookies.set(cookie);
     });
+    redirectResponse.headers.set("x-request-id", requestId);
     return redirectResponse;
   }
 
