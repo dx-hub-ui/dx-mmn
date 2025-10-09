@@ -3,6 +3,9 @@ SET search_path = public, pg_temp;
 ALTER TABLE public.sequences
 ADD COLUMN IF NOT EXISTS is_active boolean NOT NULL DEFAULT false;
 
+UPDATE public.sequences
+SET is_active = (status = 'active');
+
 CREATE OR REPLACE VIEW public.v_sequence_manager
 WITH (security_invoker = true)
 AS
