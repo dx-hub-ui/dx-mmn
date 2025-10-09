@@ -1,3 +1,12 @@
+# 2025-11-20
+
+### Changed
+- Editor de Sequências (`/sequences/[id]`) redesenhado com cabeçalho compacto, toggle "Inativa | Ativa" e CTA "Salvar sequência", cartões de etapas com menu contextual, painel de notas em `--allgrey-background-color` e rolagem independente entre lista e editor.
+- Migração das inscrições da sequência para `@vibe/core/Table` com ordenação por cabeçalho, skeleton durante ações e manutenção das ações inline (pausar/retomar/encerrar) alinhadas ao design Monday.
+
+### Documentation
+- Atualizamos `docs/sequences_module.md` com o novo layout do editor (toolbar de notas, menu contextual e rolagem independente) e com os requisitos da tabela de inscrições usando `@vibe/core/Table` com ordenação e skeletons.
+
 # 2025-11-18
 
 ### Changed
