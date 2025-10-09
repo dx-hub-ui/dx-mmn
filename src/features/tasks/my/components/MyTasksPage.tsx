@@ -304,95 +304,95 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
           </div>
         ) : null}
 
-        <TableContainer surface="primary" className={styles.tableShell} role="region" aria-live="polite">
-          <Table
-            aria-labelledby="my-tasks-title"
-            columns={tableColumns}
-            emptyState={emptyState}
-            errorState={tableErrorState}
-            withoutBorder
-          >
-            <TableHeader>
-              <TableRow>
-                {COLUMN_CONFIGS.map((column) => (
-                  <TableHeaderCell
-                    key={column.definition.id}
-                    sticky={column.header?.sticky}
-                    className={column.header?.className}
-                    title={column.definition.title}
-                  >
-                    {column.definition.title}
-                  </TableHeaderCell>
-                ))}
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {filteredTasks.map((task) => (
-                <TableRow
-                  key={task.id}
-                  highlighted={selectedTask?.id === task.id}
-                  className={styles.tableRow}
-                >
-                  <TableCell sticky={stickyColumnIds.has("task")} className={styles.primaryCell}>
-                    <div className={styles.primaryTitle}>{task.stepTitle}</div>
-                  </TableCell>
-                  <TableCell className={styles.sequenceCell}>
-                    <div className={styles.sequenceName}>{task.sequenceName}</div>
-                    <div className={styles.metaCaption}>{task.targetType === "contact" ? "Contato" : "Membro"}</div>
-                  </TableCell>
-                  <TableCell className={styles.metaCell}>{formatDate(task.dueAt)}</TableCell>
-                  <TableCell className={styles.statusCell}>
-                    <span className={clsx(styles.statusBadge, STATUS_CLASS_MAP[task.status] ?? styles.statusOpen)}>
-                      {statusLabel(task.status)}
-                    </span>
-                  </TableCell>
-                  <TableCell className={styles.signalsCell}>
-                    <div className={styles.flags}>
-                      {task.isOverdue ? <span className={styles.flag}>Em atraso</span> : null}
-                      {task.isSnoozed ? <span className={styles.flag}>Adiado</span> : null}
-                      {task.isBlocked ? <span className={styles.flag}>Bloqueado</span> : null}
-                    </div>
-                  </TableCell>
-                  <TableCell className={styles.actionsCell}>
-                    <div className={styles.actions}>
-                      <Button
-                        kind={Button.kinds.SECONDARY}
-                        size={Button.sizes.SMALL}
-                        onClick={() => handleComplete(task)}
-                        disabled={isBusy}
-                      >
-                        Concluir
-                      </Button>
-                      <Button
-                        kind={Button.kinds.TERTIARY}
-                        size={Button.sizes.SMALL}
-                        onClick={() => {
-                          setSelectedTask(task);
-                          setActionError(null);
-                        }}
-                        disabled={isBusy}
-                      >
-                        Adiar
-                      </Button>
-                      <Button
-                        kind={Button.kinds.TERTIARY}
-                        size={Button.sizes.SMALL}
-                        onClick={() => {
-                          setSelectedTask(task);
-                          setActionError(null);
-                        }}
-                        disabled={isBusy}
-                      >
-                        Ver detalhes
-                      </Button>
-                    </div>
-                  </TableCell>
+        <div className={styles.tableRegion} role="region" aria-live="polite">
+          <TableContainer className={styles.tableShell}>
+            <Table
+              aria-labelledby="my-tasks-title"
+              columns={tableColumns}
+              emptyState={emptyState}
+              errorState={tableErrorState}
+              withoutBorder
+            >
+              <TableHeader>
+                <TableRow>
+                  {COLUMN_CONFIGS.map((column) => (
+                    <TableHeaderCell
+                      key={column.definition.id}
+                      sticky={column.header?.sticky}
+                      className={column.header?.className}
+                      title={column.definition.title}
+                    />
+                  ))}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHeader>
+
+              <TableBody>
+                {filteredTasks.map((task) => (
+                  <TableRow
+                    key={task.id}
+                    highlighted={selectedTask?.id === task.id}
+                    className={styles.tableRow}
+                  >
+                    <TableCell sticky={stickyColumnIds.has("task")} className={styles.primaryCell}>
+                      <div className={styles.primaryTitle}>{task.stepTitle}</div>
+                    </TableCell>
+                    <TableCell className={styles.sequenceCell}>
+                      <div className={styles.sequenceName}>{task.sequenceName}</div>
+                      <div className={styles.metaCaption}>{task.targetType === "contact" ? "Contato" : "Membro"}</div>
+                    </TableCell>
+                    <TableCell className={styles.metaCell}>{formatDate(task.dueAt)}</TableCell>
+                    <TableCell className={styles.statusCell}>
+                      <span className={clsx(styles.statusBadge, STATUS_CLASS_MAP[task.status] ?? styles.statusOpen)}>
+                        {statusLabel(task.status)}
+                      </span>
+                    </TableCell>
+                    <TableCell className={styles.signalsCell}>
+                      <div className={styles.flags}>
+                        {task.isOverdue ? <span className={styles.flag}>Em atraso</span> : null}
+                        {task.isSnoozed ? <span className={styles.flag}>Adiado</span> : null}
+                        {task.isBlocked ? <span className={styles.flag}>Bloqueado</span> : null}
+                      </div>
+                    </TableCell>
+                    <TableCell className={styles.actionsCell}>
+                      <div className={styles.actions}>
+                        <Button
+                          kind={Button.kinds.SECONDARY}
+                          size={Button.sizes.SMALL}
+                          onClick={() => handleComplete(task)}
+                          disabled={isBusy}
+                        >
+                          Concluir
+                        </Button>
+                        <Button
+                          kind={Button.kinds.TERTIARY}
+                          size={Button.sizes.SMALL}
+                          onClick={() => {
+                            setSelectedTask(task);
+                            setActionError(null);
+                          }}
+                          disabled={isBusy}
+                        >
+                          Adiar
+                        </Button>
+                        <Button
+                          kind={Button.kinds.TERTIARY}
+                          size={Button.sizes.SMALL}
+                          onClick={() => {
+                            setSelectedTask(task);
+                            setActionError(null);
+                          }}
+                          disabled={isBusy}
+                        >
+                          Ver detalhes
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </div>
       </div>
 
       <TaskDetailsDialog

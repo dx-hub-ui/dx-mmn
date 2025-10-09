@@ -83,6 +83,10 @@
   font: var(--dx-font-text2-medium);
 }
 
+.tableRegion {
+  position: relative;
+}
+
 .tableShell {
   --table-row-alt-bg: rgba(103, 104, 121, 0.04);
   background: var(--application-surface-color);
