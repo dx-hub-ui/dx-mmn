@@ -295,12 +295,13 @@ function SequenceTableSkeletonRow({ columns }: { columns: TableColumn[] }) {
         const skeletonType =
           type === "circle"
             ? Skeleton.types.CIRCLE
-            : type === "number"
+            : type === "rectangle"
             ? Skeleton.types.RECTANGLE
             : Skeleton.types.TEXT;
 
         const width = SKELETON_WIDTH_BY_TYPE[type] ?? "70%";
-        const height = SKELETON_HEIGHT_BY_TYPE[type] ?? 12;
+        const height =
+          SKELETON_HEIGHT_BY_TYPE[type] ?? (type === "circle" ? 32 : type === "rectangle" ? 16 : 12);
 
         return (
           <TableCell key={`skeleton-${column.id}`}>
