@@ -1,6 +1,11 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ContactRecord } from "../types";
-import { ContactRow, mapContactRow } from "./listContacts";
+import {
+  CONTACTS_SELECT_CORE,
+  CONTACTS_SELECT_WITH_REFERRER,
+  ContactRow,
+  mapContactRow,
+} from "./listContacts";
 
 type SupabaseServerClient = ReturnType<typeof createSupabaseServerClient>;
 
@@ -8,24 +13,40 @@ export async function fetchContactById(
   supabase: SupabaseServerClient,
   contactId: string
 ): Promise<ContactRecord | null> {
-  const { data, error } = await supabase
+  const primaryResult = await supabase
     .from("contacts")
-    .select(
-      `id, organization_id, owner_membership_id, name, email, whatsapp, status, source, tags, score, last_touch_at, next_action_at, next_action_note, referred_by_contact_id, created_at, updated_at,
-       lost_reason, lost_review_at, archived_at,
-       owner:memberships (id, organization_id, role, user_id, parent_leader_id, profile:profiles (id, email, raw_user_meta_data)),
-       referred_by:contacts!contacts_referred_by_contact_id_fkey (id, name)`
-    )
+    .select(CONTACTS_SELECT_WITH_REFERRER)
     .eq("id", contactId)
     .maybeSingle();
 
-  if (error) {
-    throw error;
+  if (primaryResult.error?.code === "PGRST200") {
+    const fallbackResult = await supabase
+      .from("contacts")
+      .select(CONTACTS_SELECT_CORE)
+      .eq("id", contactId)
+      .maybeSingle();
+
+    if (fallbackResult.error) {
+      throw fallbackResult.error;
+    }
+
+    if (!fallbackResult.data) {
+      return null;
+    }
+
+    return mapContactRow({
+      ...(fallbackResult.data as Record<string, unknown>),
+      referred_by: null,
+    } as ContactRow);
   }
 
-  if (!data) {
+  if (primaryResult.error) {
+    throw primaryResult.error;
+  }
+
+  if (!primaryResult.data) {
     return null;
   }
 
-  return mapContactRow(data as unknown as ContactRow);
+  return mapContactRow(primaryResult.data as unknown as ContactRow);
 }

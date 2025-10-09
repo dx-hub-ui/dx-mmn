@@ -6,7 +6,12 @@ import {
   normalizeTagsInput,
 } from "../utils/permissions";
 import { updateContact } from "./upsertContact";
-import { ContactRow, mapContactRow } from "./listContacts";
+import {
+  CONTACTS_SELECT_CORE,
+  CONTACTS_SELECT_WITH_REFERRER,
+  ContactRow,
+  mapContactRow,
+} from "./listContacts";
 import { fetchContactById } from "./queries";
 import { SupabaseServerClient } from "./rules";
 
@@ -28,18 +33,23 @@ async function fetchContactsByIds(
     return [];
   }
 
-  const { data, error } = await supabase
-    .from("contacts")
-    .select(
-      `id, organization_id, owner_membership_id, name, email, whatsapp, status, source, tags, score, last_touch_at, next_action_at, next_action_note, referred_by_contact_id, created_at, updated_at,
-       lost_reason, lost_review_at, archived_at,
-       owner:memberships (id, organization_id, role, user_id, parent_leader_id, profile:profiles (id, email, raw_user_meta_data)),
-       referred_by:contacts!contacts_referred_by_contact_id_fkey (id, name)`
-    )
-    .eq("organization_id", organizationId)
-    .in("id", ids);
+  const buildQuery = (select: string) =>
+    supabase
+      .from("contacts")
+      .select(select)
+      .eq("organization_id", organizationId)
+      .in("id", ids);
 
-  if (error) {
+  let { data, error } = await buildQuery(CONTACTS_SELECT_WITH_REFERRER);
+
+  if (error && error.code === "PGRST200") {
+    const fallbackResult = await buildQuery(CONTACTS_SELECT_CORE);
+    if (fallbackResult.error) {
+      throw fallbackResult.error;
+    }
+    data = fallbackResult.data;
+    error = null;
+  } else if (error) {
     throw error;
   }
 

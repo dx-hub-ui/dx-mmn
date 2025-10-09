@@ -1,9 +1,16 @@
+import type { PostgrestFilterBuilder } from "@supabase/postgrest-js";
+
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ContactFilters, ContactRecord, MembershipSummary } from "../types";
 
 const DEFAULT_LIMIT = 1500;
 
 type SupabaseServerClient = ReturnType<typeof createSupabaseServerClient>;
+
+type ContactReferrerRow = {
+  id: string;
+  name: string;
+};
 
 export type ContactRow = {
   id: string;
@@ -37,11 +44,73 @@ export type ContactRow = {
       raw_user_meta_data: Record<string, unknown> | null;
     } | null;
   } | null;
-  referred_by: {
-    id: string;
-    name: string;
-  } | null;
+  referred_by?: ContactReferrerRow | ContactReferrerRow[] | null;
 };
+
+export const CONTACTS_SELECT_CORE = `id, organization_id, owner_membership_id, name, email, whatsapp, status, source, tags, score, last_touch_at, next_action_at, next_action_note, referred_by_contact_id, created_at, updated_at,
+       lost_reason, lost_review_at, archived_at,
+       owner:memberships!contacts_owner_membership_id_fkey (id, organization_id, role, user_id, parent_leader_id, profile:profiles (id, email, raw_user_meta_data))`;
+
+export const CONTACTS_SELECT_WITH_REFERRER = `${CONTACTS_SELECT_CORE},
+       referred_by:contacts!contacts_referred_by_contact_id_fkey (id, name)`;
+
+export type ContactQueryBuilder = PostgrestFilterBuilder<
+  any,
+  any,
+  any,
+  any,
+  any,
+  any,
+  any
+>;
+
+function applyContactFilters<T extends ContactQueryBuilder>(
+  query: T,
+  filters: ContactFilters
+): T {
+  let scopedQuery = query;
+
+  if (filters.stages && filters.stages.length > 0) {
+    scopedQuery = scopedQuery.in(
+      "status",
+      filters.stages.map((stage) => (stage === "cadastrado" ? "ganho" : stage))
+    ) as T;
+  }
+
+  if (filters.ownerIds && filters.ownerIds.length > 0) {
+    scopedQuery = scopedQuery.in("owner_membership_id", filters.ownerIds) as T;
+  }
+
+  if (filters.referredByContactIds && filters.referredByContactIds.length > 0) {
+    scopedQuery = scopedQuery.in("referred_by_contact_id", filters.referredByContactIds) as T;
+  }
+
+  if (filters.tags && filters.tags.length > 0) {
+    scopedQuery = scopedQuery.contains("tags", filters.tags) as T;
+  }
+
+  if (filters.nextActionBetween) {
+    const { start, end } = filters.nextActionBetween;
+    if (start) {
+      scopedQuery = scopedQuery.gte("next_action_at", start) as T;
+    }
+    if (end) {
+      scopedQuery = scopedQuery.lte("next_action_at", end) as T;
+    }
+  }
+
+  if (filters.search) {
+    const search = filters.search.trim();
+    if (search) {
+      const normalized = search.replace(/%/g, "\\%").replace(/_/g, "\\_");
+      scopedQuery = scopedQuery.or(
+        `name.ilike.%${normalized}%,email.ilike.%${normalized}%,whatsapp.ilike.%${normalized}%`
+      ) as T;
+    }
+  }
+
+  return scopedQuery;
+}
 
 type MembershipRow = {
   id: string;
@@ -56,10 +125,26 @@ type MembershipRow = {
   } | null;
 };
 
+function normalizeReferredBy(
+  value: ContactRow["referred_by"]
+): ContactReferrerRow | null {
+  if (!value) {
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+
+  return value;
+}
+
 export function mapContactRow(row: ContactRow): ContactRecord {
   const ownerProfile = row.owner?.profile?.raw_user_meta_data as { name?: string; full_name?: string } | null;
   const ownerDisplayName =
     ownerProfile?.name ?? ownerProfile?.full_name ?? row.owner?.profile?.email ?? "Sem nome";
+
+  const referredBy = normalizeReferredBy(row.referred_by);
 
   return {
     id: row.id,
@@ -94,7 +179,7 @@ export function mapContactRow(row: ContactRow): ContactRecord {
             avatarUrl: null,
           }
         : null,
-    referredBy: row.referred_by ? { id: row.referred_by.id, name: row.referred_by.name } : null,
+    referredBy: referredBy ? { id: referredBy.id, name: referredBy.name } : null,
   };
 }
 
@@ -104,64 +189,35 @@ export async function listContacts(
   filters: ContactFilters = {},
   limit = DEFAULT_LIMIT
 ): Promise<ContactRecord[]> {
-  let query = supabase
-    .from("contacts")
-    .select(
-      `id, organization_id, owner_membership_id, name, email, whatsapp, status, source, tags, score, last_touch_at, next_action_at, next_action_note, referred_by_contact_id, created_at, updated_at,
-       lost_reason, lost_review_at, archived_at,
-       owner:memberships!contacts_owner_membership_id_fkey (id, organization_id, role, user_id, parent_leader_id, profile:profiles (id, email, raw_user_meta_data)),
-       referred_by:contacts!contacts_referred_by_contact_id_fkey (id, name)`
-    )
-    .eq("organization_id", organizationId)
-    .limit(limit)
-    .order("updated_at", { ascending: false });
-
-  if (filters.stages && filters.stages.length > 0) {
-    query = query.in(
-      "status",
-      filters.stages.map((stage) => (stage === "cadastrado" ? "ganho" : stage))
+  const buildQuery = (select: string) =>
+    applyContactFilters(
+      supabase
+        .from("contacts")
+        .select(select)
+        .eq("organization_id", organizationId)
+        .limit(limit)
+        .order("updated_at", { ascending: false }) as ContactQueryBuilder,
+      filters
     );
-  }
 
-  if (filters.ownerIds && filters.ownerIds.length > 0) {
-    query = query.in("owner_membership_id", filters.ownerIds);
-  }
+  const primaryResult = await buildQuery(CONTACTS_SELECT_WITH_REFERRER);
 
-  if (filters.referredByContactIds && filters.referredByContactIds.length > 0) {
-    query = query.in("referred_by_contact_id", filters.referredByContactIds);
-  }
+  if (primaryResult.error && primaryResult.error.code === "PGRST200") {
+    const fallbackResult = await buildQuery(CONTACTS_SELECT_CORE);
 
-  if (filters.tags && filters.tags.length > 0) {
-    query = query.contains("tags", filters.tags);
-  }
-
-  if (filters.nextActionBetween) {
-    const { start, end } = filters.nextActionBetween;
-    if (start) {
-      query = query.gte("next_action_at", start);
+    if (fallbackResult.error) {
+      throw fallbackResult.error;
     }
-    if (end) {
-      query = query.lte("next_action_at", end);
-    }
+
+    const rows = (fallbackResult.data ?? []) as unknown as ContactRow[];
+    return rows.map((row) => mapContactRow(row));
   }
 
-  if (filters.search) {
-    const search = filters.search.trim();
-    if (search) {
-      const normalized = search.replace(/%/g, "\\%").replace(/_/g, "\\_");
-      query = query.or(
-        `name.ilike.%${normalized}%,email.ilike.%${normalized}%,whatsapp.ilike.%${normalized}%`
-      );
-    }
+  if (primaryResult.error) {
+    throw primaryResult.error;
   }
 
-  const { data, error } = await query;
-
-  if (error) {
-    throw error;
-  }
-
-  const rows = (data ?? []) as unknown as ContactRow[];
+  const rows = (primaryResult.data ?? []) as unknown as ContactRow[];
 
   return rows.map((row) => mapContactRow(row));
 }
