@@ -1,3 +1,11 @@
+# 2025-11-13
+
+### Fixed
+- Topbar agora expande as três colunas por toda a largura da barra, alinhando a coluna da marca à variável `var(--sidebar-current, 272px)` para respeitar o estado atual da Sidebar.
+
+### Documentation
+- `docs/monday_design_guide.md` documenta o alinhamento da coluna de marca da Topbar com a largura dinâmica da Sidebar.
+
 # 2025-11-10
 
 ### Added
