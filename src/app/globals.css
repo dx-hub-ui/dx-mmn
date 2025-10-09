@@ -36,12 +36,23 @@
   --font-14: 14px;
   --font-16: 16px;
   --font-18: 18px;
+  --font-30: 30px;
   --lh-14: 15px;
   --lh-16: 16px;
   --lh-20: 20px;
   --lh-22: 22px;
   --lh-24: 24px;
   --lh-42: 42px;
+
+  /* DX Typography aliases */
+  --dx-font-12: var(--font-12);
+  --dx-font-14: var(--font-14);
+  --dx-font-16: var(--font-16);
+  --dx-font-30: var(--font-30);
+  --dx-lh-16: var(--lh-16);
+  --dx-lh-20: var(--lh-20);
+  --dx-lh-22: var(--lh-22);
+  --dx-lh-42: var(--lh-42);
 
   /* Z-index */
   --z-shell: 1;
@@ -53,19 +64,19 @@
 
   
 
-  --dx-font-body:         400 var(font-14) / var(--dx-lh-20) var(--font-family);
+  --dx-font-body:         400 var(--dx-font-14) / var(--dx-lh-20) var(--font-family);
   --dx-font-body-strong:  600 var(--dx-font-14) / var(--dx-lh-20) var(--font-family);
 
   --dx-font-text1-bold:    700 var(--dx-font-16) / var(--lh-22) var(--title-font-family);
   --dx-font-text1-medium:  600 var(--dx-font-16) / var(--lh-22) var(--title-font-family);
   --dx-font-text1-normal:  400 var(--dx-font-16) / var(--lh-22) var(--title-font-family);
   --dx-font-text2-bold:    700 var(--dx-font-14) / var(--lh-20) var(--font-family);
-  --dx-font-text2-medium:  600 var(--dx-font-14) / var(--dx-20) var(--font-family);
-  --dx-font-text2-normal:  400 var(--dx-font-14) / var(--dx-20) var(--font-family);
-  --dx-font-text3-bold:    700 var(--dx-font-12) / var(--dx-16) var(--font-family);
-  --dx-font-text3-medium:  600 var(--dx-font-12) / var(--dx-16) var(--font-family);
-  --dx-font-text3-normal:  400 var(--dx-font-12) / var(--dx-16) var(--font-family);
-  --dx-font-h1-normal:     500 var(--dx-font-30) / var(--dx-42) var(--title-font-family);
+  --dx-font-text2-medium:  600 var(--dx-font-14) / var(--dx-lh-20) var(--font-family);
+  --dx-font-text2-normal:  400 var(--dx-font-14) / var(--dx-lh-20) var(--font-family);
+  --dx-font-text3-bold:    700 var(--dx-font-12) / var(--dx-lh-16) var(--font-family);
+  --dx-font-text3-medium:  600 var(--dx-font-12) / var(--dx-lh-16) var(--font-family);
+  --dx-font-text3-normal:  400 var(--dx-font-12) / var(--dx-lh-16) var(--font-family);
+  --dx-font-h1-normal:     500 var(--dx-font-30) / var(--dx-lh-42) var(--title-font-family);
 
   /* Shadows */
   --shadow-topbar: 0 1px 0 rgb(0 0 0 / 6%);
