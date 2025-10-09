@@ -7,7 +7,7 @@ export async function listSequencesByOrg(orgId: string): Promise<SequenceManager
   const { data, error } = await supabase
     .from("v_sequence_manager")
     .select(
-      `sequence_id, org_id, name, status, default_target_type, active_version_number,
+      `sequence_id, org_id, name, status, is_active, default_target_type, active_version_number,
        steps_total, active_enrollments, completion_rate, last_activation_at, updated_at, created_at`
     )
     .eq("org_id", orgId)

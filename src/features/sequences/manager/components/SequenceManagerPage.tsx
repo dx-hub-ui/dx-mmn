@@ -1,15 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import clsx from "clsx";
 import {
   BreadcrumbItem,
   BreadcrumbsBar,
   Button,
   Label,
+  Modal,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  RadioButton,
   Search,
+  TextField,
 } from "@vibe/core";
+import { createSequenceDraftAction } from "@/app/(app)/sequences/actions";
 import { trackEvent } from "@/lib/telemetry";
 import { useSentrySequenceScope } from "@/lib/observability/sentryClient";
 import { filterSequences } from "../normalize";
@@ -29,9 +36,95 @@ type SequenceManagerPageProps = {
   orgId: string;
   organizationName: string;
   membershipRole: "org" | "leader" | "rep";
+  autoOpenNewModal?: boolean;
 };
 
 type SelectionState = Set<string>;
+
+type NewSequenceModalProps = {
+  open: boolean;
+  name: string;
+  targetType: SequenceTargetType;
+  pending: boolean;
+  error: string | null;
+  onClose: () => void;
+  onNameChange: (value: string) => void;
+  onTargetChange: (value: SequenceTargetType) => void;
+  onSubmit: () => void;
+};
+
+function NewSequenceModal({
+  open,
+  name,
+  targetType,
+  pending,
+  error,
+  onClose,
+  onNameChange,
+  onTargetChange,
+  onSubmit,
+}: NewSequenceModalProps) {
+  return (
+    <Modal id="new-sequence-modal" show={open} onClose={onClose} width="480px" contentSpacing>
+      <form
+        className={styles.modalForm}
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit();
+        }}
+      >
+        <ModalHeader title="Nova sequência" />
+        <ModalContent className={styles.modalBody}>
+          <TextField
+            title="Nome da sequência"
+            value={name}
+            onChange={(value) => onNameChange(value)}
+            placeholder="Ex.: Onboarding SDR"
+            autoFocus
+            required
+            maxLength={120}
+            disabled={pending}
+            validation={error ? { status: "error", text: error } : undefined}
+          />
+
+          <fieldset className={styles.modalFieldset} disabled={pending}>
+            <legend>Alvo padrão</legend>
+            <p className={styles.modalHint}>Escolha quem poderá ser inscrito automaticamente.</p>
+            <div className={styles.modalRadioGroup} role="radiogroup" aria-label="Tipo de alvo da sequência">
+              <RadioButton
+                name="sequence-target"
+                value="contact"
+                text="Contatos"
+                checked={targetType === "contact"}
+                onSelect={() => onTargetChange("contact")}
+              />
+              <RadioButton
+                name="sequence-target"
+                value="member"
+                text="Membros"
+                checked={targetType === "member"}
+                onSelect={() => onTargetChange("member")}
+              />
+            </div>
+          </fieldset>
+        </ModalContent>
+        <ModalFooter>
+          <Button
+            kind={Button.kinds.TERTIARY}
+            type={Button.types.BUTTON}
+            onClick={onClose}
+            disabled={pending}
+          >
+            Cancelar
+          </Button>
+          <Button kind={Button.kinds.PRIMARY} type={Button.types.SUBMIT} loading={pending} disabled={pending}>
+            Criar sequência
+          </Button>
+        </ModalFooter>
+      </form>
+    </Modal>
+  );
+}
 
 function formatDate(value: string | null) {
   if (!value) {
@@ -48,8 +141,19 @@ function formatDate(value: string | null) {
   }
 }
 
-export default function SequenceManagerPage({ sequences, orgId, organizationName, membershipRole }: SequenceManagerPageProps) {
+export default function SequenceManagerPage({
+  sequences,
+  orgId,
+  organizationName,
+  membershipRole,
+  autoOpenNewModal = false,
+}: SequenceManagerPageProps) {
   const router = useRouter();
+  const [newModalOpen, setNewModalOpen] = useState(false);
+  const [newSequenceName, setNewSequenceName] = useState("");
+  const [newSequenceTarget, setNewSequenceTarget] = useState<SequenceTargetType>("contact");
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [isCreating, startCreating] = useTransition();
   const [filters, setFilters] = useState<SequenceManagerFilters>({
     search: "",
     status: "todos",
@@ -57,6 +161,78 @@ export default function SequenceManagerPage({ sequences, orgId, organizationName
   });
 
   const [selection, setSelection] = useState<SelectionState>(() => new Set());
+
+  useEffect(() => {
+    if (!autoOpenNewModal) {
+      return;
+    }
+
+    setCreateError(null);
+    setNewSequenceName("");
+    setNewSequenceTarget("contact");
+    setNewModalOpen(true);
+    router.replace("/sequences", { scroll: false });
+  }, [autoOpenNewModal, router]);
+
+  const handleOpenModal = () => {
+    setCreateError(null);
+    setNewSequenceName("");
+    setNewSequenceTarget("contact");
+    setNewModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    if (isCreating) {
+      return;
+    }
+    setNewModalOpen(false);
+    setCreateError(null);
+  };
+
+  const handleSubmitNewSequence = () => {
+    if (isCreating) {
+      return;
+    }
+
+    const trimmedName = newSequenceName.trim();
+
+    if (!trimmedName) {
+      setCreateError("Informe um nome para a sequência.");
+      return;
+    }
+
+    if (trimmedName.length < 3) {
+      setCreateError("O nome deve ter pelo menos 3 caracteres.");
+      return;
+    }
+
+    setCreateError(null);
+    startCreating(async () => {
+      try {
+        const result = await createSequenceDraftAction({
+          name: trimmedName,
+          targetType: newSequenceTarget,
+        });
+
+        trackEvent(
+          "sequences/new_created_modal",
+          { targetType: newSequenceTarget },
+          { groups: { orgId } }
+        );
+
+        setNewModalOpen(false);
+        setNewSequenceName("");
+        router.push(`/sequences/${result.sequenceId}`);
+      } catch (error) {
+        console.error("[sequences] falha ao criar sequência", error);
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : "Não foi possível criar a sequência. Tente novamente.";
+        setCreateError(message);
+      }
+    });
+  };
 
   useEffect(() => {
     trackEvent(
@@ -143,7 +319,8 @@ export default function SequenceManagerPage({ sequences, orgId, organizationName
   };
 
   return (
-    <section className={styles.page} aria-labelledby="sequence-manager-title">
+    <>
+      <section className={styles.page} aria-labelledby="sequence-manager-title">
       <header className={styles.pageHeader}>
         <BreadcrumbsBar type={BreadcrumbsBar.types.NAVIGATION} className={styles.breadcrumbs}>
           <BreadcrumbItem text="Workspaces" />
@@ -198,7 +375,8 @@ export default function SequenceManagerPage({ sequences, orgId, organizationName
             <Button
               kind={Button.kinds.PRIMARY}
               leftIcon="Add"
-              onClick={() => router.push("/sequences/new")}
+              onClick={handleOpenModal}
+              disabled={isCreating}
             >
               Nova sequência
             </Button>
@@ -282,7 +460,7 @@ export default function SequenceManagerPage({ sequences, orgId, organizationName
             <div className={styles.emptyState}>
               <span className={styles.emptyTitle}>Nenhuma sequência encontrada</span>
               <p>Revise os filtros ou crie uma nova sequência para começar.</p>
-              <Button kind={Button.kinds.PRIMARY} onClick={() => router.push("/sequences/new")}>
+              <Button kind={Button.kinds.PRIMARY} onClick={handleOpenModal} disabled={isCreating}>
                 Nova sequência
               </Button>
             </div>
@@ -305,40 +483,83 @@ export default function SequenceManagerPage({ sequences, orgId, organizationName
                   <th scope="col">Inscrições ativas</th>
                   <th scope="col">Conclusão</th>
                   <th scope="col">Última ativação</th>
+                  <th scope="col" className={styles.actionsHeader}>Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((item) => (
-                  <tr key={item.id}>
-                    <td className={styles.checkboxCell}>
-                      <input
-                        type="checkbox"
-                        aria-label={`Selecionar sequência ${item.name}`}
-                        checked={selection.has(item.id)}
-                        onChange={() => toggleSelection(item.id)}
-                      />
-                    </td>
-                    <th scope="row" className={styles.nameCell}>
-                      <span className={styles.sequenceName}>{item.name}</span>
-                      <span className={styles.sequenceMeta}>Versão #{item.activeVersionNumber || 1}</span>
-                    </th>
-                    <td>
-                      <span className={clsx(styles.badge, badgeClass[item.status])}>{statusLabel[item.status]}</span>
-                    </td>
-                    <td className={styles.metaCell}>
-                      <span>{targetLabel[item.targetType]}</span>
-                    </td>
-                    <td>{item.stepsTotal}</td>
-                    <td>{item.activeEnrollments}</td>
-                    <td>{item.completionRate.toFixed(1)}%</td>
-                    <td>{formatDate(item.lastActivationAt)}</td>
-                  </tr>
-                ))}
+                {filtered.map((item) => {
+                  const disabledHintId = item.isActive
+                    ? `sequence-${item.id}-edit-hint`
+                    : undefined;
+
+                  return (
+                    <tr key={item.id}>
+                      <td className={styles.checkboxCell}>
+                        <input
+                          type="checkbox"
+                          aria-label={`Selecionar sequência ${item.name}`}
+                          checked={selection.has(item.id)}
+                          onChange={() => toggleSelection(item.id)}
+                        />
+                      </td>
+                      <th scope="row" className={styles.nameCell}>
+                        <span className={styles.sequenceName}>{item.name}</span>
+                        <span className={styles.sequenceMeta}>Versão #{item.activeVersionNumber || 1}</span>
+                      </th>
+                      <td>
+                        <span className={clsx(styles.badge, badgeClass[item.status])}>{statusLabel[item.status]}</span>
+                      </td>
+                      <td className={styles.metaCell}>
+                        <span>{targetLabel[item.targetType]}</span>
+                      </td>
+                      <td>{item.stepsTotal}</td>
+                      <td>{item.activeEnrollments}</td>
+                      <td>{item.completionRate.toFixed(1)}%</td>
+                      <td>{formatDate(item.lastActivationAt)}</td>
+                      <td className={styles.actionsCell}>
+                        <Button
+                          kind={Button.kinds.SECONDARY}
+                          size={Button.sizes.SMALL}
+                          onClick={() => router.push(`/sequences/${item.id}`)}
+                          disabled={item.isActive}
+                          aria-label={
+                            item.isActive
+                              ? `Desative ${item.name} para editar`
+                              : `Editar sequência ${item.name}`
+                          }
+                          aria-describedby={disabledHintId}
+                        >
+                          Editar
+                        </Button>
+                        {item.isActive ? (
+                          <span
+                            id={disabledHintId}
+                            className={styles.actionsHint}
+                          >
+                            Desative para editar
+                          </span>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
         </div>
       </div>
-    </section>
+      </section>
+      <NewSequenceModal
+        open={newModalOpen}
+        name={newSequenceName}
+        targetType={newSequenceTarget}
+        pending={isCreating}
+        error={createError}
+        onClose={handleCloseModal}
+        onNameChange={setNewSequenceName}
+        onTargetChange={setNewSequenceTarget}
+        onSubmit={handleSubmitNewSequence}
+      />
+    </>
   );
 }

@@ -27,6 +27,7 @@ export function normalizeSequenceManagerRow(row: SequenceManagerRow): SequenceMa
     orgId: row.org_id,
     name: row.name,
     status: row.status,
+    isActive: row.is_active,
     targetType: row.default_target_type,
     activeVersionNumber: row.active_version_number ?? 0,
     stepsTotal: row.steps_total ?? 0,

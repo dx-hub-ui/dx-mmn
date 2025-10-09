@@ -1,3 +1,20 @@
+# 2025-11-10
+
+### Added
+- Modal de criação de sequência em `/sequences`, reutilizando componentes do Vibe, validações e telemetria (`sequences/new_created_modal`) antes de redirecionar para o editor.
+
+### Changed
+- Editor de sequências atualizado com Toggle de ativação (`@vibe/core/Toggle`) no cabeçalho, bloqueando passos, regras e inscrições enquanto `is_active` estiver verdadeiro.
+- Formulários de regras e inscrições passam a usar `fieldset` desabilitado, garantindo feedback visual consistente e impedindo salvamentos com a sequência ativa.
+- Cartões, filtros e tabela do manager passaram a usar `--application-background-color`, garantindo contraste correto entre temas claro/escuro/noite.
+
+### Fixed
+- A modal "Nova sequência" voltou a usar submissão nativa dentro do próprio formulário, eliminando o uso do atributo `form` incompatível com `@vibe/core/Button` e destravando o build em produção.
+- Botão "Editar" na lista de sequências agora exibe a dica "Desative para editar" via `aria-describedby`, removendo o atributo `title` não suportado pelo `@vibe/core/Button` e mantendo o bloqueio acessível quando a sequência está ativa.
+
+### Documentation
+- `docs/sequences_module.md` revisado com o novo fluxo de criação via modal, bloqueios por Toggle e o uso obrigatório de `--application-background-color` nos cartões do manager.
+
 # Changelog
 
 # 2025-11-12

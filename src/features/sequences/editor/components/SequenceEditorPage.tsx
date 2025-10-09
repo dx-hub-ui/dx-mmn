@@ -27,6 +27,7 @@ import {
   Label,
   Text,
   TextArea,
+  Toggle,
 } from "@vibe/core";
 import { trackEvent } from "@/lib/telemetry";
 import { useSentrySequenceScope } from "@/lib/observability/sentryClient";
@@ -41,11 +42,11 @@ import {
   duplicateSequenceStepAction,
   enrollTargetsAction,
   pauseEnrollmentAction,
-  publishSequenceVersionAction,
   removeEnrollmentAction,
   reorderSequenceStepsAction,
   resumeEnrollmentAction,
   toggleSequenceStepAction,
+  updateSequenceActivationAction,
   updateSequenceVersionRulesAction,
   upsertSequenceStepAction,
 } from "@/app/(app)/sequences/actions";
@@ -70,6 +71,8 @@ type SortableStepProps = {
   step: SequenceStepRecord;
   index: number;
   isSelected: boolean;
+  disableReorder: boolean;
+  disableActions: boolean;
   onSelect: (step: SequenceStepRecord) => void;
   onToggle: (step: SequenceStepRecord, isActive: boolean) => void;
 };
@@ -79,8 +82,8 @@ const STEP_TYPE_LABEL: Record<SequenceStepRecord["type"], string> = {
   call_task: "Tarefa de ligação",
 };
 
-function SortableStep({ step, index, isSelected, onSelect, onToggle }: SortableStepProps) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: step.id });
+function SortableStep({ step, index, isSelected, disableReorder, disableActions, onSelect, onToggle }: SortableStepProps) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: step.id, disabled: disableReorder });
 
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
@@ -94,11 +97,12 @@ function SortableStep({ step, index, isSelected, onSelect, onToggle }: SortableS
       className={styles.stepCard}
       data-inactive={step.isActive ? undefined : "true"}
       data-selected={isSelected ? "true" : undefined}
+      data-locked={disableActions ? "true" : undefined}
       onClick={() => onSelect(step)}
       role="button"
       tabIndex={0}
       onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
+        if ((event.key === "Enter" || event.key === " ") && !disableActions) {
           event.preventDefault();
           onSelect(step);
         }
@@ -110,7 +114,14 @@ function SortableStep({ step, index, isSelected, onSelect, onToggle }: SortableS
           <h3>{step.title}</h3>
           <span>{STEP_TYPE_LABEL[step.type]}</span>
         </div>
-        <button type="button" className={styles.dragHandle} aria-label="Reordenar passo" {...attributes} {...listeners}>
+        <button
+          type="button"
+          className={styles.dragHandle}
+          aria-label="Reordenar passo"
+          {...attributes}
+          {...(disableReorder ? {} : listeners)}
+          disabled={disableReorder}
+        >
           ☰
         </button>
       </header>
@@ -137,8 +148,12 @@ function SortableStep({ step, index, isSelected, onSelect, onToggle }: SortableS
           size={Button.sizes.SMALL}
           onClick={(event) => {
             event.stopPropagation();
+            if (disableActions) {
+              return;
+            }
             onToggle(step, !step.isActive);
           }}
+          disabled={disableActions}
         >
           {step.isActive ? "Desativar" : "Ativar"}
         </Button>
@@ -165,9 +180,10 @@ type StepModalProps = {
     isActive: boolean;
   }) => Promise<void>;
   pending: boolean;
+  disabled: boolean;
 };
 
-function StepModal({ open, state, onClose, onSubmit, pending }: StepModalProps) {
+function StepModal({ open, state, onClose, onSubmit, pending, disabled }: StepModalProps) {
   const [title, setTitle] = useState("");
   const [shortDescription, setShortDescription] = useState("");
   const [type, setType] = useState<SequenceStepRecord["type"]>("general_task");
@@ -214,6 +230,8 @@ function StepModal({ open, state, onClose, onSubmit, pending }: StepModalProps) 
     return null;
   }
 
+  const formDisabled = pending || disabled;
+
   return (
     <div className={styles.modalOverlay} role="presentation" onMouseDown={onClose}>
       <div
@@ -236,6 +254,9 @@ function StepModal({ open, state, onClose, onSubmit, pending }: StepModalProps) 
           className={styles.formGrid}
           onSubmit={(event) => {
             event.preventDefault();
+            if (formDisabled) {
+              return;
+            }
             void onSubmit({
               id: state.step?.id,
               title,
@@ -259,6 +280,7 @@ function StepModal({ open, state, onClose, onSubmit, pending }: StepModalProps) 
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 required
+                disabled={formDisabled}
               />
             </div>
             <div className={styles.formField}>
@@ -267,6 +289,7 @@ function StepModal({ open, state, onClose, onSubmit, pending }: StepModalProps) 
                 id="step-type"
                 value={type}
                 onChange={(event) => setType(event.target.value as SequenceStepRecord["type"])}
+                disabled={formDisabled}
               >
                 <option value="general_task">Tarefa geral</option>
                 <option value="call_task">Tarefa de ligação</option>
@@ -278,6 +301,7 @@ function StepModal({ open, state, onClose, onSubmit, pending }: StepModalProps) 
                 id="step-assignee"
                 value={assigneeMode}
                 onChange={(event) => setAssigneeMode(event.target.value as SequenceStepRecord["assigneeMode"])}
+                disabled={formDisabled}
               >
                 <option value="owner">Dono do contato</option>
                 <option value="org">Organização</option>
@@ -290,6 +314,7 @@ function StepModal({ open, state, onClose, onSubmit, pending }: StepModalProps) 
                 id="step-priority"
                 value={priority}
                 onChange={(event) => setPriority(event.target.value)}
+                disabled={formDisabled}
               />
             </div>
           </div>
@@ -301,6 +326,7 @@ function StepModal({ open, state, onClose, onSubmit, pending }: StepModalProps) 
               value={shortDescription}
               rows={3}
               onChange={(event) => setShortDescription(event.target.value)}
+              disabled={formDisabled}
             />
           </div>
 
@@ -313,6 +339,7 @@ function StepModal({ open, state, onClose, onSubmit, pending }: StepModalProps) 
                 min={0}
                 value={dueDays}
                 onChange={(event) => setDueDays(Number.parseInt(event.target.value, 10) || 0)}
+                disabled={formDisabled}
               />
             </div>
             <div className={styles.formField}>
@@ -323,6 +350,7 @@ function StepModal({ open, state, onClose, onSubmit, pending }: StepModalProps) 
                 min={0}
                 value={dueHours}
                 onChange={(event) => setDueHours(Number.parseInt(event.target.value, 10) || 0)}
+                disabled={formDisabled}
               />
             </div>
             <div className={styles.formField}>
@@ -331,6 +359,7 @@ function StepModal({ open, state, onClose, onSubmit, pending }: StepModalProps) 
                 id="step-channel"
                 value={channelHint}
                 onChange={(event) => setChannelHint(event.target.value)}
+                disabled={formDisabled}
               />
             </div>
           </div>
@@ -340,6 +369,7 @@ function StepModal({ open, state, onClose, onSubmit, pending }: StepModalProps) 
               type="checkbox"
               checked={pauseUntilDone}
               onChange={(event) => setPauseUntilDone(event.target.checked)}
+              disabled={formDisabled}
             />
             Pausar sequência até concluir este passo
           </label>
@@ -349,12 +379,13 @@ function StepModal({ open, state, onClose, onSubmit, pending }: StepModalProps) 
               type="checkbox"
               checked={isActive}
               onChange={(event) => setIsActive(event.target.checked)}
+              disabled={formDisabled}
             />
             Passo ativo
           </label>
 
           <div className={styles.headerActions}>
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" disabled={formDisabled}>
               Salvar passo
             </Button>
             <Button kind={Button.kinds.TERTIARY} onClick={onClose}>
@@ -413,6 +444,9 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   const [enrollmentTargets, setEnrollmentTargets] = useState("");
   const [rulesNotes, setRulesNotes] = useState(data.currentVersion?.notes ?? "");
   const [isPending, startTransition] = useTransition();
+  const [sequenceActive, setSequenceActive] = useState(data.sequence.isActive);
+  const [activationError, setActivationError] = useState<string | null>(null);
+  const [activationPending, startActivationTransition] = useTransition();
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -443,6 +477,17 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     }
   }, [data.steps, selectedStepId]);
 
+  useEffect(() => {
+    setSequenceActive(data.sequence.isActive);
+    setActivationError(null);
+  }, [data.sequence.isActive]);
+
+  useEffect(() => {
+    if (sequenceActive) {
+      setStepModal(null);
+    }
+  }, [sequenceActive]);
+
   const currentVersion = data.currentVersion;
   const sequenceStatusLabel: Record<string, string> = {
     draft: "Rascunho",
@@ -471,6 +516,11 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     isActive: boolean;
   }) => {
     if (!currentVersion) {
+      return;
+    }
+
+    if (sequenceActive) {
+      setStepModal(null);
       return;
     }
 
@@ -515,6 +565,10 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
       return;
     }
 
+    if (sequenceActive) {
+      return;
+    }
+
     startTransition(async () => {
       await reorderSequenceStepsAction(
         data.sequence.id,
@@ -525,7 +579,17 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     });
   };
 
+  const openStepModal = (state: StepModalState) => {
+    if (disableStepActions) {
+      return;
+    }
+    setStepModal(state);
+  };
+
   const handleDuplicate = (step: SequenceStepRecord) => {
+    if (disableStepActions) {
+      return;
+    }
     startTransition(async () => {
       await duplicateSequenceStepAction(data.sequence.id, step.id);
       router.refresh();
@@ -536,6 +600,9 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     if (!confirm(`Remover o passo "${step.title}"?`)) {
       return;
     }
+    if (disableStepActions) {
+      return;
+    }
     startTransition(async () => {
       await deleteSequenceStepAction(data.sequence.id, step.id);
       router.refresh();
@@ -543,19 +610,41 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   };
 
   const handleToggle = (step: SequenceStepRecord, isActive: boolean) => {
+    if (disableStepActions) {
+      return;
+    }
     startTransition(async () => {
       await toggleSequenceStepAction(data.sequence.id, step.id, isActive);
       router.refresh();
     });
   };
 
-  const handlePublish = (strategy: "terminate" | "migrate") => {
+  const handleActivationToggle = (nextActive: boolean) => {
     if (!currentVersion) {
       return;
     }
-    startTransition(async () => {
-      await publishSequenceVersionAction(data.sequence.id, currentVersion.id, strategy);
-      router.refresh();
+
+    setActivationError(null);
+    setSequenceActive(nextActive);
+
+    startActivationTransition(async () => {
+      try {
+        await updateSequenceActivationAction({
+          sequenceId: data.sequence.id,
+          versionId: currentVersion.id,
+          isActive: nextActive,
+          strategy: currentVersion.onPublish,
+        });
+        router.refresh();
+      } catch (error) {
+        console.error("[sequences] falha ao alternar ativação da sequência", error);
+        setSequenceActive((prev) => (prev === nextActive ? !nextActive : prev));
+        const message =
+          error instanceof Error && error.message
+            ? error.message
+            : "Não foi possível atualizar o status de ativação.";
+        setActivationError(message);
+      }
     });
   };
 
@@ -563,6 +652,10 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     event.preventDefault();
 
     if (!currentVersion) {
+      return;
+    }
+
+    if (sequenceActive) {
       return;
     }
 
@@ -596,6 +689,10 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   const handleEnroll = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!currentVersion) {
+      return;
+    }
+
+    if (sequenceActive) {
       return;
     }
 
@@ -638,6 +735,10 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     () => localSteps.find((step) => step.id === selectedStepId) ?? null,
     [localSteps, selectedStepId]
   );
+
+  const disableStepActions = sequenceActive || isPending || activationPending;
+  const disableRulesForm = sequenceActive || activationPending;
+  const disableEnrollmentForm = sequenceActive || activationPending;
 
   if (!currentVersion) {
     return (
@@ -697,24 +798,31 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
           </div>
 
           <div className={styles.headerActions}>
-            <Button
-              kind={Button.kinds.PRIMARY}
-              onClick={() => handlePublish("terminate")}
-              disabled={isPending}
-            >
-              Salvar sequência
-            </Button>
-            <Button
-              kind={Button.kinds.SECONDARY}
-              onClick={() => handlePublish("migrate")}
-              disabled={isPending}
-            >
-              Publicar (migrar inscrições)
-            </Button>
+            <div className={styles.activationGroup}>
+              <span className={styles.activationLabel}>Ativação</span>
+              <div className={styles.activationToggle}>
+                <Toggle
+                  isSelected={sequenceActive}
+                  onChange={(value) => handleActivationToggle(value)}
+                  disabled={activationPending || isPending}
+                  onOverrideText="Ativada"
+                  offOverrideText="Desativada"
+                  ariaLabel="Alternar ativação da sequência"
+                />
+                <span className={styles.activationState}>{sequenceActive ? "Ativada" : "Desativada"}</span>
+              </div>
+              <p className={styles.activationHint}>
+                {sequenceActive
+                  ? "Edições bloqueadas enquanto a sequência estiver ativa."
+                  : "Revise passos e regras antes de ativar novamente."}
+              </p>
+              {activationError ? <p className={styles.activationError}>{activationError}</p> : null}
+            </div>
             <Button
               kind={Button.kinds.SECONDARY}
               leftIcon="Add"
-              onClick={() => setStepModal({ mode: "create", presetType: "general_task" })}
+              onClick={() => openStepModal({ mode: "create", presetType: "general_task" })}
+              disabled={disableStepActions}
             >
               Novo passo
             </Button>
@@ -752,10 +860,11 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                 </div>
                 <Button
                   kind={Button.kinds.SECONDARY}
-                  onClick={() => setStepModal({ mode: "create", presetType: "general_task" })}
+                  onClick={() => openStepModal({ mode: "create", presetType: "general_task" })}
+                  disabled={disableStepActions}
                 >
                   Adicionar passo
-                </Button>
+                  </Button>
               </div>
 
               {localSteps.length === 0 ? (
@@ -768,7 +877,8 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                         key={template.id}
                         type="button"
                         className={styles.stepTemplateCard}
-                        onClick={() => setStepModal({ mode: "create", presetType: template.id })}
+                        onClick={() => openStepModal({ mode: "create", presetType: template.id })}
+                        disabled={disableStepActions}
                       >
                         <strong>{template.title}</strong>
                         <span>{template.description}</span>
@@ -786,6 +896,8 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                           step={step}
                           index={index}
                           isSelected={selectedStepId === step.id}
+                          disableReorder={disableStepActions}
+                          disableActions={disableStepActions}
                           onSelect={(selected) => setSelectedStepId(selected.id)}
                           onToggle={handleToggle}
                         />
@@ -853,17 +965,31 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                   </div>
 
                   <div className={styles.detailActions}>
-                    <Button onClick={() => setStepModal({ mode: "edit", step: selectedStep })}>Editar passo</Button>
-                    <Button kind={Button.kinds.SECONDARY} onClick={() => handleDuplicate(selectedStep)}>
+                    <Button
+                      onClick={() => openStepModal({ mode: "edit", step: selectedStep })}
+                      disabled={disableStepActions}
+                    >
+                      Editar passo
+                    </Button>
+                    <Button
+                      kind={Button.kinds.SECONDARY}
+                      onClick={() => handleDuplicate(selectedStep)}
+                      disabled={disableStepActions}
+                    >
                       Duplicar
                     </Button>
                     <Button
                       kind={Button.kinds.SECONDARY}
                       onClick={() => handleToggle(selectedStep, !selectedStep.isActive)}
+                      disabled={disableStepActions}
                     >
                       {selectedStep.isActive ? "Desativar" : "Ativar"}
                     </Button>
-                    <Button kind={Button.kinds.TERTIARY} onClick={() => handleDelete(selectedStep)}>
+                    <Button
+                      kind={Button.kinds.TERTIARY}
+                      onClick={() => handleDelete(selectedStep)}
+                      disabled={disableStepActions}
+                    >
                       Remover
                     </Button>
                   </div>
@@ -880,7 +1006,12 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
         {activeTab === "regras" ? (
           <div className={styles.rulesLayout}>
             <form className={styles.rulesForm} onSubmit={handleRulesSubmit}>
-              <div className={styles.rulesGrid}>
+              <fieldset
+                className={styles.rulesFieldset}
+                disabled={disableRulesForm}
+                aria-disabled={disableRulesForm}
+              >
+                <div className={styles.rulesGrid}>
                 <div className={styles.formField}>
                   <label htmlFor="time-zone">Fuso horário</label>
                   <input id="time-zone" name="time-zone" defaultValue={currentVersion.workTimeZone} />
@@ -953,10 +1084,11 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
               </div>
 
               <div className={styles.rulesFooter}>
-                <Button type="submit" disabled={isPending}>
+                <Button type="submit" disabled={disableRulesForm || isPending}>
                   Salvar regras
                 </Button>
               </div>
+              </fieldset>
             </form>
           </div>
         ) : null}
@@ -964,29 +1096,35 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
         {activeTab === "inscricoes" ? (
           <div className={styles.enrollmentsLayout}>
             <form className={styles.inlineForm} onSubmit={handleEnroll}>
-              <div className={styles.formField}>
-                <label htmlFor="enrollment-type">Tipo de alvo</label>
-                <select
-                  id="enrollment-type"
-                  value={enrollmentTargetType}
-                  onChange={(event) => setEnrollmentTargetType(event.target.value as SequenceTargetType)}
-                >
-                  <option value="contact">Contato</option>
-                  <option value="member">Membro</option>
-                </select>
-              </div>
-              <div className={styles.formField}>
-                <label htmlFor="enrollment-targets">IDs (separados por vírgula)</label>
-                <input
-                  id="enrollment-targets"
-                  value={enrollmentTargets}
-                  onChange={(event) => setEnrollmentTargets(event.target.value)}
-                  placeholder="ex: cont-1, cont-2"
-                />
-              </div>
-              <Button type="submit" disabled={isPending}>
-                Inscrever
-              </Button>
+              <fieldset
+                className={styles.inlineFieldset}
+                disabled={disableEnrollmentForm}
+                aria-disabled={disableEnrollmentForm}
+              >
+                <div className={styles.formField}>
+                  <label htmlFor="enrollment-type">Tipo de alvo</label>
+                  <select
+                    id="enrollment-type"
+                    value={enrollmentTargetType}
+                    onChange={(event) => setEnrollmentTargetType(event.target.value as SequenceTargetType)}
+                  >
+                    <option value="contact">Contato</option>
+                    <option value="member">Membro</option>
+                  </select>
+                </div>
+                <div className={styles.formField}>
+                  <label htmlFor="enrollment-targets">IDs (separados por vírgula)</label>
+                  <input
+                    id="enrollment-targets"
+                    value={enrollmentTargets}
+                    onChange={(event) => setEnrollmentTargets(event.target.value)}
+                    placeholder="ex: cont-1, cont-2"
+                  />
+                </div>
+                <Button type="submit" disabled={disableEnrollmentForm || isPending}>
+                  Inscrever
+                </Button>
+              </fieldset>
             </form>
 
             {data.enrollments.length === 0 ? (
@@ -1068,6 +1206,7 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
         onClose={() => setStepModal(null)}
         onSubmit={handleStepSubmit}
         pending={isPending}
+        disabled={sequenceActive || activationPending}
       />
     </section>
   );
