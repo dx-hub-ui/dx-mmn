@@ -1,3 +1,19 @@
+# 2025-11-19
+
+### Fixed
+- Corrigimos a importação do skeleton da tabela de contatos substituindo o uso direto de `TableCellSkeleton` (não exportado pelo pacote) por um wrapper local baseado em `@vibe/core/Skeleton`, evitando novas falhas em `pnpm run build`.
+
+### Documentation
+- Documentamos em `docs/crm_readme.md` que a tabela utiliza um skeleton local para não depender de exports internos do Vibe.
+
+# 2025-11-18
+
+### Changed
+- CRM: `ContactsBoardPage` passou a usar `Tabs` e `Table` do Vibe com layout enxuto, remoção da toolbar antiga, ordenação por coluna e skeletons nativos.
+
+### Documentation
+- Atualizamos `docs/crm_readme.md` com a nova experiência do board em abas e a simplificação dos filtros.
+
 # 2025-11-17
 
 ### Documentation
