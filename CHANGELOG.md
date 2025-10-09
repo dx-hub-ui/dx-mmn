@@ -1,5 +1,17 @@
 # Changelog
 
+# 2025-11-07
+
+### Changed
+- Reestruturamos o layout interno da Topbar para que o menu do usuário fique encostado ao canto direito, respeitando apenas o padding lateral da barra.
+
+### Fixed
+- Avatar do menu do usuário volta a renderizar em formato quadrado (40px) sem esticar ao abrir o dropdown.
+- Dropdown e tooltip do menu do usuário passam a usar `z-index` elevado (`>=12000`), garantindo que apareçam sobre a Sidebar.
+
+### Documentation
+- `docs/page_design_guidelines.md` atualizado com orientações sobre ancoragem do avatar e prioridade de `z-index` do menu do usuário.
+
 # 2025-11-06
 
 ### Added

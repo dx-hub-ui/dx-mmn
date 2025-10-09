@@ -7,6 +7,20 @@
 .menuButton :global(.menu-button-component) {
   border-radius: 9999px;
   padding: 0;
+  width: auto;
+  height: auto;
+  min-width: 0;
+}
+
+.avatar {
+  width: var(--dx-topbar-avatar-size, 40px);
+  height: var(--dx-topbar-avatar-size, 40px);
+  flex-shrink: 0;
+  border-radius: 9999px;
+}
+
+.menuDialog {
+  z-index: 12000;
 }
 
 .errorItem {

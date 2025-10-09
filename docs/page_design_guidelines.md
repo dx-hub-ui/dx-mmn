@@ -5,7 +5,7 @@
 ## 1) Layout & Estrutura
 - **Use sempre o AppShell**: páginas devem ser renderizadas dentro de `src/app/(app)/layout.tsx` que injeta `<AppShell>...`.
 - **Não altere Topbar/Sidebar**: respeite as APIs expostas (ex.: `isSidebarOpen`) e evite CSS que vaze para esses componentes.
-- **Menu do usuário**: o avatar (`@vibe/core/Avatar` com `size="large"`) fica ancorado no canto direito da Topbar e abre o menu através do `MenuButton`. O menu expõe "Minha conta", "Mudar tema" (Claro/Escuro/Noite com estado selecionado) e "Logout"; teclas de navegação/ESC precisam funcionar.
+- **Menu do usuário**: o avatar (`@vibe/core/Avatar` com `size="large"`) fica ancorado no canto direito da Topbar, encostado no padding externo da barra. O `MenuButton` precisa manter o avatar quadrado (40px) sem esticar e o menu deve abrir acima de qualquer outro overlay (`z-index` alto) garantindo que tooltips e dropdowns não fiquem atrás da Sidebar. O menu expõe "Minha conta", "Mudar tema" (Claro/Escuro/Noite com estado selecionado) e "Logout"; teclas de navegação/ESC precisam funcionar.
 - **Modal "Minha conta"**: use `@vibe/core/Modal` com tabs "Visão geral" (IDs apenas leitura) e "Perfil" (inputs, textarea e upload de avatar). Valide client/server, mantenha o campo obrigatório de "Nome exibido" (display name) e emita telemetria (`profile/save_*`, `avatar/upload_*`).
 - **Observabilidade**: capture exceções inesperadas do menu/modal com `captureException` (`@sentry/nextjs`) para manter o rastreio de falhas no cliente.
 - **Temas suportados**: a `<html>` recebe classes `theme-light`, `theme-dark` ou `theme-night`; `body#main` combina com `light-app-theme`/`dark-app-theme`/`night-app-theme`. Sempre aplique alterações via helpers de `src/lib/theme.ts` para sincronizar `localStorage` e o Supabase.
@@ -33,7 +33,7 @@ export default function MinhaPagina() {
   - Cores: `--dx-bg`, `--dx-text`, `--dx-border`, `--surface-color`, etc.
 - **Nunca** hardcode dimensões da Topbar/Sidebar. Use as variáveis.
 - **Box-sizing**: garanta `box-sizing: border-box` ao criar containers.
-- **Z-index**: respeite a hierarquia (Topbar 10001, Sidebar 10000, chevron 10100; overlays de Surface 10040/10050).
+- **Z-index**: respeite a hierarquia (Topbar 10001, Sidebar 10000, chevron 10100; overlays de Surface 10040/10050) e reserve `>=12000` para o dropdown/tooltip do menu do usuário para que ele apareça sobre a Sidebar.
 
 ## 3) Responsividade
 - Grid fluido (CSS Grid/Flex) com **breakpoints semânticos**: `--bp-sm`, `--bp-md`, `--bp-lg` (se disponíveis no tema).
