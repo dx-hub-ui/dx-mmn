@@ -9,6 +9,7 @@
 ### Fixed
 - Reorganizamos as colunas da tabela em `/tasks/my` separando metadados visuais do cabeçalho da definição consumida pelo `@vibe/core/Table`, garantindo build limpo sem perder os comportamentos sticky monday-style.
 - Ajustamos a toolbar de filtros de `/tasks/my` para aplicar os roles ARIA em um wrapper estilizado, evitando o erro de tipos do `@vibe/core/Flex` durante `pnpm run build`.
+- Garantimos que os títulos das colunas sejam renderizados via `children` de `TableHeaderCell`, evitando dependência de props internas e mantendo o texto acessível para leitores de tela.
 
 # 2025-11-17
 

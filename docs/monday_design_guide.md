@@ -51,6 +51,7 @@
   - Seções: `BoardHeader` (titulo, descrição, star, share), `BoardToolbar`, `BoardContent` (scroll independente).
 - Utilize `@tanstack/react-table` para tabela, com colunas reordenáveis e cabeçalho sticky.
 - Quando usar `@vibe/core/Table`, mantenha o array `columns` restrito aos campos suportados pela API (id, title, width, etc.) e transporte metadados visuais (ex.: `sticky`, `headerClassName`) separadamente para aplicá-los diretamente nos componentes de cabeçalho. Isso evita que o build quebre com validações de tipo/lint ao estender as colunas. Uma estratégia prática é guardar cada coluna como `{ definition, header }`, onde `definition` é passada ao componente `Table` e `header` concentra as props específicas usadas nos `TableHeaderCell`.
+- Renderize o texto do cabeçalho usando `children` de `TableHeaderCell` (mantendo `title` apenas para tooltip/accessibility). Assim preservamos o layout Monday-like com controles inline sem depender de propriedades não suportadas pelo tipo do componente.
 - Para compor toolbars ou grupos de filtros com `role`/`aria-*`, envolva o layout em um wrapper sem tipagem restritiva (ex.: `div` estilizado com tokens) e mantenha componentes `@vibe/core` como `Flex` apenas para a camada visual interna. Assim garantimos acessibilidade completa sem esbarrar nas limitações de tipos dos componentes Vibe.
 - **Dashboards**:
   - Grid responsivo (`repeat(auto-fit, minmax(320px, 1fr))`). Cards com header (icone + título), KPI e footer com CTA.

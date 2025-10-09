@@ -317,10 +317,12 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
                 {COLUMN_CONFIGS.map((column) => (
                   <TableHeaderCell
                     key={column.definition.id}
-                    title={column.definition.title}
                     sticky={column.header?.sticky}
                     className={column.header?.className}
-                  />
+                    title={column.definition.title}
+                  >
+                    {column.definition.title}
+                  </TableHeaderCell>
                 ))}
               </TableRow>
             </TableHeader>
