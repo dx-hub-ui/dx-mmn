@@ -2,9 +2,11 @@
 
 ### Fixed
 - Ajustamos a consulta principal de contatos para usar `const` e satisfazer o lint `prefer-const`, garantindo que o fallback sem relacionamento siga aprovando no `pnpm run build` mesmo quando o Supabase não possui `contacts_referred_by_contact_id_fkey`.
+- Substituímos o tipo `PostgrestFilterBuilder` para ser importado via `@supabase/supabase-js`, evitando falhas de build em ambientes que não instalem `@supabase/postgrest-js` diretamente.
 
 ### Documentation
 - `docs/crm_readme.md` recebeu nota operacional explicando a dependência do lint `prefer-const` durante o fallback de contatos.
+- Documentamos que os tipos de filtros de contatos dependem dos reexports de `@supabase/supabase-js`, permitindo builds estáveis sem pacotes adicionais.
 
 # 2025-11-13
 
