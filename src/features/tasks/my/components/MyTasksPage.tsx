@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import clsx from "clsx";
-import { Button, EmptyState, Flex, Text } from "@vibe/core";
+import { Button, EmptyState, Text } from "@vibe/core";
 import { useRouter } from "next/navigation";
 import { completeAssignmentAction, snoozeAssignmentAction } from "@/app/(app)/tasks/actions";
 import { trackEvent } from "@/lib/telemetry";
@@ -281,14 +281,7 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
       </header>
 
       <div className={styles.pageBody}>
-        <Flex
-          direction={Flex.directions.ROW}
-          wrap
-          gap={Flex.gaps.SMALL}
-          className={styles.toolbar}
-          role="toolbar"
-          aria-label="Filtros de tarefas"
-        >
+        <div className={styles.toolbar} role="toolbar" aria-label="Filtros de tarefas">
           <div className={styles.tabList} role="tablist" aria-label="Filtros de tarefas">
             {FILTERS.map((item) => (
               <button
@@ -303,7 +296,7 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
               </button>
             ))}
           </div>
-        </Flex>
+        </div>
 
         {pageError ? (
           <div role="alert" className={styles.errorBanner}>
