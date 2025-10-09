@@ -10,6 +10,7 @@
 
 ### Fixed
 - A modal "Nova sequência" voltou a usar submissão nativa dentro do próprio formulário, eliminando o uso do atributo `form` incompatível com `@vibe/core/Button` e destravando o build em produção.
+- Botão "Editar" na lista de sequências agora exibe a dica "Desative para editar" via `aria-describedby`, removendo o atributo `title` não suportado pelo `@vibe/core/Button` e mantendo o bloqueio acessível quando a sequência está ativa.
 
 ### Documentation
 - `docs/sequences_module.md` revisado com o novo fluxo de criação via modal, bloqueios por Toggle e o uso obrigatório de `--application-background-color` nos cartões do manager.

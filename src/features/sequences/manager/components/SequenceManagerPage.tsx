@@ -487,51 +487,62 @@ export default function SequenceManagerPage({
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((item) => (
-                  <tr key={item.id}>
-                    <td className={styles.checkboxCell}>
-                      <input
-                        type="checkbox"
-                        aria-label={`Selecionar sequência ${item.name}`}
-                        checked={selection.has(item.id)}
-                        onChange={() => toggleSelection(item.id)}
-                      />
-                    </td>
-                    <th scope="row" className={styles.nameCell}>
-                      <span className={styles.sequenceName}>{item.name}</span>
-                      <span className={styles.sequenceMeta}>Versão #{item.activeVersionNumber || 1}</span>
-                    </th>
-                    <td>
-                      <span className={clsx(styles.badge, badgeClass[item.status])}>{statusLabel[item.status]}</span>
-                    </td>
-                    <td className={styles.metaCell}>
-                      <span>{targetLabel[item.targetType]}</span>
-                    </td>
-                    <td>{item.stepsTotal}</td>
-                    <td>{item.activeEnrollments}</td>
-                    <td>{item.completionRate.toFixed(1)}%</td>
-                    <td>{formatDate(item.lastActivationAt)}</td>
-                    <td className={styles.actionsCell}>
-                      <Button
-                        kind={Button.kinds.SECONDARY}
-                        size={Button.sizes.SMALL}
-                        onClick={() => router.push(`/sequences/${item.id}`)}
-                        disabled={item.isActive}
-                        aria-label={
-                          item.isActive
-                            ? `Desative ${item.name} para editar`
-                            : `Editar sequência ${item.name}`
-                        }
-                        title={item.isActive ? "Desative a sequência antes de editar" : undefined}
-                      >
-                        Editar
-                      </Button>
-                      {item.isActive ? (
-                        <span className={styles.actionsHint}>Desative para editar</span>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
+                {filtered.map((item) => {
+                  const disabledHintId = item.isActive
+                    ? `sequence-${item.id}-edit-hint`
+                    : undefined;
+
+                  return (
+                    <tr key={item.id}>
+                      <td className={styles.checkboxCell}>
+                        <input
+                          type="checkbox"
+                          aria-label={`Selecionar sequência ${item.name}`}
+                          checked={selection.has(item.id)}
+                          onChange={() => toggleSelection(item.id)}
+                        />
+                      </td>
+                      <th scope="row" className={styles.nameCell}>
+                        <span className={styles.sequenceName}>{item.name}</span>
+                        <span className={styles.sequenceMeta}>Versão #{item.activeVersionNumber || 1}</span>
+                      </th>
+                      <td>
+                        <span className={clsx(styles.badge, badgeClass[item.status])}>{statusLabel[item.status]}</span>
+                      </td>
+                      <td className={styles.metaCell}>
+                        <span>{targetLabel[item.targetType]}</span>
+                      </td>
+                      <td>{item.stepsTotal}</td>
+                      <td>{item.activeEnrollments}</td>
+                      <td>{item.completionRate.toFixed(1)}%</td>
+                      <td>{formatDate(item.lastActivationAt)}</td>
+                      <td className={styles.actionsCell}>
+                        <Button
+                          kind={Button.kinds.SECONDARY}
+                          size={Button.sizes.SMALL}
+                          onClick={() => router.push(`/sequences/${item.id}`)}
+                          disabled={item.isActive}
+                          aria-label={
+                            item.isActive
+                              ? `Desative ${item.name} para editar`
+                              : `Editar sequência ${item.name}`
+                          }
+                          aria-describedby={disabledHintId}
+                        >
+                          Editar
+                        </Button>
+                        {item.isActive ? (
+                          <span
+                            id={disabledHintId}
+                            className={styles.actionsHint}
+                          >
+                            Desative para editar
+                          </span>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
