@@ -7,7 +7,7 @@
 
 .pageHeader {
   padding: clamp(24px, 5vw, 40px);
-  background: var(--primary-background-color);
+  background: var(--dx-surface, var(--application-background-color));
   border-bottom: 1px solid var(--dx-border, var(--layout-border-color));
   display: grid;
   gap: 20px;
@@ -104,7 +104,7 @@
   gap: 16px;
   align-items: center;
   justify-content: space-between;
-  background: var(--primary-background-color);
+  background: var(--dx-surface, var(--application-background-color));
   border: 1px solid var(--dx-border, var(--layout-border-color));
   border-radius: var(--dx-radius-lg, 16px);
   padding: 16px 20px;
@@ -171,7 +171,7 @@
 .tableCard {
   overflow: hidden;
   border: 1px solid var(--dx-border, var(--layout-border-color));
-  background: var(--primary-background-color);
+  background: var(--dx-surface, var(--application-background-color));
   box-shadow: var(--shadow-sm, 0 12px 30px -20px rgba(15, 23, 42, 0.5));
 }
 
