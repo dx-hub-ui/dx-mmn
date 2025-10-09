@@ -133,4 +133,10 @@ describe("ContactModal", () => {
     fireEvent.click(dataTab);
     await waitFor(() => expect(tabChange).toHaveBeenCalledWith("data"));
   });
+
+  it("renderiza container modal acessível quando aberto", () => {
+    render(<ModalHarness />);
+    const dialog = screen.getByRole("dialog", { name: /Maria Lima/i });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+  });
 });

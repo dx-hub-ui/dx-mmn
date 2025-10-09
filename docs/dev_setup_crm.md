@@ -12,6 +12,7 @@
   SUPABASE_SERVICE_ROLE_KEY=...
   ```
   > Em desenvolvimento, você pode copiar os valores gerados pelo `supabase start` (arquivo `.env` na pasta `.supabase`).
+  > Caso esses valores estejam ausentes, a aplicação exibe um aviso nas telas protegidas (login, CRM, sequências) orientando a preencher `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY` antes de continuar.
 
 ## 2. Provisionar banco e dados demo
 ```bash
