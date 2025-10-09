@@ -1,3 +1,12 @@
+# 2025-11-18
+
+### Fixed
+- Corrigimos os chips de status na lista de sequências para usar `disabled` apenas quando o status for "Desativada", eliminando o erro de tipagem no build e mantendo o comportamento solicitado para estados arquivados.
+- Atualizamos o sincronismo do painel de notas do editor para reagir diretamente à etapa selecionada, resolvendo o aviso do React Hooks durante o `pnpm run build`.
+
+### Documentation
+- Documentamos que o chip "Desativada" fica desabilitado na grade e que o painel de notas depende da etapa selecionada para preencher o rascunho automaticamente.
+
 # 2025-11-17
 
 ### Changed

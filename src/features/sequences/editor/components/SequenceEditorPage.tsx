@@ -990,7 +990,7 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     } else {
       setNoteDraft("");
     }
-  }, [selectedStep?.id, selectedStep?.shortDescription]);
+  }, [selectedStep]);
 
   const disableStepActions = sequenceActive || isPending || activationPending;
   const disableRulesForm = sequenceActive || activationPending;

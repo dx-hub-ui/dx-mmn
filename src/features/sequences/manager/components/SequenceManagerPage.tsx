@@ -98,23 +98,23 @@ type NewSequenceModalProps = {
 };
 
 function StatusChip({ status }: { status: SequenceStatus }) {
-  const map = {
-    active: { color: "positive", label: STATUS_LABEL.active },
-    paused: { color: "warning", label: STATUS_LABEL.paused },
-    draft: { color: undefined, label: STATUS_LABEL.draft },
-    archived: { color: undefined, label: STATUS_LABEL.archived, disabled: true },
-  } as const;
-
-  const cfg = map[status];
+  const label = STATUS_LABEL[status];
+  const color =
+    status === "active"
+      ? "positive"
+      : status === "paused"
+        ? "warning"
+        : undefined;
+  const disabled = status === "archived";
 
   return (
     <Chips
       id={`status-${status}`}
-      ariaLabel={`Status: ${cfg.label}`}
-      label={cfg.label}
-      color={cfg.color}
+      ariaLabel={`Status: ${label}`}
+      label={label}
+      color={color}
       readOnly
-      disabled={cfg.disabled}
+      disabled={disabled}
     />
   );
 }
