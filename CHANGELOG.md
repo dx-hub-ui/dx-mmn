@@ -1,3 +1,11 @@
+# 2025-11-15
+
+### Changed
+- Página `/sequences` atualizada para alinhar ao layout Monday.com com cabeçalho simplificado, painéis usando `--primary-background-color` e tabela remodelada exibindo o ícone `Open` ao lado do nome da sequência (visível apenas no hover) para abrir `/sequences/[id]` mesmo quando ativa.
+
+### Documentation
+- `docs/sequences_module.md` revisado com as diretrizes da nova lista de sequências (cabeçalho sem breadcrumbs/KPIs, ícone `Open` no hover e uso de `--primary-background-color`).
+
 # 2025-11-14
 
 ### Fixed

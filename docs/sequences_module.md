@@ -66,7 +66,7 @@ das reps via "Minhas tarefas".
 
 ## Novembro/2025 — Refinos de UI/UX
 
-- **Lista de sequências** remodelada para o padrão Monday.com com breadcrumbs, cards de métricas instantâneas (total, status por categoria), filtros usando `Search`/`Select` do `@vibe/core` e tabela responsiva com badges de status e alvo padrão.
+- **Lista de sequências** segue o padrão Monday.com com cabeçalho enxuto (sem breadcrumbs ou cartões de KPI), painéis usando `--primary-background-color`, filtros via `Search`/`Select` do `@vibe/core` e tabela responsiva com badges de status, alvo padrão e ícone `Open` (exibido apenas no hover) para abrir `/sequences/[id]` diretamente.
 - **Editor atualizado** com cabeçalho contextual, avatar inicial, tabs alinhadas ao Vibe e workspace em duas colunas: lista ordenável de passos à esquerda e painel detalhado com meta-informações, descrição e ações rápidas à direita.
 - **Templates de passo** apresentados em cards reutilizáveis (“Tarefa geral”, “Tarefa de ligação”), facilitando a criação do primeiro passo e reforçando a arquitetura multicanal.
 - **Formulário de regras & notificações** reorganizado em grid, com campos agrupados por contexto (janela de trabalho, cooldown, estratégia de publicação) e CTA fixo de salvar.
