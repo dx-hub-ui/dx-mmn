@@ -1,0 +1,33 @@
+.button {
+  position: relative;
+}
+
+.dialogContent {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.badgeWrapper {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  pointer-events: none;
+}
+
+.loadingSkeleton {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, rgba(120, 129, 166, 0.14) 0%, rgba(120, 129, 166, 0.24) 50%, rgba(120, 129, 166, 0.14) 100%);
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -36px 0;
+  }
+  100% {
+    background-position: 36px 0;
+  }
+}
