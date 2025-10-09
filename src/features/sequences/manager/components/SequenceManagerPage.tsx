@@ -725,7 +725,7 @@ export default function SequenceManagerPage({
                 placeholder="Buscar sequência"
                 onChange={(value) => setFilters((prev) => ({ ...prev, search: value }))}
                 className={styles.search}
-                ariaLabel="Buscar sequência pelo nome"
+                aria-label="Buscar sequência pelo nome"
               />
             </div>
           </div>

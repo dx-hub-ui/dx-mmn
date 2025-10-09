@@ -1,3 +1,8 @@
+# 2025-11-23
+
+### Fixed
+- Corrigimos a busca da lista de sequências para usar o atributo padrão `aria-label` do `@vibe/core/Search`, evitando novos erros de tipagem no `pnpm run build` e preservando a acessibilidade da barra de filtros.
+
 # 2025-11-22
 
 ### Fixed
