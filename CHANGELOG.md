@@ -7,9 +7,11 @@
 ### Fixed
 - Corrigimos o drag-and-drop do Kanban utilizando `DragOverlay`, impedindo que o cartão arrastado fique atrás das colunas durante o movimento.
 - Tratamos erros `PGRST205`/`42P01` ao registrar ou ler `contact_events`, emitindo apenas aviso e mantendo o fluxo de atualização de contatos funcional mesmo sem a tabela migrada.
+- Ajustamos o `forwardRef` do cartão do Kanban para usar o tipo semântico `<article>`, evitando o erro de build `Cannot find name 'HTMLArticleElement'` ao publicar no Edge Runtime.
 
 ### Documentation
 - Atualizamos `docs/crm_readme.md` com o redesenho compacto do Kanban, a remoção do termo CRM das cópias e o fallback de timeline quando `contact_events` não existe.
+- Documentamos a nova tipagem do `KanbanCardView` para garantir compatibilidade com builds Next/Edge.
 
 # 2025-11-25
 

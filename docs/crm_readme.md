@@ -24,6 +24,7 @@
 - O título e mensagens da página `/crm` passaram a falar apenas em **Contatos**, removendo a sigla CRM das cópias visíveis.
 - `ContactsKanban` foi redesenhado para um layout mais estreito (`clamp(220px, 22vw, 260px)` por coluna), com cabeçalhos compactos e cartões que usam botões terciários pequenos para as ações de WhatsApp/e-mail.
 - A renderização de drag & drop agora usa `DragOverlay`, evitando que o cartão arrastado fique atrás das colunas; o overlay recebe `box-shadow` suave para indicar que está em movimento.
+- Tipamos o `KanbanCardView` com `forwardRef` baseado no elemento semântico `<article>`, evitando dependências de tipos inexistentes no Edge Runtime ao gerar builds Next.
 - Cards menores: espaçamento reduzido, meta convertida em lista e badge de estágio enxuto, seguindo tokens da aplicação.
 - Falhas ao inserir/consultar `contact_events` com erro `PGRST205` (banco sem migração) agora geram apenas um aviso e seguem com timeline vazia, mantendo salvamentos/edições funcionando.
 

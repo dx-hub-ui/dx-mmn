@@ -164,7 +164,7 @@ function StageColumn({
   );
 }
 
-const KanbanCardView = React.forwardRef<HTMLArticleElement, KanbanCardViewProps>(function KanbanCardView(
+const KanbanCardView = React.forwardRef<React.ElementRef<"article">, KanbanCardViewProps>(function KanbanCardView(
   { contact, onOpenContact, listeners, attributes, isDragging, isOverlay, style }: KanbanCardViewProps,
   ref
 ) {
