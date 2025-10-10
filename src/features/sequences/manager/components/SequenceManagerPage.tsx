@@ -280,10 +280,6 @@ export default function SequenceManagerPage({
     router.replace("/sequences", { scroll: false });
   }, [autoOpenNewModal, router]);
 
-  useEffect(() => {
-    setIsHydrated(true);
-  }, []);
-
   const handleOpenModal = () => {
     setCreateError(null);
     setNewSequenceName("");

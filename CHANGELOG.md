@@ -2,6 +2,7 @@
 
 ### Fixed
 - Removemos estados duplicados (`pauseDraft`, `hasStepDraftChanges`) e callbacks mortos no editor de sequências, eliminando os avisos de ESLint que impediam `pnpm run build` após o refresh da UI.
+- Limpamos o manager de sequências ao remover a referência obsoleta a `setIsHydrated`, restaurando o build do Next.js sem erros de nome indefinido.
 
 ### Documentation
 - Documentamos no guia de sequências que o painel de notas usa um único rascunho controlado e que o toggle "Pausar" persiste diretamente no passo selecionado, evitando estados locais não utilizados.
