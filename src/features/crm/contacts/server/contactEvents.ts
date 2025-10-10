@@ -115,11 +115,7 @@ function isMissingContactEventsTable(error: PostgrestError | null | undefined): 
   if (!error) {
     return false;
   }
-  if (error.code === "PGRST205" || error.code === "PGRST116" || error.code === "42P01") {
-    return true;
-  }
-  const message = typeof error.message === "string" ? error.message.toLowerCase() : "";
-  return message.includes("contact_events");
+  return error.code === "PGRST205" || error.code === "PGRST116" || error.code === "42P01";
 }
 
 function reportMissingContactEvents(error: PostgrestError, context: Record<string, unknown>) {
