@@ -1,3 +1,123 @@
+# 2025-11-24
+
+### Fixed
+- Removemos estados duplicados (`pauseDraft`, `hasStepDraftChanges`) e callbacks mortos no editor de sequências, eliminando os avisos de ESLint que impediam `pnpm run build` após o refresh da UI.
+- Limpamos o manager de sequências ao remover a referência obsoleta a `setIsHydrated`, restaurando o build do Next.js sem erros de nome indefinido.
+- Tornamos a função de ordenação do manager tolerante a métricas indefinidas, permitindo que `totalEnrollments` (e demais colunas numéricas) sejam comparadas sem quebrar o typecheck.
+- Blindamos o formatter numérico do manager para tratar valores `undefined`/`null`, evitando que a renderização das métricas derrube o `pnpm run build`.
+
+### Documentation
+- Documentamos no guia de sequências que o painel de notas usa um único rascunho controlado e que o toggle "Pausar" persiste diretamente no passo selecionado, evitando estados locais não utilizados.
+- Atualizamos o guia do módulo de sequências para registrar que as colunas de métricas do manager tratam valores ausentes como `null` durante a ordenação, prevenindo regressões no build.
+- Registramos que a formatação de métricas no manager converte valores ausentes em traço (`—`), garantindo consistência visual e evitando acessos indevidos durante o build.
+
+# 2025-11-23
+
+### Fixed
+- Corrigimos a tipagem de `StepModal.onSubmit`, movendo a lógica de ancoragem para `state.position` e removendo duplicidades de import/export em `SequenceEditorPage.tsx`, eliminando os erros de build (`Expected ';'`, nomes redefinidos) identificados pela Vercel.
+
+### Documentation
+- Atualizamos `docs/sequences_module.md` para detalhar que o modal encaminha posicionamento e referência de etapa via `state.position`, evitando contratos duplicados (`anchorStepId`, `position`) e mantendo o editor alinhado ao design system.
+
+# 2025-11-19
+
+### Fixed
+- Atualizamos os atalhos "Aprender mais" e "Enviar feedback" do manager de sequências para usar `IconButton.icon`, garantindo compatibilidade com o build Edge do Next.js e eliminando o erro de tipagem que impedia `pnpm run build`.
+- Tipamos `SortableStep` como componente constante e destruturamos as props antes de chamar `useSortable`, evitando que o parser Edge reporte `Expression expected` ao anotar o parâmetro diretamente na assinatura.
+
+### Documentation
+- Registramos no guia de sequências que os atalhos do cabeçalho devem utilizar `IconButton.icon` em vez de filhos diretos, evitando regressões de tipagem no Edge runtime.
+- Anotamos que o cartão arrastável do editor usa um tipo auxiliar para a função `SortableStep`, garantindo que o SWC do Edge interprete corretamente as props tipadas.
+
+# 2025-11-18
+
+### Fixed
+- Corrigimos os chips de status na lista de sequências para usar `disabled` apenas quando o status for "Desativada", eliminando o erro de tipagem no build e mantendo o comportamento solicitado para estados arquivados.
+- Atualizamos o sincronismo do painel de notas do editor para reagir diretamente à etapa selecionada, resolvendo o aviso do React Hooks durante o `pnpm run build`.
+
+### Documentation
+- Documentamos que o chip "Desativada" fica desabilitado na grade e que o painel de notas depende da etapa selecionada para preencher o rascunho automaticamente.
+
+# 2025-11-17
+
+### Changed
+- Atualizamos `/sequences` para usar a tabela do `@vibe/core` com skeleton, ordenação em todos os cabeçalhos e chips de status, além de cabeçalho com tag “Beta”, ícones de ajuda/feedback e colunas de métricas com tooltips alinhadas aos tokens `--dx-font-text2-*`.
+- Remodelamos `/sequences/[id]` com cabeçalho contextual (breadcrumb textual, toggle Inativa/Ativa e CTA “Salvar sequência”), cartões de etapas com menu contextual completo e painel de notas sobre `--allgrey-background-color`, incluindo textarea editável, toolbar (+, Aa, {}) e toggle “Pausar sequência até que a etapa seja marcada como concluída”.
+
+### Documentation
+- `docs/sequences_module.md` atualizado para refletir o novo cabeçalho da lista, a tabela com chips/ordenadores e o painel de edição com notas e toolbar no editor de sequências.
+# 2025-11-22
+
+### Added
+- Sistema de notificações completo com sino na topbar, painel ancorado com abas/busca/filtro, modal de preferências e integração com menções em CRM (`queue_notification`).
+- APIs REST (`/api/notifications/*`, `/api/user/preferences`, `/api/internal/notifications/weekly-digest`) com RLS e telemetria PostHog/Sentry.
+- Digest semanal por e-mail usando `pg_cron`, webhook interno assinado e template `WeeklyMentionsDigest` em pt-BR.
+- Testes unitários, integração e E2E (`notifications-panel.spec.ts`) cobrindo fluxo de leitura, mute e preferências.
+
+### Fixed
+- Substituímos o wrapper inexistente `Tabs` pelo `TabsContext` do `@vibe/core` no painel, garantindo build limpo e mantendo o foco/teclado funcionando nas abas.
+- Declaramos `export const runtime = "nodejs"` em todos os handlers de notificações/preferências para impedir que o bundle Edge quebre ao importar o cliente do Supabase.
+- Normalizamos a resposta do Supabase ao resolver a organização ativa no `AppShell`, lidando com payloads em array e evitando o erro de tipos "property 'id' does not exist on type" durante o build.
+- Ajustamos o webhook `POST /api/internal/notifications/weekly-digest` para converter atores retornados como array pelo join do Supabase, impedindo o erro de tipos "Conversion of type '{ ... actor: { }[] }'" no build.
+- Endurecemos a normalização de atores nos handlers de notificações para aceitar payloads `unknown`, verificando o shape antes de construir o DTO e evitando regressões quando o Supabase retornar objetos vazios.
+
+### Documentation
+- Criado `docs/notifications.md` com fluxos, payloads, métricas e troubleshooting do sistema de notificações multi-tenant.
+
+# 2025-11-23
+
+### Fixed
+- Reestruturamos as linhas clicáveis da tabela de sequências com um wrapper acessível (`SequenceTableDataRow`) que replica o grid do Vibe e trata a navegação por teclado, eliminando o uso de props inexistentes (`tabIndex`) no `TableRow` e evitando novos erros no `pnpm run build`.
+- Corrigimos a busca da lista de sequências para usar o atributo padrão `aria-label` do `@vibe/core/Search`, evitando novos erros de tipagem no `pnpm run build` e preservando a acessibilidade da barra de filtros.
+- Adicionamos o `errorState` obrigatório ao `@vibe/core/Table` da lista de sequências com fallback acessível e CTA de recarregar, impedindo que o build volte a falhar por props ausentes.
+
+### Documentation
+- Atualizamos `docs/sequences_module.md` destacando que o `@vibe/core/Table` do manager deve receber `errorState` e um estado de erro acessível para manter o build saudável.
+
+# 2025-11-22
+
+### Fixed
+- Ajustamos as larguras dos skeletons da tabela de sequências para números em pixels compatíveis com o `@vibe/core/Skeleton`, evitando que o build falhe ao interpretar porcentagens nas props `width`.
+
+# 2025-11-21
+
+### Fixed
+- Ajustamos os estados de loading da tabela de sequências para usar apenas os tipos suportados pelo `@vibe/core/Table`, liberando o `pnpm run build` sem quebrar os skeletons responsivos das métricas.
+- Atualizamos o skeleton personalizado das colunas numéricas para mapear o tipo `"rectangle"` do Vibe aos placeholders de métricas, evitando comparações com valores inexistentes como `"short-text"`/`"number"` durante o build.
+# 2025-11-20
+
+### Changed
+- Editor de Sequências (`/sequences/[id]`) redesenhado com cabeçalho compacto, toggle "Inativa | Ativa" e CTA "Salvar sequência", cartões de etapas com menu contextual, painel de notas em `--allgrey-background-color` e rolagem independente entre lista e editor.
+- Migração das inscrições da sequência para `@vibe/core/Table` com ordenação por cabeçalho, skeleton durante ações e manutenção das ações inline (pausar/retomar/encerrar) alinhadas ao design Monday.
+
+### Fixed
+- Ajustamos as colunas da tabela de inscrições para definir `loadingStateType` nativo do Vibe (ID/Tipo/Status como `"medium-text"`, data como `"long-text"` e ações como `"circle"`), eliminando o import ocioso de `Skeleton` e garantindo skeletons consistentes durante operações.
+
+### Documentation
+- Atualizamos `docs/sequences_module.md` com o novo layout do editor (toolbar de notas, menu contextual e rolagem independente) e com os requisitos da tabela de inscrições usando `@vibe/core/Table` com ordenação e skeletons.
+# 2025-11-21
+
+### Fixed
+- Impedimos que o helper `createSupabaseServerClient` derrube o runtime quando o Next bloqueia `cookies().set`, encapsulando a mutação em `try/catch` e registrando um aviso somente em desenvolvimento.
+
+### Documentation
+- Documentamos no `README.md` que o helper ignora mutações de cookie fora de Server Actions/Route Handlers para evitar o erro "Cookies can only be modified in a Server Action or Route Handler".
+
+# 2025-11-20
+
+### Changed
+- Página `/sequences`: reformulamos a lista com barra superior Monday-style (título + tag Beta + ações "Aprender mais"/"Feedback"), filtros em popover e tabela `@vibe/core/Table` com ordenação, skeleton inicial, chips de status do Vibe e colunas de métricas (inscrições e taxas) alinhadas à direita.
+
+### Documentation
+- Atualizamos `docs/sequences_module.md` com o novo layout da lista de sequências, detalhando ações da barra superior, chips de status, tooltips das métricas e busca focada no nome.
+- CRM Kanban remodelado para estilo monday.com com cabeçalhos coloridos, menu contextual e botão rápido de criação usando componentes `@vibe/core` (`IconButton`, `MenuButton`).
+
+### Fixed
+- Drag and drop do Kanban passa a usar `closestCorners` e `data` explícito no `useDroppable`, garantindo que cartões reconheçam o estágio alvo ao serem soltos.
+
+### Documentation
+- `docs/crm_readme.md` atualizado com a estratégia de cores por estágio, novos atalhos de criação e notas sobre o ajuste do drag and drop.
+
 # 2025-11-18
 
 ### Changed
@@ -344,4 +464,5 @@
 ### Fixed
 - Corrigimos a troca de código PKCE em `/auth/callback` para usar a assinatura correta de `exchangeCodeForSession`, evitando falhas de build no fluxo de login por Magic Link.
 - Quando o Supabase não encontra `code_verifier` (ex.: link aberto em outro dispositivo), o callback agora ignora o erro e cai no `token_hash`, evitando o loop de autenticação ao validar magic links.
+- Ajustamos o componente `SortableStep` no editor de sequências para inicializar as props antes do hook `useSortable`, eliminando o erro de sintaxe que quebrava o build na Vercel.
 

@@ -19,16 +19,17 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
-  Avatar,
-  BreadcrumbItem,
-  BreadcrumbsBar,
   Button,
   EmptyState,
   Label,
   Menu,
   MenuButton,
-  MenuDivider,
   MenuItem,
+  Text,
+  TextArea,
+  Toggle,
+  Tooltip,
+  MenuDivider,
   Table,
   TableBody,
   TableCell,
@@ -36,16 +37,15 @@ import {
   TableHeader,
   TableHeaderCell,
   TableRow,
-  Text,
-  TextArea,
-  Toggle,
   type TableColumn,
 } from "@vibe/core";
+import { Add, Code, Drag, MoreActions, NavigationChevronLeft, TextFormatting } from "@vibe/icons";
 import { trackEvent } from "@/lib/telemetry";
 import { useSentrySequenceScope } from "@/lib/observability/sentryClient";
 import { calculateDueDate } from "../dates";
 import type {
   SequenceEditorData,
+  SequenceEnrollmentRecord,
   SequenceStepRecord,
   SequenceTargetType,
 } from "../types";
@@ -73,13 +73,33 @@ type SequenceEditorPageProps = {
 
 type TabKey = "etapas" | "regras" | "inscricoes";
 
+type StepModalPosition = {
+  kind: "before" | "after" | "end";
+  referenceId?: string;
+};
+
 type StepModalState = {
   mode: "create" | "edit";
   step?: SequenceStepRecord;
   presetType?: SequenceStepRecord["type"];
-  anchorStepId?: string;
-  position?: "before" | "after";
+  position?: StepModalPosition;
+  initialValues?: Partial<{
+    title: string;
+    shortDescription: string;
+    dueOffsetDays: number;
+    dueOffsetHours: number;
+    pauseUntilDone: boolean;
+  }>;
 };
+
+type StepMenuAction =
+  | "add-wait"
+  | "add-before"
+  | "add-after"
+  | "move-up"
+  | "move-down"
+  | "duplicate"
+  | "delete";
 
 type SortableStepProps = {
   step: SequenceStepRecord;
@@ -89,6 +109,7 @@ type SortableStepProps = {
   disableActions: boolean;
   onSelect: (step: SequenceStepRecord) => void;
   onToggle: (step: SequenceStepRecord, isActive: boolean) => void;
+  onMenuAction: (action: StepMenuAction, step: SequenceStepRecord) => void;
   onDuplicate: (step: SequenceStepRecord) => void;
   onDelete: (step: SequenceStepRecord) => void;
   onAddBefore: (step: SequenceStepRecord) => void;
@@ -100,12 +121,14 @@ type SortableStepProps = {
   canMoveDown: boolean;
 };
 
+type SortableStepComponent = (props: SortableStepProps) => JSX.Element;
+
 const STEP_TYPE_LABEL: Record<SequenceStepRecord["type"], string> = {
   general_task: "Tarefa geral",
   call_task: "Tarefa de ligação",
 };
 
-function SortableStep({
+const SortableStep: SortableStepComponent = ({
   step,
   index,
   isSelected,
@@ -113,6 +136,7 @@ function SortableStep({
   disableActions,
   onSelect,
   onToggle,
+  onMenuAction,
   onDuplicate,
   onDelete,
   onAddBefore,
@@ -122,32 +146,100 @@ function SortableStep({
   onMoveDown,
   canMoveUp,
   canMoveDown,
-}: SortableStepProps) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: step.id, disabled: disableReorder });
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id: step.id,
+    disabled: disableReorder,
+  });
 
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     transition,
   };
 
+  const shortDescription = step.shortDescription?.trim() || "Sem descrição";
+
   return (
     <article
       ref={setNodeRef}
       style={style}
       className={styles.stepCard}
-      data-inactive={step.isActive ? undefined : "true"}
       data-selected={isSelected ? "true" : undefined}
-      data-locked={disableActions ? "true" : undefined}
+      data-disabled={disableActions ? "true" : undefined}
       onClick={() => onSelect(step)}
       role="button"
       tabIndex={0}
       onKeyDown={(event) => {
-        if ((event.key === "Enter" || event.key === " ") && !disableActions) {
+        if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onSelect(step);
         }
       }}
     >
+      <button
+        type="button"
+        className={styles.stepDragHandle}
+        aria-label="Arrastar etapa"
+        {...attributes}
+        {...(disableReorder ? {} : listeners)}
+        disabled={disableReorder}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <Drag aria-hidden />
+      </button>
+
+      <div className={styles.stepContent}>
+        <div className={styles.stepHeaderRow}>
+          <span className={styles.stepIndex}>{index + 1}.</span>
+          <div className={styles.stepTextGroup}>
+            <h3>{step.title}</h3>
+            <p>{shortDescription}</p>
+          </div>
+          <Label
+            kind={Label.kinds.FILL}
+            color={step.isActive ? Label.colors.POSITIVE : Label.colors.NEGATIVE}
+            text={step.isActive ? "Ativa" : "Inativa"}
+          />
+        </div>
+        <div className={styles.stepMetaRow}>
+          <span>{STEP_TYPE_LABEL[step.type]}</span>
+          <span>
+            {step.dueOffsetDays} dia(s) • {step.dueOffsetHours} hora(s)
+          </span>
+        </div>
+      </div>
+
+      <MenuButton
+        ariaLabel={`Abrir menu da etapa ${step.title}`}
+        disabled={disableActions}
+        closeMenuOnItemClick
+        onClick={(event) => event.stopPropagation()}
+        tooltipContent="Ações da etapa"
+        component={() => (
+          <button
+            type="button"
+            className={styles.stepMenuTrigger}
+            aria-label={`Opções da etapa ${step.title}`}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <MoreActions aria-hidden />
+          </button>
+        )}
+      >
+        <Menu>
+          <MenuItem title="Adicionar tempo de espera" onClick={() => onMenuAction("add-wait", step)} />
+          <MenuItem title="Adicionar etapa antes" onClick={() => onMenuAction("add-before", step)} />
+          <MenuItem title="Adicionar etapa depois" onClick={() => onMenuAction("add-after", step)} />
+          <MenuItem title="Mover etapa para cima" onClick={() => onMenuAction("move-up", step)} />
+          <MenuItem title="Mover etapa para baixo" onClick={() => onMenuAction("move-down", step)} />
+          <MenuItem title="Duplicar etapa" onClick={() => onMenuAction("duplicate", step)} />
+          <MenuItem title="Excluir etapa" onClick={() => onMenuAction("delete", step)} />
+          <MenuItem
+            title={step.isActive ? "Desativar etapa" : "Ativar etapa"}
+            onClick={() => onToggle(step, !step.isActive)}
+          />
+        </Menu>
+      </MenuButton>
       <div className={styles.stepCardInner}>
         <button
           type="button"
@@ -237,27 +329,30 @@ function SortableStep({
       </div>
     </article>
   );
-}
+};
 
 type StepModalProps = {
   open: boolean;
   state: StepModalState | null;
   onClose: () => void;
-  onSubmit: (values: {
-    id?: string;
-    title: string;
-    shortDescription: string;
-    type: SequenceStepRecord["type"];
-    assigneeMode: SequenceStepRecord["assigneeMode"];
-    dueOffsetDays: number;
-    dueOffsetHours: number;
-    priority: string;
-    channelHint: string;
-    pauseUntilDone: boolean;
-    isActive: boolean;
-    anchorStepId?: string;
-    position?: "before" | "after";
-  }) => Promise<void>;
+  onSubmit: (
+    values: {
+      id?: string;
+      title: string;
+      shortDescription: string;
+      type: SequenceStepRecord["type"];
+      assigneeMode: SequenceStepRecord["assigneeMode"];
+      dueOffsetDays: number;
+      dueOffsetHours: number;
+      priority: string;
+      channelHint: string;
+      pauseUntilDone: boolean;
+      isActive: boolean;
+    },
+    options: {
+      state: StepModalState;
+    },
+  ) => Promise<void>;
   pending: boolean;
   disabled: boolean;
 };
@@ -292,15 +387,15 @@ function StepModal({ open, state, onClose, onSubmit, pending, disabled }: StepMo
       setPauseUntilDone(step.pauseUntilDone);
       setIsActive(step.isActive);
     } else {
-      setTitle("");
-      setShortDescription("");
+      setTitle(state?.initialValues?.title ?? "");
+      setShortDescription(state?.initialValues?.shortDescription ?? "");
       setType(state?.presetType ?? "general_task");
       setAssigneeMode("owner");
-      setDueDays(0);
-      setDueHours(0);
+      setDueDays(state?.initialValues?.dueOffsetDays ?? 0);
+      setDueHours(state?.initialValues?.dueOffsetHours ?? 0);
       setPriority("Normal");
       setChannelHint("");
-      setPauseUntilDone(false);
+      setPauseUntilDone(state?.initialValues?.pauseUntilDone ?? false);
       setIsActive(true);
     }
   }, [open, state]);
@@ -336,21 +431,22 @@ function StepModal({ open, state, onClose, onSubmit, pending, disabled }: StepMo
             if (formDisabled) {
               return;
             }
-            void onSubmit({
-              id: state.step?.id,
-              title,
-              shortDescription,
-              type,
-              assigneeMode,
-              dueOffsetDays: Number.isFinite(dueDays) ? dueDays : 0,
-              dueOffsetHours: Number.isFinite(dueHours) ? dueHours : 0,
-              priority,
-              channelHint,
-              pauseUntilDone,
-              isActive,
-              anchorStepId: state?.anchorStepId,
-              position: state?.position,
-            });
+            void onSubmit(
+              {
+                id: state.step?.id,
+                title,
+                shortDescription,
+                type,
+                assigneeMode,
+                dueOffsetDays: Number.isFinite(dueDays) ? dueDays : 0,
+                dueOffsetHours: Number.isFinite(dueHours) ? dueHours : 0,
+                priority,
+                channelHint,
+                pauseUntilDone,
+                isActive,
+              },
+              { state }
+            );
           }}
         >
           <div className={styles.formGridTwoColumns}>
@@ -481,7 +577,7 @@ function StepModal({ open, state, onClose, onSubmit, pending, disabled }: StepMo
 
 const TAB_LABELS: Record<TabKey, string> = {
   etapas: "Etapas",
-  regras: "Regras & notificações",
+  regras: "Regras e notificações",
   inscricoes: "Inscrições",
 };
 
@@ -533,14 +629,12 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   const [enrollmentTargets, setEnrollmentTargets] = useState("");
   const [rulesNotes, setRulesNotes] = useState(data.currentVersion?.notes ?? "");
   const [noteDraft, setNoteDraft] = useState("");
-  const [pauseDraft, setPauseDraft] = useState(false);
   const [enrollmentBusy, setEnrollmentBusy] = useState(false);
   const [enrollmentSort, setEnrollmentSort] = useState<{ column: string; direction: "asc" | "desc" } | null>(null);
   const [isPending, startTransition] = useTransition();
   const [sequenceActive, setSequenceActive] = useState(data.sequence.isActive);
   const [activationError, setActivationError] = useState<string | null>(null);
   const [activationPending, startActivationTransition] = useTransition();
-  const [stepError, setStepError] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -583,6 +677,37 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   }, [sequenceActive]);
 
   const currentVersion = data.currentVersion;
+  const sortedEnrollments = useMemo(() => {
+    const base = [...data.enrollments];
+    if (!enrollmentSort) {
+      return base;
+    }
+
+    const { column, direction } = enrollmentSort;
+    const modifier = direction === "asc" ? 1 : -1;
+
+    return [...base].sort((a, b) => {
+      const getComparable = (item: SequenceEnrollmentRecord) => {
+        switch (column) {
+          case "targetId":
+            return item.targetId ?? "";
+          case "targetType":
+            return item.targetType;
+          case "status":
+            return item.status;
+          case "enrolledAt":
+            return item.enrolledAt;
+          default:
+            return "";
+        }
+      };
+
+      const aValue = getComparable(a);
+      const bValue = getComparable(b);
+
+      return aValue.localeCompare(bValue) * modifier;
+    });
+  }, [data.enrollments, enrollmentSort]);
   const sequenceStatusLabel: Record<string, string> = {
     draft: "Rascunho",
     active: "Ativa",
@@ -598,21 +723,22 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
 
   const sequenceTitle = data.sequence.name?.trim() || "Nova Sequência";
 
-  const handleStepSubmit = async (values: {
-    id?: string;
-    title: string;
-    shortDescription: string;
-    type: SequenceStepRecord["type"];
-    assigneeMode: SequenceStepRecord["assigneeMode"];
-    dueOffsetDays: number;
-    dueOffsetHours: number;
-    priority: string;
-    channelHint: string;
-    pauseUntilDone: boolean;
-    isActive: boolean;
-    anchorStepId?: string;
-    position?: "before" | "after";
-  }) => {
+  const handleStepSubmit = async (
+    values: {
+      id?: string;
+      title: string;
+      shortDescription: string;
+      type: SequenceStepRecord["type"];
+      assigneeMode: SequenceStepRecord["assigneeMode"];
+      dueOffsetDays: number;
+      dueOffsetHours: number;
+      priority: string;
+      channelHint: string;
+      pauseUntilDone: boolean;
+      isActive: boolean;
+    },
+    { state }: { state: StepModalState }
+  ) => {
     if (!currentVersion) {
       return;
     }
@@ -622,18 +748,22 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
       return;
     }
 
-    const anchorIndex = values.anchorStepId
-      ? localSteps.findIndex((step) => step.id === values.anchorStepId)
+    const anchorStepId = state.position?.referenceId;
+    const anchorIndex = anchorStepId
+      ? localSteps.findIndex((step) => step.id === anchorStepId)
       : -1;
-    const insertAtIndex =
-      !values.id && values.position && anchorIndex >= 0
-        ? values.position === "before"
-          ? anchorIndex
-          : anchorIndex + 1
-        : null;
+    let insertAtIndex: number | null = null;
+
+    if (!values.id && state.position) {
+      if (state.position.kind === "end") {
+        insertAtIndex = localSteps.length;
+      } else if (anchorIndex >= 0) {
+        insertAtIndex = state.position.kind === "before" ? anchorIndex : anchorIndex + 1;
+      }
+    }
 
     startTransition(async () => {
-      await upsertSequenceStepAction({
+      const newStepId = await upsertSequenceStepAction({
         sequenceId: data.sequence.id,
         versionId: currentVersion.id,
         stepId: values.id,
@@ -649,6 +779,40 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
         isActive: values.isActive,
         insertAtIndex: insertAtIndex ?? undefined,
       });
+
+      if (!values.id && state.position && newStepId) {
+        const baseOrder = localSteps.map((step) => step.id);
+        const referenceIndex = state.position.referenceId
+          ? baseOrder.findIndex((id) => id === state.position?.referenceId)
+          : baseOrder.length - 1;
+        let targetIndex = baseOrder.length;
+
+        if (state.position.kind === "before" && referenceIndex >= 0) {
+          targetIndex = referenceIndex;
+        }
+
+        if (state.position.kind === "after" && referenceIndex >= 0) {
+          targetIndex = referenceIndex + 1;
+        }
+
+        if (state.position.kind === "end") {
+          targetIndex = baseOrder.length;
+        }
+
+        const reorderedIds = [...baseOrder, newStepId].filter((id) => id !== newStepId);
+        const boundedIndex = Math.max(0, Math.min(targetIndex, reorderedIds.length));
+        reorderedIds.splice(boundedIndex, 0, newStepId);
+
+        await reorderSequenceStepsAction(
+          data.sequence.id,
+          currentVersion.id,
+          reorderedIds
+        );
+        setSelectedStepId(newStepId);
+      } else if (values.id) {
+        setSelectedStepId(values.id);
+      }
+
       router.refresh();
       setStepModal(null);
     });
@@ -741,15 +905,18 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   };
 
   const handleAddStepRelative = (step: SequenceStepRecord, position: "before" | "after") => {
-    openStepModal({ mode: "create", presetType: step.type, anchorStepId: step.id, position });
+    openStepModal({
+      mode: "create",
+      presetType: step.type,
+      position: { kind: position, referenceId: step.id },
+    });
   };
 
   const handleAddWaitAfter = (step: SequenceStepRecord) => {
     openStepModal({
       mode: "create",
       presetType: step.type,
-      anchorStepId: step.id,
-      position: "after",
+      position: { kind: "after", referenceId: step.id },
     });
   };
 
@@ -762,6 +929,153 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     }
     startTransition(async () => {
       await deleteSequenceStepAction(data.sequence.id, step.id);
+      router.refresh();
+    });
+  };
+
+  const handleMoveStep = (step: SequenceStepRecord, direction: "up" | "down") => {
+    if (disableStepActions) {
+      return;
+    }
+
+    const currentIndex = localSteps.findIndex((item) => item.id === step.id);
+    if (currentIndex === -1) {
+      return;
+    }
+
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+    if (targetIndex < 0 || targetIndex >= localSteps.length) {
+      return;
+    }
+
+    const reordered = arrayMove(localSteps, currentIndex, targetIndex);
+    setLocalSteps(reordered);
+
+    if (!currentVersion) {
+      return;
+    }
+
+    startTransition(async () => {
+      await reorderSequenceStepsAction(
+        data.sequence.id,
+        currentVersion.id,
+        reordered.map((item) => item.id)
+      );
+      router.refresh();
+    });
+  };
+
+  const handleStepMenuAction = (action: StepMenuAction, step: SequenceStepRecord) => {
+    switch (action) {
+      case "add-wait":
+        openStepModal({
+          mode: "create",
+          presetType: step.type,
+          position: { kind: "after", referenceId: step.id },
+          initialValues: {
+            title: "Tempo de espera",
+            shortDescription: "Defina um intervalo antes da próxima etapa.",
+            dueOffsetDays: Math.max(1, step.dueOffsetDays),
+            dueOffsetHours: step.dueOffsetHours,
+            pauseUntilDone: true,
+          },
+        });
+        break;
+      case "add-before":
+        openStepModal({
+          mode: "create",
+          presetType: step.type,
+          position: { kind: "before", referenceId: step.id },
+        });
+        break;
+      case "add-after":
+        openStepModal({
+          mode: "create",
+          presetType: step.type,
+          position: { kind: "after", referenceId: step.id },
+        });
+        break;
+      case "move-up":
+        handleMoveStep(step, "up");
+        break;
+      case "move-down":
+        handleMoveStep(step, "down");
+        break;
+      case "duplicate":
+        handleDuplicate(step);
+        break;
+      case "delete":
+        handleDelete(step);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleNoteBlur = (step: SequenceStepRecord, note: string) => {
+    if (!currentVersion) {
+      return;
+    }
+
+    if (disableStepActions) {
+      return;
+    }
+
+    const normalizedCurrent = step.shortDescription ?? "";
+    if (normalizedCurrent === note) {
+      return;
+    }
+
+    startTransition(async () => {
+      await upsertSequenceStepAction({
+        sequenceId: data.sequence.id,
+        versionId: currentVersion.id,
+        stepId: step.id,
+        title: step.title,
+        shortDescription: note,
+        type: step.type,
+        assigneeMode: step.assigneeMode,
+        assigneeMembershipId: step.assigneeMembershipId ?? null,
+        dueOffsetDays: step.dueOffsetDays,
+        dueOffsetHours: step.dueOffsetHours,
+        priority: step.priority ?? "Normal",
+        tags: step.tags ?? [],
+        channelHint: step.channelHint ?? "",
+        pauseUntilDone: step.pauseUntilDone,
+        isActive: step.isActive,
+      });
+      router.refresh();
+    });
+  };
+
+  const handlePauseToggleChange = (step: SequenceStepRecord, pause: boolean) => {
+    if (!currentVersion) {
+      return;
+    }
+
+    if (disableStepActions) {
+      return;
+    }
+
+    startTransition(async () => {
+      await upsertSequenceStepAction({
+        sequenceId: data.sequence.id,
+        versionId: currentVersion.id,
+        stepId: step.id,
+        title: step.title,
+        shortDescription: step.shortDescription ?? "",
+        type: step.type,
+        assigneeMode: step.assigneeMode,
+        assigneeMembershipId: step.assigneeMembershipId ?? null,
+        dueOffsetDays: step.dueOffsetDays,
+        dueOffsetHours: step.dueOffsetHours,
+        priority: step.priority ?? "Normal",
+        tags: step.tags ?? [],
+        channelHint: step.channelHint ?? "",
+        pauseUntilDone: pause,
+        isActive: step.isActive,
+      });
       router.refresh();
     });
   };
@@ -803,6 +1117,15 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
         setActivationError(message);
       }
     });
+  };
+
+  const handleSaveSequence = () => {
+    trackEvent(
+      "sequence_editor_save_clicked",
+      { sequenceId: data.sequence.id },
+      { groups: { orgId, sequenceId: data.sequence.id } }
+    );
+    router.refresh();
   };
 
   const handleRulesSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -898,98 +1221,17 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     [localSteps, selectedStepId]
   );
 
-  const sortedEnrollments = useMemo(() => {
-    const items = [...data.enrollments];
-    if (!enrollmentSort) {
-      return items;
-    }
-
-    const direction = enrollmentSort.direction === "asc" ? 1 : -1;
-
-    return items.sort((a, b) => {
-      switch (enrollmentSort.column) {
-        case "targetId":
-          return direction * a.targetId.localeCompare(b.targetId, "pt-BR", { numeric: true });
-        case "targetType": {
-          const labelA = a.targetType === "contact" ? "Contato" : "Membro";
-          const labelB = b.targetType === "contact" ? "Contato" : "Membro";
-          return direction * labelA.localeCompare(labelB, "pt-BR");
-        }
-        case "status": {
-          const labelA = ENROLLMENT_STATUS[a.status] ?? a.status;
-          const labelB = ENROLLMENT_STATUS[b.status] ?? b.status;
-          return direction * labelA.localeCompare(labelB, "pt-BR");
-        }
-        case "enrolledAt":
-          return (
-            direction *
-            (new Date(a.enrolledAt).getTime() - new Date(b.enrolledAt).getTime())
-          );
-        default:
-          return 0;
-      }
-    });
-  }, [data.enrollments, enrollmentSort]);
-
   useEffect(() => {
-    if (!selectedStep) {
+    if (selectedStep) {
+      setNoteDraft(selectedStep.shortDescription ?? "");
+    } else {
       setNoteDraft("");
-      setPauseDraft(false);
-      setStepError(null);
-      return;
     }
-    setNoteDraft(selectedStep.shortDescription ?? "");
-    setPauseDraft(selectedStep.pauseUntilDone);
-    setStepError(null);
   }, [selectedStep]);
 
   const disableStepActions = sequenceActive || isPending || activationPending;
   const disableRulesForm = sequenceActive || activationPending;
   const disableEnrollmentForm = sequenceActive || activationPending;
-  const hasStepDraftChanges =
-    Boolean(selectedStep) &&
-    (noteDraft !== (selectedStep?.shortDescription ?? "") || pauseDraft !== (selectedStep?.pauseUntilDone ?? false));
-
-  const handleSaveSelectedStep = () => {
-    if (!selectedStep || !currentVersion) {
-      return;
-    }
-
-    if (sequenceActive) {
-      return;
-    }
-
-    setStepError(null);
-
-    startTransition(async () => {
-      try {
-        await upsertSequenceStepAction({
-          sequenceId: data.sequence.id,
-          versionId: currentVersion.id,
-          stepId: selectedStep.id,
-          title: selectedStep.title,
-          shortDescription: noteDraft,
-          type: selectedStep.type,
-          assigneeMode: selectedStep.assigneeMode,
-          dueOffsetDays: selectedStep.dueOffsetDays,
-          dueOffsetHours: selectedStep.dueOffsetHours,
-          priority: selectedStep.priority ?? undefined,
-          channelHint: selectedStep.channelHint ?? undefined,
-          pauseUntilDone: pauseDraft,
-          isActive: selectedStep.isActive,
-        });
-        router.refresh();
-      } catch (error) {
-        console.error("[sequences] falha ao salvar etapa", error);
-        setStepError(
-          error instanceof Error && error.message
-            ? error.message
-            : "Não foi possível salvar as alterações da etapa."
-        );
-      }
-    });
-  };
-
   if (!currentVersion) {
     return (
       <section className={styles.page} aria-labelledby="sequence-editor-empty">
@@ -1003,76 +1245,67 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
 
   return (
     <section className={styles.page} aria-labelledby="sequence-editor-title">
-      <header className={styles.pageHeader}>
-        <BreadcrumbsBar type={BreadcrumbsBar.types.NAVIGATION} className={styles.breadcrumbs}>
-          <BreadcrumbItem
-            text="← Todas as sequências"
-            isClickable
+      <header className={styles.topBar}>
+        <div className={styles.topBarMain}>
+          <button
+            type="button"
+            className={styles.backLink}
             onClick={() => router.push("/sequences")}
-          />
-        </BreadcrumbsBar>
+          >
+            <NavigationChevronLeft aria-hidden />
+            <span>Todas as sequências</span>
+          </button>
 
-        <div className={styles.headerContent}>
-          <div className={styles.headerIdentity}>
-            <Avatar
-              type={Avatar.types.TEXT}
-              size={Avatar.sizes.LARGE}
-              text={sequenceTitle.slice(0, 1).toUpperCase()}
-            />
-            <div className={styles.headerText}>
-              <div className={styles.headerTitleRow}>
-                <h1 id="sequence-editor-title">{sequenceTitle}</h1>
-                <Label
-                  kind={Label.kinds.FILL}
-                  color={Label.colors.PRIMARY}
-                  className={styles.statusBadge}
-                  text={sequenceStatusLabel[data.sequence.status]}
-                />
-              </div>
-              <div className={styles.headerMeta}>
-                <span>Versão atual #{currentVersion.versionNumber}</span>
-                <span>
-                  Alvo padrão: {data.sequence.defaultTargetType === "contact" ? "Contatos" : "Membros"}
-                </span>
-                {duePreview ? (
-                  <span>Próxima due estimada: {new Date(duePreview).toLocaleString("pt-BR")}</span>
-                ) : null}
-                <span>Seu perfil: {roleLabel[membershipRole]}</span>
-              </div>
-              <Text type={Text.types.TEXT2} className={styles.headerDescription}>
-                {data.sequence.description?.trim() ||
-                  "Organize a cadência de tarefas, defina regras de disparo e acompanhe inscrições em tempo real."}
-              </Text>
+          <div className={styles.titleGroup}>
+            <h1 id="sequence-editor-title">{sequenceTitle}</h1>
+            <div className={styles.titleMeta}>
+              <Label
+                kind={Label.kinds.FILL}
+                color={Label.colors.PRIMARY}
+                text={sequenceStatusLabel[data.sequence.status]}
+              />
+              <span>Versão #{currentVersion.versionNumber}</span>
+              <span>
+                Público: {data.sequence.defaultTargetType === "contact" ? "Contatos" : "Membros"}
+              </span>
+              <span>Perfil: {roleLabel[membershipRole]}</span>
+              {duePreview ? (
+                <span>Próxima due: {new Date(duePreview).toLocaleString("pt-BR")}</span>
+              ) : null}
             </div>
+            <Text type={Text.types.TEXT2} className={styles.titleDescription}>
+              {data.sequence.description?.trim() ||
+                "Crie uma cadência automatizada para organizar tarefas e notificações."}
+            </Text>
           </div>
+        </div>
 
-          <div className={styles.headerActions}>
-            <div className={styles.activationGroup}>
-              <div className={styles.activationToggle}>
-                <span className={styles.activationSideLabel}>Inativa</span>
-                <Toggle
-                  isSelected={sequenceActive}
-                  onChange={(value) => handleActivationToggle(value)}
-                  disabled={activationPending || isPending}
-                  ariaLabel="Alternar ativação da sequência"
-                />
-                <span className={styles.activationSideLabel}>Ativa</span>
-              </div>
-              <p className={styles.activationHint}>
-                {sequenceActive
-                  ? "Edições bloqueadas enquanto a sequência estiver ativa."
-                  : "Revise etapas e regras antes de ativar novamente."}
-              </p>
-              {activationError ? <p className={styles.activationError}>{activationError}</p> : null}
+        <div className={styles.topBarActions}>
+          <div className={styles.activationControl}>
+            <div className={styles.activationToggle}>
+              <span data-active={!sequenceActive}>Inativa</span>
+              <Toggle
+                isSelected={sequenceActive}
+                onChange={(value) => handleActivationToggle(value)}
+                disabled={activationPending || isPending}
+                ariaLabel="Alternar ativação da sequência"
+              />
+              <span data-active={sequenceActive}>Ativa</span>
             </div>
-            <Button
-              kind={Button.kinds.PRIMARY}
-              onClick={handleSaveSelectedStep}
-              disabled={disableStepActions || !hasStepDraftChanges}
-            >
-              Salvar sequência
-            </Button>
+            <p className={styles.activationHint}>
+              {sequenceActive
+                ? "Edições bloqueadas enquanto a sequência estiver ativa."
+                : "Revise etapas e regras antes de ativar novamente."}
+            </p>
+            {activationError ? <p className={styles.activationError}>{activationError}</p> : null}
           </div>
+          <Button
+            kind={Button.kinds.PRIMARY}
+            onClick={handleSaveSequence}
+            disabled={activationPending || isPending}
+          >
+            Salvar sequência
+          </Button>
         </div>
       </header>
 
@@ -1099,14 +1332,20 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
             <div className={styles.stepsColumn}>
               <div className={styles.stepsHeader}>
                 <div>
-                  <p className={styles.stepsTitle}>Etapas ({localSteps.length})</p>
+                  <p className={styles.stepsTitle}>Quando inscrito</p>
                   <span className={styles.stepsSubtitle}>
-                    Arraste para reordenar ou clique para visualizar detalhes.
+                    {localSteps.length} etapa(s) dão início à cadência desta sequência.
                   </span>
                 </div>
                 <Button
                   kind={Button.kinds.SECONDARY}
-                  onClick={() => openStepModal({ mode: "create", presetType: "general_task" })}
+                  onClick={() =>
+                    openStepModal({
+                      mode: "create",
+                      presetType: "general_task",
+                      position: { kind: "end" },
+                    })
+                  }
                   disabled={disableStepActions}
                 >
                   Adicionar etapa
@@ -1123,7 +1362,13 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                         key={template.id}
                         type="button"
                         className={styles.stepTemplateCard}
-                        onClick={() => openStepModal({ mode: "create", presetType: template.id })}
+                        onClick={() =>
+                          openStepModal({
+                            mode: "create",
+                            presetType: template.id,
+                            position: { kind: "end" },
+                          })
+                        }
                         disabled={disableStepActions}
                       >
                         <strong>{template.title}</strong>
@@ -1146,10 +1391,11 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                           disableActions={disableStepActions}
                           onSelect={(selected) => setSelectedStepId(selected.id)}
                           onToggle={handleToggle}
+                          onMenuAction={handleStepMenuAction}
                           onDuplicate={handleDuplicate}
                           onDelete={handleDelete}
-                          onAddBefore={(selected) => handleAddStepRelative(selected, "before")}
-                          onAddAfter={(selected) => handleAddStepRelative(selected, "after")}
+                          onAddBefore={(target) => handleAddStepRelative(target, "before")}
+                          onAddAfter={(target) => handleAddStepRelative(target, "after")}
                           onAddWait={handleAddWaitAfter}
                           onMoveUp={handleMoveStepUp}
                           onMoveDown={handleMoveStepDown}
@@ -1164,20 +1410,27 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
               <button
                 type="button"
                 className={styles.addStepLink}
-                onClick={() => openStepModal({ mode: "create", presetType: "general_task" })}
+                onClick={() =>
+                  openStepModal({
+                    mode: "create",
+                    presetType: "general_task",
+                    position: { kind: "end" },
+                  })
+                }
                 disabled={disableStepActions}
               >
-                + Adicionar
+                <Add aria-hidden />
+                Adicionar
               </button>
             </div>
 
             <aside className={styles.detailsColumn} aria-live="polite">
               {selectedStep ? (
-                <div className={styles.detailCard}>
-                  <header className={styles.detailHeader}>
-                    <div className={styles.detailHeaderText}>
+                <div className={styles.detailsPanel}>
+                  <header className={styles.detailsHeader}>
+                    <div>
                       <h2>{selectedStep.title}</h2>
-                      <span className={styles.detailSubtitle}>{STEP_TYPE_LABEL[selectedStep.type]}</span>
+                      <span className={styles.detailsSubtitle}>{STEP_TYPE_LABEL[selectedStep.type]}</span>
                     </div>
                     <Label
                       kind={Label.kinds.FILL}
@@ -1186,64 +1439,52 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                     />
                   </header>
 
-                  {stepError ? (
-                    <div className={styles.detailError} role="alert">
-                      {stepError}
-                    </div>
-                  ) : null}
-
                   <div className={styles.noteSection}>
                     <TextArea
                       value={noteDraft}
                       onChange={(event) => setNoteDraft(event.target.value)}
-                      disabled={disableStepActions}
+                      onBlur={() => handleNoteBlur(selectedStep, noteDraft)}
                       placeholder="Adicione a nota que aparecerá no lembrete desta tarefa."
-                      className={styles.detailTextarea}
                       aria-label="Nota da etapa selecionada"
+                      disabled={disableStepActions}
+                      className={styles.noteInput}
                     />
-                    <div className={styles.noteToolbar} role="toolbar" aria-label="Ferramentas de formatação">
-                      <button type="button" className={styles.noteToolbarButton} disabled>
-                        +
-                      </button>
-                      <button type="button" className={styles.noteToolbarButton} disabled>
-                        Aa
-                      </button>
-                      <button type="button" className={styles.noteToolbarButton} disabled>
-                        {}
-                      </button>
+                    <div className={styles.noteToolbar} aria-hidden>
+                      <Tooltip content="Inserir conteúdo" position="top">
+                        <button type="button" className={styles.toolbarButton} disabled={disableStepActions}>
+                          <Add aria-hidden />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="Formato de texto" position="top">
+                        <button type="button" className={styles.toolbarButton} disabled={disableStepActions}>
+                          <TextFormatting aria-hidden />
+                        </button>
+                      </Tooltip>
+                      <Tooltip content="Inserir código" position="top">
+                        <button type="button" className={styles.toolbarButton} disabled={disableStepActions}>
+                          <Code aria-hidden />
+                        </button>
+                      </Tooltip>
                     </div>
                   </div>
 
-                  <div className={styles.detailFooter}>
-                    <div className={styles.pauseRow}>
-                      <span>Pausar sequência até que a etapa seja marcada como concluída</span>
-                      <Toggle
-                        isSelected={pauseDraft}
-                        onChange={(value) => setPauseDraft(value)}
-                        disabled={disableStepActions}
-                        ariaLabel="Pausar sequência até concluir esta etapa"
-                      />
+                  <div className={styles.pauseRow}>
+                    <div className={styles.pauseCopy}>
+                      <span className={styles.pauseLabel}>Pausar sequência até que a etapa seja marcada como concluída</span>
+                      <p className={styles.pauseHint}>Os inscritos aguardam antes de avançar para a próxima etapa.</p>
                     </div>
-
-                    <div className={styles.detailActions}>
-                      <Button
-                        onClick={handleSaveSelectedStep}
-                        disabled={disableStepActions || !hasStepDraftChanges}
-                      >
-                        Salvar etapa
-                      </Button>
-                      <Button
-                        kind={Button.kinds.SECONDARY}
-                        onClick={() => openStepModal({ mode: "edit", step: selectedStep })}
-                        disabled={disableStepActions}
-                      >
-                        Editar etapa
-                      </Button>
-                    </div>
+                    <Toggle
+                      isSelected={selectedStep.pauseUntilDone}
+                      onChange={(value) => handlePauseToggleChange(selectedStep, value)}
+                      disabled={disableStepActions}
+                      ariaLabel="Pausar sequência até a conclusão desta etapa"
+                    />
                   </div>
                 </div>
               ) : (
-                <div className={styles.detailPlaceholder}>Selecione uma etapa para visualizar detalhes.</div>
+                <div className={styles.detailPlaceholder}>
+                  <Text type={Text.types.TEXT2}>Selecione uma etapa para visualizar os detalhes.</Text>
+                </div>
               )}
             </aside>
           </div>

@@ -1,4 +1,5 @@
 import type {
+  SequenceManagerCreator,
   SequenceManagerFilters,
   SequenceManagerItem,
   SequenceManagerRow,
@@ -21,7 +22,50 @@ function parseNumber(value: string | number | null | undefined) {
   return 0;
 }
 
+function toNumber(value: string | number | null | undefined) {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function normalizeCreator(row: SequenceManagerRow["created_by"]): SequenceManagerCreator | null {
+  if (!row) {
+    return null;
+  }
+
+  const name = row.display_name?.trim();
+  if (!name) {
+    return null;
+  }
+
+  return {
+    membershipId: row.membership_id,
+    name,
+    avatarUrl: row.avatar_url,
+  };
+}
+
 export function normalizeSequenceManagerRow(row: SequenceManagerRow): SequenceManagerItem {
+  const completionRate = parseNumber(row.completion_rate);
+  const totalEnrollments =
+    row.total_enrollments === null || row.total_enrollments === undefined
+      ? null
+      : parseNumber(row.total_enrollments);
+  const openRate = toNumber(row.open_rate);
+  const replyRate = toNumber(row.reply_rate);
+  const clickRate = toNumber(row.click_rate);
+  const estimatedDays = row.estimated_days ?? null;
+  const creator = normalizeCreator(row.created_by ?? null);
+
   return {
     id: row.sequence_id,
     orgId: row.org_id,
@@ -32,13 +76,16 @@ export function normalizeSequenceManagerRow(row: SequenceManagerRow): SequenceMa
     activeVersionNumber: row.active_version_number ?? 0,
     stepsTotal: row.steps_total ?? 0,
     activeEnrollments: row.active_enrollments ?? 0,
-    totalEnrollments: row.active_enrollments ?? 0,
+    totalEnrollments,
     durationDays: null,
-    openRate: null,
-    replyRate: null,
-    clickRate: null,
+    openRate,
+    replyRate,
+    clickRate,
     createdBy: null,
-    completionRate: parseNumber(row.completion_rate),
+    completionRate,
+    estimatedDays,
+    creator,
+    boardName: row.board_name ?? null,
     lastActivationAt: row.last_activation_at,
     updatedAt: row.updated_at,
     createdAt: row.created_at,
