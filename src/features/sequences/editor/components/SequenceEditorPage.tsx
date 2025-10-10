@@ -133,12 +133,15 @@ const STEP_TYPE_LABEL: Record<SequenceStepRecord["type"], string> = {
   call_task: "Tarefa de ligação",
 };
 
-const SortableStep: SortableStepComponent = (props) => {
-  const { step, index, isSelected, disableReorder, disableActions, onSelect, onToggle, onMenuAction } = props;
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
-    id: step.id,
-    disabled: disableReorder,
-  });
+const SortableStep: SortableStepComponent = ({
+  step,
+  index,
+  isSelected,
+  disableReorder,
+  disableActions,
+  onSelect,
+  onToggle,
+  onMenuAction,
   onDuplicate,
   onDelete,
   onAddBefore,
@@ -148,8 +151,11 @@ const SortableStep: SortableStepComponent = (props) => {
   onMoveDown,
   canMoveUp,
   canMoveDown,
-}: SortableStepProps) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: step.id, disabled: disableReorder });
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id: step.id,
+    disabled: disableReorder,
+  });
 
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
@@ -1181,8 +1187,6 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     () => localSteps.find((step) => step.id === selectedStepId) ?? null,
     [localSteps, selectedStepId]
   );
-
-  const [noteDraft, setNoteDraft] = useState("");
 
   useEffect(() => {
     if (selectedStep) {
