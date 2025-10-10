@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -255,6 +255,7 @@ export default function ContactsKanban({
 }: ContactsKanbanProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [optimisticStages, setOptimisticStages] = useState<Record<string, ContactStageId>>({});
+  const previousStageMapRef = useRef<Record<string, ContactStageId>>({});
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -278,6 +279,8 @@ export default function ContactsKanban({
   }, [contacts, optimisticStages]);
 
   useEffect(() => {
+    const previousStageMap = previousStageMapRef.current;
+
     setOptimisticStages((current) => {
       if (Object.keys(current).length === 0) {
         return current;
@@ -287,13 +290,30 @@ export default function ContactsKanban({
       const next: Record<string, ContactStageId> = { ...current };
       for (const [contactId, stageId] of Object.entries(current)) {
         const contact = contactMap.get(contactId);
-        if (!contact || contact.stage === stageId) {
+        if (!contact) {
           delete next[contactId];
           changed = true;
+          continue;
         }
+
+        if (contact.stage !== stageId) {
+          if (previousStageMap[contactId] === contact.stage) {
+            continue;
+          }
+          delete next[contactId];
+          changed = true;
+          continue;
+        }
+
+        delete next[contactId];
+        changed = true;
       }
       return changed ? next : current;
     });
+
+    previousStageMapRef.current = Object.fromEntries(
+      contacts.map((contact) => [contact.id, contact.stage] as const)
+    );
   }, [contacts]);
 
   const clearOptimisticStage = (contactId: string) => {
