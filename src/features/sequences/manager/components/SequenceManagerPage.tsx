@@ -1,7 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition, type ComponentType } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+  type ComponentType,
+  type HTMLAttributes,
+  type KeyboardEvent,
+} from "react";
 import clsx from "clsx";
 import {
   Avatar,
@@ -25,6 +33,7 @@ import {
   TableHeader,
   TableHeaderCell,
   TableRow,
+  type TableRowProps,
   TextField,
   Tooltip,
 } from "@vibe/core";
@@ -57,6 +66,10 @@ const STATUS_ORDER: Record<SequenceStatus, number> = {
   draft: 2,
   archived: 3,
 };
+
+const InteractiveTableRow = TableRow as ComponentType<
+  TableRowProps & HTMLAttributes<HTMLDivElement>
+>;
 
 type SortColumn =
   | "name"
@@ -440,27 +453,29 @@ export default function SequenceManagerPage({
                 size={IconButton.sizes.SMALL}
                 ariaLabel="Abrir documentação"
                 kind={IconButton.kinds.SECONDARY}
-                onClick={() => window.open("https://vibe.monday.com/?path=/docs/components-table--docs", "_blank")}
-              >
-                <LearnMore />
-              </IconButton>
+                icon={LearnMore}
+                onClick={() => {
+                  window.open("https://vibe.monday.com/?path=/docs/components-table--docs", "_blank");
+                }}
+              />
             </Tooltip>
             <Tooltip content="Enviar feedback">
               <IconButton
                 size={IconButton.sizes.SMALL}
                 ariaLabel="Enviar feedback"
                 kind={IconButton.kinds.SECONDARY}
-                onClick={() => router.push("/support/feedback?from=sequences")}
-              >
-                <Feedback />
-              </IconButton>
+                icon={Feedback}
+                onClick={() => {
+                  router.push("/support/feedback?from=sequences");
+                }}
+              />
             </Tooltip>
           </div>
         </div>
       </header>
 
       <div className={styles.toolbarWrapper}>
-        <div className={clsx(styles.sequence-manager_toolbar)} role="toolbar" aria-label="Controles de sequências">
+        <div className={clsx(styles["sequence-manager_toolbar"])} role="toolbar" aria-label="Controles de sequências">
           <div className={styles.toolbarLeft}>
             <Button
               kind={Button.kinds.PRIMARY}
@@ -554,14 +569,14 @@ export default function SequenceManagerPage({
               placeholder="Buscar por nome ou status"
               onChange={(value) => setFilters((prev) => ({ ...prev, search: value }))}
               className={styles.searchField}
-              ariaLabel="Buscar sequência"
+              inputAriaLabel="Buscar sequência"
             />
           </div>
         </div>
       </div>
 
       <div className={styles.tableSection}>
-        <div className={clsx(styles.sequence-table-card)}>
+        <div className={clsx(styles["sequence-table-card"])}>
           <div className={styles.tableScroll}>
             <Table
               columns={[
@@ -710,14 +725,14 @@ export default function SequenceManagerPage({
                   const boardLabel = item.boardName ?? "Contatos";
 
                   return (
-                    <TableRow
+                    <InteractiveTableRow
                       key={item.id}
                       className={styles.tableRow}
                       role="button"
                       tabIndex={0}
                       aria-label={`Abrir sequência ${item.name}`}
                       onClick={() => router.push(`/sequences/${item.id}`)}
-                      onKeyDown={(event) => {
+                      onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
                           router.push(`/sequences/${item.id}`);
@@ -778,7 +793,7 @@ export default function SequenceManagerPage({
                         {formatPercent(item.clickRate)}
                       </TableCell>
                       <TableCell className={styles.metricCell}>{formatDate(item.updatedAt)}</TableCell>
-                    </TableRow>
+                    </InteractiveTableRow>
                   );
                 })}
               </TableBody>

@@ -102,21 +102,15 @@ type SortableStepProps = {
   onMenuAction: (action: StepMenuAction, step: SequenceStepRecord) => void;
 };
 
+type SortableStepComponent = (props: SortableStepProps) => JSX.Element;
+
 const STEP_TYPE_LABEL: Record<SequenceStepRecord["type"], string> = {
   general_task: "Tarefa geral",
   call_task: "Tarefa de ligação",
 };
 
-function SortableStep({
-  step,
-  index,
-  isSelected,
-  disableReorder,
-  disableActions,
-  onSelect,
-  onToggle,
-  onMenuAction,
-}: SortableStepProps) {
+const SortableStep: SortableStepComponent = (props) => {
+  const { step, index, isSelected, disableReorder, disableActions, onSelect, onToggle, onMenuAction } = props;
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: step.id,
     disabled: disableReorder,
@@ -212,7 +206,7 @@ function SortableStep({
       </MenuButton>
     </article>
   );
-}
+};
 
 type StepModalProps = {
   open: boolean;
@@ -806,9 +800,11 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
         shortDescription: note,
         type: step.type,
         assigneeMode: step.assigneeMode,
+        assigneeMembershipId: step.assigneeMembershipId ?? null,
         dueOffsetDays: step.dueOffsetDays,
         dueOffsetHours: step.dueOffsetHours,
         priority: step.priority ?? "Normal",
+        tags: step.tags ?? [],
         channelHint: step.channelHint ?? "",
         pauseUntilDone: step.pauseUntilDone,
         isActive: step.isActive,
@@ -835,9 +831,11 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
         shortDescription: step.shortDescription ?? "",
         type: step.type,
         assigneeMode: step.assigneeMode,
+        assigneeMembershipId: step.assigneeMembershipId ?? null,
         dueOffsetDays: step.dueOffsetDays,
         dueOffsetHours: step.dueOffsetHours,
         priority: step.priority ?? "Normal",
+        tags: step.tags ?? [],
         channelHint: step.channelHint ?? "",
         pauseUntilDone: pause,
         isActive: step.isActive,

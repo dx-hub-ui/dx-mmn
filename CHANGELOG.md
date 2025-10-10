@@ -1,3 +1,13 @@
+# 2025-11-19
+
+### Fixed
+- Atualizamos os atalhos "Aprender mais" e "Enviar feedback" do manager de sequências para usar `IconButton.icon`, garantindo compatibilidade com o build Edge do Next.js e eliminando o erro de tipagem que impedia `pnpm run build`.
+- Tipamos `SortableStep` como componente constante e destruturamos as props antes de chamar `useSortable`, evitando que o parser Edge reporte `Expression expected` ao anotar o parâmetro diretamente na assinatura.
+
+### Documentation
+- Registramos no guia de sequências que os atalhos do cabeçalho devem utilizar `IconButton.icon` em vez de filhos diretos, evitando regressões de tipagem no Edge runtime.
+- Anotamos que o cartão arrastável do editor usa um tipo auxiliar para a função `SortableStep`, garantindo que o SWC do Edge interprete corretamente as props tipadas.
+
 # 2025-11-18
 
 ### Fixed
@@ -346,4 +356,5 @@
 ### Fixed
 - Corrigimos a troca de código PKCE em `/auth/callback` para usar a assinatura correta de `exchangeCodeForSession`, evitando falhas de build no fluxo de login por Magic Link.
 - Quando o Supabase não encontra `code_verifier` (ex.: link aberto em outro dispositivo), o callback agora ignora o erro e cai no `token_hash`, evitando o loop de autenticação ao validar magic links.
+- Ajustamos o componente `SortableStep` no editor de sequências para inicializar as props antes do hook `useSortable`, eliminando o erro de sintaxe que quebrava o build na Vercel.
 
