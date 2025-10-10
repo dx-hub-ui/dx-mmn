@@ -81,6 +81,7 @@
   - `Arrow` keys move cell focus when virtualization is enabled (`useTableKeyboardNavigation`).
   - `Enter` toggles edit mode, `Esc` cancels, `Cmd/Ctrl+S` commits inline edits.
 - Ensure color contrast ≥ 4.5:1; rely on tokens for dark mode compatibility.
+- Filter toolbars que funcionam como abas (ex.: `/tasks/my`) devem usar `<nav aria-label="…">` envolvendo um contêiner `role="tablist"` e atribuir `aria-controls` para um `role="tabpanel"` compartilhado. Gere ids estáveis com `useId` em vez de forçar atributos ARIA no `@vibe/core/Flex`, garantindo builds limpos e foco correto.
 
 ## 9. Responsiveness & Density
 - Breakpoints follow `--bp-sm: 640px`, `--bp-md: 960px`, `--bp-lg: 1280px`.
