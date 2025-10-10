@@ -1,160 +1,254 @@
 .page {
-  display: grid;
-  grid-template-rows: auto 1fr;
   min-height: calc(100dvh - var(--dx-top-bar-height));
-  background: var(--dx-bg, var(--application-surface-color));
+  background: var(--application-background-color);
+  padding: var(--page-padding-y) var(--page-padding-x);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dx-space-5);
 }
 
 .pageHeader {
-  padding: clamp(24px, 5vw, 40px);
-  border-bottom: 1px solid var(--dx-border, var(--layout-border-color));
+  background: var(--application-surface-color);
+  border: 1px solid var(--dx-border);
+  border-radius: var(--dx-radius-lg);
+  padding: clamp(24px, 4vw, 40px);
+  box-shadow: var(--shadow-md);
+}
+
+.pageHeaderContent {
   display: grid;
-  gap: 12px;
-  background: var(--dx-surface, var(--primary-background-color));
+  gap: var(--dx-space-3);
 }
 
 .pageTitle {
-  font-size: clamp(1.6rem, 2vw, 2rem);
-  font-weight: 700;
-  color: var(--dx-text, var(--text-color));
+  margin: 0;
+}
+
+.helperText {
+  margin: 0;
+  color: var(--secondary-text-color);
 }
 
 .pageBody {
-  padding: clamp(24px, 5vw, 40px);
-  display: grid;
-  gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dx-space-4);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dx-space-2);
 }
 
 .tabList {
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dx-space-2);
 }
 
 .tabButton {
   border-radius: 999px;
   border: 1px solid transparent;
-  padding: 8px 20px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  background: rgba(46, 69, 255, 0.08);
-  color: #2e45ff;
+  padding: 6px 18px;
+  font: var(--dx-font-text2-medium);
+  background: color-mix(in srgb, var(--dx-primary) 12%, transparent);
+  color: var(--dx-primary);
   cursor: pointer;
-  transition: background 180ms ease, border-color 180ms ease;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
-.tabButton[aria-pressed="true"] {
-  background: #2e45ff;
-  border-color: #2e45ff;
-  color: #ffffff;
+.tabButton:hover {
+  background: color-mix(in srgb, var(--dx-primary) 18%, transparent);
+}
+
+.tabButton[aria-selected="true"] {
+  background: var(--dx-primary);
+  color: var(--text-color-on-primary);
+  border-color: var(--dx-primary);
 }
 
 .tabButton:focus-visible {
-  outline: 2px solid #2e45ff;
+  outline: 2px solid var(--dx-primary);
   outline-offset: 2px;
 }
 
-.tableWrapper {
-  border: 1px solid var(--dx-border, var(--layout-border-color));
-  border-radius: var(--dx-radius-lg, 16px);
-  background: var(--dx-surface, var(--primary-background-color));
-  overflow: auto;
-  box-shadow: var(--shadow-sm, 0 8px 20px -18px rgba(15, 23, 42, 0.35));
+.errorBanner {
+  border-radius: var(--dx-radius-md);
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--negative-color) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--negative-color) 28%, transparent);
+  color: var(--negative-color);
+  font: var(--dx-font-text2-medium);
 }
 
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 840px;
+.tableRegion {
+  position: relative;
 }
 
-.table th,
-.table td {
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--dx-border, var(--layout-border-color));
-  text-align: left;
-  font-size: 0.95rem;
+.tableShell {
+  --table-row-alt-bg: rgba(103, 104, 121, 0.04);
+  background: var(--application-surface-color);
+  border: 1px solid var(--dx-border);
+  border-radius: var(--dx-radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
 }
 
-.table tbody tr:hover {
-  background: rgba(46, 69, 255, 0.05);
+.tableShell :global([data-vibe="Table"]) {
+  background: transparent;
+  height: 100%;
 }
 
-.statusPill {
+.tableShell :global([role="columnheader"]) {
+  font: var(--dx-font-text2-medium);
+  color: var(--secondary-text-color);
+}
+
+.tableShell :global([role="rowgroup"] > [role="row"] > [role="cell"]) {
+  font: var(--dx-font-text1-normal);
+  color: var(--dx-text);
+}
+
+.tableShell :global([role="rowgroup"] > [role="row"]:nth-of-type(even) > [role="cell"]) {
+  background: var(--table-row-alt-bg);
+}
+
+.tableShell :global([role="rowgroup"] > [role="row"]:hover > [role="cell"]) {
+  background: color-mix(in srgb, var(--dx-primary) 8%, transparent);
+}
+
+.tableShell :global([role="rowgroup"] > [role="row"][aria-selected="true"] > [role="cell"]) {
+  background: color-mix(in srgb, var(--dx-primary) 16%, transparent);
+  border-inline-start: 3px solid var(--dx-primary);
+}
+
+.tableRow {
+  transition: background 140ms ease;
+}
+
+.primaryCell {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 220px;
+}
+
+.primaryTitle {
+  font: var(--dx-font-text1-medium);
+  color: var(--dx-text);
+}
+
+.sequenceCell {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.sequenceName {
+  font: var(--dx-font-text2-medium);
+  color: var(--dx-text);
+}
+
+.metaCaption {
+  font: var(--dx-font-text3-normal);
+  color: var(--secondary-text-color);
+}
+
+.metaCell {
+  color: var(--dx-text);
+  font: var(--dx-font-text2-normal);
+  white-space: nowrap;
+}
+
+.statusCell {
+  justify-content: flex-start;
+}
+
+.statusBadge {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
   padding: 4px 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font: var(--dx-font-text3-medium);
   text-transform: capitalize;
 }
 
 .statusOpen {
-  background: rgba(46, 69, 255, 0.12);
-  color: #2e45ff;
+  background: color-mix(in srgb, var(--dx-primary) 20%, transparent);
+  color: var(--dx-primary);
 }
 
 .statusDone {
-  background: rgba(76, 175, 80, 0.18);
-  color: #2e7d32;
+  background: color-mix(in srgb, var(--positive-color) 20%, transparent);
+  color: var(--positive-color);
 }
 
 .statusSnoozed {
-  background: rgba(255, 195, 0, 0.18);
-  color: #c77f00;
+  background: color-mix(in srgb, var(--warning-color) 24%, transparent);
+  color: var(--warning-color);
 }
 
 .statusBlocked {
-  background: rgba(216, 58, 82, 0.18);
-  color: #b02135;
+  background: color-mix(in srgb, var(--negative-color) 20%, transparent);
+  color: var(--negative-color);
+}
+
+.signalsCell {
+  align-items: flex-start;
 }
 
 .flags {
   display: flex;
-  gap: 8px;
   flex-wrap: wrap;
+  gap: var(--dx-space-2);
 }
 
 .flag {
-  font-size: 0.75rem;
-  padding: 2px 8px;
+  padding: 2px 10px;
   border-radius: 999px;
-  background: rgba(103, 104, 121, 0.16);
-  color: var(--secondary-text-color, #676879);
+  background: color-mix(in srgb, var(--secondary-text-color) 18%, transparent);
+  color: var(--secondary-text-color);
+  font: var(--dx-font-text3-medium);
+}
+
+.actionsCell {
+  justify-content: flex-end;
 }
 
 .actions {
   display: flex;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: var(--dx-space-2);
+  width: 100%;
 }
 
-.errorBanner {
-  border-radius: var(--dx-radius-md, 12px);
-  padding: 12px 16px;
-  background: rgba(216, 58, 82, 0.12);
-  color: #b02135;
-  border: 1px solid rgba(216, 58, 82, 0.24);
-  font-size: 0.9rem;
+.actions :global(button) {
+  white-space: nowrap;
 }
 
-.emptyState {
-  padding: 32px;
-  text-align: left;
-  border: 1px dashed var(--dx-border, var(--layout-border-color));
-  border-radius: var(--dx-radius-lg, 16px);
-  background: rgba(15, 23, 42, 0.02);
-  display: grid;
-  gap: 12px;
+.tableErrorState {
+  padding: 24px;
+  text-align: center;
+  font: var(--dx-font-text2-medium);
+  color: var(--negative-color);
 }
 
-.helperText {
-  color: var(--secondary-text-color, #676879);
-  font-size: 0.9rem;
+.headerCellPrimary {
+  justify-content: flex-start;
 }
 
-@media (max-width: 900px) {
-  .table {
-    min-width: 680px;
+.headerCellEnd {
+  justify-content: flex-end;
+}
+
+@media (max-width: 960px) {
+  .pageHeader {
+    padding: 24px;
+  }
+
+  .primaryCell {
+    min-width: 180px;
   }
 }

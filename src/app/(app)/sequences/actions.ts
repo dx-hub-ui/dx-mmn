@@ -236,25 +236,53 @@ export type UpsertStepInput = {
   channelHint?: string | null;
   pauseUntilDone: boolean;
   isActive: boolean;
+  insertAtIndex?: number;
 };
 
 export async function upsertSequenceStepAction(input: UpsertStepInput) {
   const { supabase, membership } = await requireAuthContext();
 
   if (!input.stepId) {
-    const { data: lastStep, error: lastError } = await supabase
-      .from("sequence_steps")
-      .select("step_order")
-      .eq("sequence_version_id", input.versionId)
-      .order("step_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    let nextOrder = 1;
+    if (typeof input.insertAtIndex === "number" && input.insertAtIndex >= 0) {
+      const targetOrder = input.insertAtIndex + 1;
+      const { data: stepsToShift, error: shiftError } = await supabase
+        .from("sequence_steps")
+        .select("id, step_order")
+        .eq("sequence_version_id", input.versionId)
+        .gte("step_order", targetOrder)
+        .order("step_order", { ascending: false });
 
-    if (lastError) {
-      throw lastError;
+      if (shiftError) {
+        throw shiftError;
+      }
+
+      await Promise.all(
+        (stepsToShift ?? []).map((step) =>
+          supabase
+            .from("sequence_steps")
+            .update({ step_order: (step.step_order as number) + 1 })
+            .eq("id", step.id as string)
+            .eq("sequence_version_id", input.versionId)
+        )
+      );
+
+      nextOrder = targetOrder;
+    } else {
+      const { data: lastStep, error: lastError } = await supabase
+        .from("sequence_steps")
+        .select("step_order")
+        .eq("sequence_version_id", input.versionId)
+        .order("step_order", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (lastError) {
+        throw lastError;
+      }
+
+      nextOrder = lastStep ? (lastStep.step_order as number) + 1 : 1;
     }
-
-    const nextOrder = lastStep ? (lastStep.step_order as number) + 1 : 1;
 
     const { data: inserted, error: insertError } = await supabase
       .from("sequence_steps")

@@ -29,6 +29,19 @@ import {
   TextArea,
   Toggle,
   Tooltip,
+  MenuDivider,
+  MenuItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHeader,
+  TableHeaderCell,
+  TableRow,
+  Text,
+  TextArea,
+  Toggle,
+  type TableColumn,
 } from "@vibe/core";
 import { Add, Code, Drag, MoreActions, NavigationChevronLeft, TextFormatting } from "@vibe/icons";
 import { trackEvent } from "@/lib/telemetry";
@@ -80,6 +93,8 @@ type StepModalState = {
     dueOffsetHours: number;
     pauseUntilDone: boolean;
   }>;
+  anchorStepId?: string;
+  position?: "before" | "after";
 };
 
 type StepMenuAction =
@@ -100,6 +115,15 @@ type SortableStepProps = {
   onSelect: (step: SequenceStepRecord) => void;
   onToggle: (step: SequenceStepRecord, isActive: boolean) => void;
   onMenuAction: (action: StepMenuAction, step: SequenceStepRecord) => void;
+  onDuplicate: (step: SequenceStepRecord) => void;
+  onDelete: (step: SequenceStepRecord) => void;
+  onAddBefore: (step: SequenceStepRecord) => void;
+  onAddAfter: (step: SequenceStepRecord) => void;
+  onAddWait: (step: SequenceStepRecord) => void;
+  onMoveUp: (step: SequenceStepRecord) => void;
+  onMoveDown: (step: SequenceStepRecord) => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 };
 
 const STEP_TYPE_LABEL: Record<SequenceStepRecord["type"], string> = {
@@ -121,6 +145,17 @@ function SortableStep({
     id: step.id,
     disabled: disableReorder,
   });
+  onDuplicate,
+  onDelete,
+  onAddBefore,
+  onAddAfter,
+  onAddWait,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
+}: SortableStepProps) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: step.id, disabled: disableReorder });
 
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
@@ -210,6 +245,93 @@ function SortableStep({
           />
         </Menu>
       </MenuButton>
+      <div className={styles.stepCardInner}>
+        <button
+          type="button"
+          className={styles.dragHandle}
+          aria-label="Reordenar etapa"
+          {...attributes}
+          {...(disableReorder ? {} : listeners)}
+          disabled={disableReorder}
+        >
+          ⋮⋮
+        </button>
+        <div className={styles.stepCardContent}>
+          <div className={styles.stepTitleRow}>
+            <span className={styles.stepOrder}>{`${index + 1}.`}</span>
+            <div className={styles.stepTextGroup}>
+              <h3>{step.title.trim() || STEP_TYPE_LABEL[step.type]}</h3>
+              <p>{step.shortDescription?.trim() || "Sem descrição"}</p>
+            </div>
+          </div>
+          <span className={styles.stepType}>{STEP_TYPE_LABEL[step.type]}</span>
+        </div>
+        <MenuButton
+          className={styles.stepMenuButton}
+          ariaLabel={`Ações para ${step.title}`}
+          disabled={disableActions}
+          closeMenuOnItemClick
+          component={({ onClick }) => (
+            <button
+              type="button"
+              className={styles.stepMenuTrigger}
+              onClick={(event) => {
+                event.stopPropagation();
+                onClick(event);
+              }}
+              aria-label={`Abrir menu de ações da etapa ${index + 1}`}
+            >
+              ⋯
+            </button>
+          )}
+        >
+          <Menu>
+            <MenuItem
+              title="Adicionar tempo de espera"
+              disabled={disableActions}
+              onClick={() => onAddWait(step)}
+            />
+            <MenuItem
+              title={step.isActive ? "Desativar etapa" : "Ativar etapa"}
+              disabled={disableActions}
+              onClick={() => onToggle(step, !step.isActive)}
+            />
+            <MenuDivider />
+            <MenuItem
+              title="Adicionar etapa antes"
+              disabled={disableActions}
+              onClick={() => onAddBefore(step)}
+            />
+            <MenuItem
+              title="Adicionar etapa depois"
+              disabled={disableActions}
+              onClick={() => onAddAfter(step)}
+            />
+            <MenuDivider />
+            <MenuItem
+              title="Mover etapa para cima"
+              disabled={disableActions || !canMoveUp}
+              onClick={() => onMoveUp(step)}
+            />
+            <MenuItem
+              title="Mover etapa para baixo"
+              disabled={disableActions || !canMoveDown}
+              onClick={() => onMoveDown(step)}
+            />
+            <MenuDivider />
+            <MenuItem
+              title="Duplicar etapa"
+              disabled={disableActions}
+              onClick={() => onDuplicate(step)}
+            />
+            <MenuItem
+              title="Excluir etapa"
+              disabled={disableActions}
+              onClick={() => onDelete(step)}
+            />
+          </Menu>
+        </MenuButton>
+      </div>
     </article>
   );
 }
@@ -231,6 +353,9 @@ type StepModalProps = {
     pauseUntilDone: boolean;
     isActive: boolean;
   }, options: { state: StepModalState }) => Promise<void>;
+    anchorStepId?: string;
+    position?: "before" | "after";
+  }) => Promise<void>;
   pending: boolean;
   disabled: boolean;
 };
@@ -489,6 +614,14 @@ const ENROLLMENT_STATUS: Record<string, string> = {
   terminated: "Encerrada",
 };
 
+const ENROLLMENT_COLUMNS: TableColumn[] = [
+  { id: "targetId", title: "ID", loadingStateType: "medium-text" },
+  { id: "targetType", title: "Tipo", loadingStateType: "medium-text" },
+  { id: "status", title: "Status", loadingStateType: "medium-text" },
+  { id: "enrolledAt", title: "Inscrito em", loadingStateType: "long-text" },
+  { id: "actions", title: "Ações", loadingStateType: "circle" },
+];
+
 export default function SequenceEditorPage({ orgId, membershipId, membershipRole, data }: SequenceEditorPageProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("etapas");
@@ -498,10 +631,15 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   const [enrollmentTargetType, setEnrollmentTargetType] = useState<SequenceTargetType>("contact");
   const [enrollmentTargets, setEnrollmentTargets] = useState("");
   const [rulesNotes, setRulesNotes] = useState(data.currentVersion?.notes ?? "");
+  const [noteDraft, setNoteDraft] = useState("");
+  const [pauseDraft, setPauseDraft] = useState(false);
+  const [enrollmentBusy, setEnrollmentBusy] = useState(false);
+  const [enrollmentSort, setEnrollmentSort] = useState<{ column: string; direction: "asc" | "desc" } | null>(null);
   const [isPending, startTransition] = useTransition();
   const [sequenceActive, setSequenceActive] = useState(data.sequence.isActive);
   const [activationError, setActivationError] = useState<string | null>(null);
   const [activationPending, startActivationTransition] = useTransition();
+  const [stepError, setStepError] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -584,6 +722,16 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
       return;
     }
 
+    const anchorIndex = values.anchorStepId
+      ? localSteps.findIndex((step) => step.id === values.anchorStepId)
+      : -1;
+    const insertAtIndex =
+      !values.id && values.position && anchorIndex >= 0
+        ? values.position === "before"
+          ? anchorIndex
+          : anchorIndex + 1
+        : null;
+
     startTransition(async () => {
       const newStepId = await upsertSequenceStepAction({
         sequenceId: data.sequence.id,
@@ -599,6 +747,7 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
         channelHint: values.channelHint,
         pauseUntilDone: values.pauseUntilDone,
         isActive: values.isActive,
+        insertAtIndex: insertAtIndex ?? undefined,
       });
 
       if (!values.id && state.position && newStepId) {
@@ -673,6 +822,41 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     });
   };
 
+  const moveStep = (step: SequenceStepRecord, direction: "up" | "down") => {
+    const currentIndex = localSteps.findIndex((item) => item.id === step.id);
+    if (currentIndex === -1) {
+      return;
+    }
+
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= localSteps.length) {
+      return;
+    }
+
+    const reordered = arrayMove(localSteps, currentIndex, targetIndex).map((item, index) => ({
+      ...item,
+      order: index + 1,
+    }));
+
+    setLocalSteps(reordered);
+
+    if (!currentVersion || sequenceActive) {
+      return;
+    }
+
+    startTransition(async () => {
+      await reorderSequenceStepsAction(
+        data.sequence.id,
+        currentVersion.id,
+        reordered.map((item) => item.id)
+      );
+      router.refresh();
+    });
+  };
+
+  const handleMoveStepUp = (step: SequenceStepRecord) => moveStep(step, "up");
+  const handleMoveStepDown = (step: SequenceStepRecord) => moveStep(step, "down");
+
   const openStepModal = (state: StepModalState) => {
     if (disableStepActions) {
       return;
@@ -687,6 +871,19 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     startTransition(async () => {
       await duplicateSequenceStepAction(data.sequence.id, step.id);
       router.refresh();
+    });
+  };
+
+  const handleAddStepRelative = (step: SequenceStepRecord, position: "before" | "after") => {
+    openStepModal({ mode: "create", presetType: step.type, anchorStepId: step.id, position });
+  };
+
+  const handleAddWaitAfter = (step: SequenceStepRecord) => {
+    openStepModal({
+      mode: "create",
+      presetType: step.type,
+      anchorStepId: step.id,
+      position: "after",
     });
   };
 
@@ -951,10 +1148,15 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
       .map((value) => value.trim())
       .filter(Boolean);
 
+    setEnrollmentBusy(true);
     startTransition(async () => {
-      await enrollTargetsAction(data.sequence.id, currentVersion.id, enrollmentTargetType, targets);
-      setEnrollmentTargets("");
-      router.refresh();
+      try {
+        await enrollTargetsAction(data.sequence.id, currentVersion.id, enrollmentTargetType, targets);
+        setEnrollmentTargets("");
+        router.refresh();
+      } finally {
+        setEnrollmentBusy(false);
+      }
     });
   };
 
@@ -999,6 +1201,49 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   const disableStepActions = sequenceActive || isPending || activationPending;
   const disableRulesForm = sequenceActive || activationPending;
   const disableEnrollmentForm = sequenceActive || activationPending;
+  const hasStepDraftChanges =
+    Boolean(selectedStep) &&
+    (noteDraft !== (selectedStep?.shortDescription ?? "") || pauseDraft !== (selectedStep?.pauseUntilDone ?? false));
+
+  const handleSaveSelectedStep = () => {
+    if (!selectedStep || !currentVersion) {
+      return;
+    }
+
+    if (sequenceActive) {
+      return;
+    }
+
+    setStepError(null);
+
+    startTransition(async () => {
+      try {
+        await upsertSequenceStepAction({
+          sequenceId: data.sequence.id,
+          versionId: currentVersion.id,
+          stepId: selectedStep.id,
+          title: selectedStep.title,
+          shortDescription: noteDraft,
+          type: selectedStep.type,
+          assigneeMode: selectedStep.assigneeMode,
+          dueOffsetDays: selectedStep.dueOffsetDays,
+          dueOffsetHours: selectedStep.dueOffsetHours,
+          priority: selectedStep.priority ?? undefined,
+          channelHint: selectedStep.channelHint ?? undefined,
+          pauseUntilDone: pauseDraft,
+          isActive: selectedStep.isActive,
+        });
+        router.refresh();
+      } catch (error) {
+        console.error("[sequences] falha ao salvar etapa", error);
+        setStepError(
+          error instanceof Error && error.message
+            ? error.message
+            : "Não foi possível salvar as alterações da etapa."
+        );
+      }
+    });
+  };
 
   if (!currentVersion) {
     return (
@@ -1122,7 +1367,7 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
 
               {localSteps.length === 0 ? (
                 <div className={styles.stepsEmpty}>
-                  <h3>Adicione o primeiro passo</h3>
+                  <h3>Adicione a primeira etapa</h3>
                   <p>Escolha um template e personalize a cadência conforme a sua operação.</p>
                   <div className={styles.stepTemplates}>
                     {STEP_TEMPLATES.map((template) => (
@@ -1344,8 +1589,8 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
             <form className={styles.inlineForm} onSubmit={handleEnroll}>
               <fieldset
                 className={styles.inlineFieldset}
-                disabled={disableEnrollmentForm}
-                aria-disabled={disableEnrollmentForm}
+                disabled={disableEnrollmentForm || enrollmentBusy}
+                aria-disabled={disableEnrollmentForm || enrollmentBusy}
               >
                 <div className={styles.formField}>
                   <label htmlFor="enrollment-type">Tipo de alvo</label>
@@ -1367,46 +1612,82 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                     placeholder="ex: cont-1, cont-2"
                   />
                 </div>
-                <Button type="submit" disabled={disableEnrollmentForm || isPending}>
+                <Button type="submit" disabled={disableEnrollmentForm || enrollmentBusy}>
                   Inscrever
                 </Button>
               </fieldset>
             </form>
 
-            {data.enrollments.length === 0 ? (
-              <EmptyState
-                title="Adicione pessoas a esta sequência"
-                description="Selecione contatos manualmente ou deixe as automações trazerem novas inscrições."
-              />
-            ) : (
-              <table className={styles.enrollmentsTable} aria-label="Inscrições ativas">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Tipo</th>
-                    <th>Status</th>
-                    <th>Inscrito em</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.enrollments.map((enrollment) => (
-                    <tr key={enrollment.id}>
-                      <td>{enrollment.targetId}</td>
-                      <td>{enrollment.targetType === "contact" ? "Contato" : "Membro"}</td>
-                      <td>{ENROLLMENT_STATUS[enrollment.status]}</td>
-                      <td>{new Date(enrollment.enrolledAt).toLocaleString("pt-BR")}</td>
-                      <td>
+            <TableContainer className={styles.enrollmentsTableShell}>
+              <Table
+                columns={ENROLLMENT_COLUMNS}
+                dataState={{ isLoading: enrollmentBusy }}
+                emptyState={
+                  <EmptyState
+                    title="Adicione pessoas a esta sequência"
+                    description="Selecione contatos manualmente ou deixe as automações trazerem novas inscrições."
+                  />
+                }
+                errorState={
+                  <EmptyState
+                    title="Não foi possível carregar as inscrições"
+                    description="Atualize a página e tente novamente."
+                  />
+                }
+                withoutBorder
+              >
+                <TableHeader>
+                  <TableRow>
+                    {ENROLLMENT_COLUMNS.map((column) => (
+                      <TableHeaderCell
+                        key={column.id}
+                        title={column.title}
+                        sortState={
+                          column.id !== "actions"
+                            ? enrollmentSort?.column === column.id
+                              ? enrollmentSort.direction
+                              : "none"
+                            : undefined
+                        }
+                        onSortClicked={
+                          column.id !== "actions"
+                            ? (direction) =>
+                                setEnrollmentSort(
+                                  direction === "none"
+                                    ? null
+                                    : { column: column.id, direction }
+                                )
+                            : undefined
+                        }
+                      />
+                    ))}
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  {sortedEnrollments.map((enrollment) => (
+                    <TableRow key={enrollment.id}>
+                      <TableCell>{enrollment.targetId}</TableCell>
+                      <TableCell>{enrollment.targetType === "contact" ? "Contato" : "Membro"}</TableCell>
+                      <TableCell>{ENROLLMENT_STATUS[enrollment.status]}</TableCell>
+                      <TableCell>{new Date(enrollment.enrolledAt).toLocaleString("pt-BR")}</TableCell>
+                      <TableCell>
                         <div className={styles.enrollmentActions}>
                           {enrollment.status !== "paused" ? (
                             <Button
                               kind={Button.kinds.TERTIARY}
-                              onClick={() =>
+                              onClick={() => {
+                                setEnrollmentBusy(true);
                                 startTransition(async () => {
-                                  await pauseEnrollmentAction(data.sequence.id, enrollment.id);
-                                  router.refresh();
-                                })
-                              }
+                                  try {
+                                    await pauseEnrollmentAction(data.sequence.id, enrollment.id);
+                                    router.refresh();
+                                  } finally {
+                                    setEnrollmentBusy(false);
+                                  }
+                                });
+                              }}
+                              disabled={disableEnrollmentForm || enrollmentBusy}
                             >
                               Pausar
                             </Button>
@@ -1414,34 +1695,46 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                           {enrollment.status === "paused" ? (
                             <Button
                               kind={Button.kinds.TERTIARY}
-                              onClick={() =>
+                              onClick={() => {
+                                setEnrollmentBusy(true);
                                 startTransition(async () => {
-                                  await resumeEnrollmentAction(data.sequence.id, enrollment.id);
-                                  router.refresh();
-                                })
-                              }
+                                  try {
+                                    await resumeEnrollmentAction(data.sequence.id, enrollment.id);
+                                    router.refresh();
+                                  } finally {
+                                    setEnrollmentBusy(false);
+                                  }
+                                });
+                              }}
+                              disabled={disableEnrollmentForm || enrollmentBusy}
                             >
                               Retomar
                             </Button>
                           ) : null}
                           <Button
                             kind={Button.kinds.TERTIARY}
-                            onClick={() =>
+                            onClick={() => {
+                              setEnrollmentBusy(true);
                               startTransition(async () => {
-                                await removeEnrollmentAction(data.sequence.id, enrollment.id);
-                                router.refresh();
-                              })
-                            }
+                                try {
+                                  await removeEnrollmentAction(data.sequence.id, enrollment.id);
+                                  router.refresh();
+                                } finally {
+                                  setEnrollmentBusy(false);
+                                }
+                              });
+                            }}
+                            disabled={disableEnrollmentForm || enrollmentBusy}
                           >
                             Encerrar
                           </Button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            )}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </div>
         ) : null}
       </div>

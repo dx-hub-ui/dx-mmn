@@ -25,6 +25,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   let profileTheme: ThemePreference | null = null;
   let userId: string | null = null;
+  let orgId: string | null = null;
 
   try {
     const supabase = createSupabaseServerClient();
@@ -46,6 +47,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         const meta = (profileRow.raw_user_meta_data ?? {}) as Record<string, unknown>;
         profileTheme = themePreferenceFromString(meta?.theme_preference);
       }
+
+      const { data: membershipRow } = await supabase
+        .from("memberships")
+        .select("organization_id, status")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (membershipRow?.organization_id) {
+        orgId = membershipRow.organization_id;
+        setServerRequestContext({ orgId });
+      }
     }
   } catch (error) {
     captureException(error);
@@ -66,7 +81,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           context={{
             requestId,
             userId,
-            orgId: null,
+            orgId,
           }}
         >
           <Suspense fallback={null}>{children}</Suspense>

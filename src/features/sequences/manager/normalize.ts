@@ -65,6 +65,12 @@ export function normalizeSequenceManagerRow(row: SequenceManagerRow): SequenceMa
     activeVersionNumber: row.active_version_number ?? 0,
     stepsTotal: row.steps_total ?? 0,
     activeEnrollments: row.active_enrollments ?? 0,
+    totalEnrollments: row.active_enrollments ?? 0,
+    durationDays: null,
+    openRate: null,
+    replyRate: null,
+    clickRate: null,
+    createdBy: null,
     completionRate: parseNumber(row.completion_rate),
     totalEnrollments: parseNumber(row.total_enrollments) ?? 0,
     openRate: toNumber(row.open_rate),
@@ -89,11 +95,7 @@ function matchesSearch(item: SequenceManagerItem, term: string) {
     return true;
   }
 
-  return (
-    item.name.toLowerCase().includes(normalizedTerm) ||
-    item.status.toLowerCase().includes(normalizedTerm) ||
-    item.targetType.toLowerCase().includes(normalizedTerm)
-  );
+  return item.name.toLowerCase().includes(normalizedTerm);
 }
 
 function matchesStatus(item: SequenceManagerItem, status: SequenceStatus | "todos") {
