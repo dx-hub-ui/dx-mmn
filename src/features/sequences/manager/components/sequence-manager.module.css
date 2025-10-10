@@ -211,16 +211,16 @@
   gap: 16px;
 }
 
-.modalFieldset {
-  margin: 0;
-  padding: 0;
-  border: none;
-  display: grid;
-  gap: 8px;
+.table:global(.sequence-table) th {
+  font: var(--dx-font-text2-medium);
+  color: var(--dx-text);
+  background: var(--primary-background-color);
 }
 
-.modalFieldset[disabled] {
-  opacity: 0.7;
+.table:global(.sequence-table) tr,
+.table:global(.sequence-table) [role="row"] {
+  font: var(--dx-font-text2-normal);
+  color: var(--dx-text);
 }
 
 .modalHint {
@@ -340,3 +340,4 @@
     margin-left: 0;
   }
 }
+

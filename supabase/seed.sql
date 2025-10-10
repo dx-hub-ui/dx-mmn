@@ -28,6 +28,53 @@ UPDATE public.memberships
 SET parent_leader_id = 'bbbb2222-bbbb-2222-bbbb-222222222222'
 WHERE id IN ('cccc3333-cccc-3333-cccc-333333333333', 'dddd4444-dddd-4444-dddd-444444444444');
 
+-- Notification preferences
+INSERT INTO public.user_preferences (org_id, user_id, email_on_mention_weekly, timezone)
+VALUES
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', TRUE, 'America/Sao_Paulo'),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '22222222-2222-2222-2222-222222222222', TRUE, 'America/Sao_Paulo'),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '33333333-3333-3333-3333-333333333333', TRUE, 'America/Fortaleza'),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '44444444-4444-4444-4444-444444444444', FALSE, 'America/Sao_Paulo')
+ON CONFLICT (org_id, user_id)
+DO UPDATE SET
+  email_on_mention_weekly = EXCLUDED.email_on_mention_weekly,
+  timezone = EXCLUDED.timezone;
+
+-- Sample notifications
+INSERT INTO public.notifications (
+  id,
+  org_id,
+  user_id,
+  type,
+  source_type,
+  source_id,
+  actor_id,
+  title,
+  snippet,
+  link,
+  status,
+  created_at
+)
+VALUES
+  ('aaaa0000-1111-2222-3333-444444444444', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '33333333-3333-3333-3333-333333333333', 'mention', 'comment', '20000000-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'Ana comentou em Maria Lima', '"@rep1 precisamos atualizar a proposta até amanhã"', 'https://app.local/contacts/10000000-0000-0000-0000-000000000001?comment=20000000-0000-0000-0000-000000000002', 'unread', timezone('utc', now()) - interval '2 days'),
+  ('bbbb0000-1111-2222-3333-555555555555', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '33333333-3333-3333-3333-333333333333', 'assignment', 'card', '10000000-0000-0000-0000-000000000003', '22222222-2222-2222-2222-222222222222', 'Você foi atribuído ao contato Ana Souza', 'Check-list atualizado por @leader', 'https://app.local/crm/10000000-0000-0000-0000-000000000003', 'unread', timezone('utc', now()) - interval '4 days'),
+  ('cccc0000-1111-2222-3333-666666666666', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '22222222-2222-2222-2222-222222222222', 'mention', 'comment', '20000000-0000-0000-0000-000000000005', '33333333-3333-3333-3333-333333333333', 'Rep One mencionou você em Ana Souza', '"@leader reunião confirmada para terça"', 'https://app.local/contacts/10000000-0000-0000-0000-000000000003?comment=20000000-0000-0000-0000-000000000005', 'read', timezone('utc', now()) - interval '6 days'),
+  ('dddd0000-1111-2222-3333-777777777777', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '33333333-3333-3333-3333-333333333333', 'mention', 'comment', '20000000-0000-0000-0000-000000000004', '44444444-4444-4444-4444-444444444444', 'Rep Two respondeu você', '"@rep1 segue o material que pediu"', 'https://app.local/contacts/10000000-0000-0000-0000-000000000003?comment=20000000-0000-0000-0000-000000000004', 'read', timezone('utc', now()) - interval '1 day')
+ON CONFLICT (id) DO NOTHING;
+
+-- Notification counters
+INSERT INTO public.notification_counters (org_id, user_id, unread_count)
+VALUES
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '33333333-3333-3333-3333-333333333333', 2),
+  ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '22222222-2222-2222-2222-222222222222', 0)
+ON CONFLICT (org_id, user_id) DO UPDATE SET unread_count = EXCLUDED.unread_count;
+
+-- Notification mutes demo
+INSERT INTO public.notification_mutes (id, org_id, user_id, scope, type)
+VALUES
+  ('eeee0000-1111-2222-3333-888888888888', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '22222222-2222-2222-2222-222222222222', 'type', 'automation')
+ON CONFLICT (id) DO NOTHING;
+
 -- Contacts distributed across memberships
 INSERT INTO public.contacts (
   id,

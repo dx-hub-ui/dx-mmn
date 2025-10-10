@@ -19,10 +19,33 @@ export function createSupabaseServerClient() {
         return store.get(name)?.value;
       },
       set(name: string, value: string, options: any) {
-        store.set({ name, value, ...options });
+        try {
+          store.set({ name, value, ...options });
+        } catch (error) {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn(
+              "[createSupabaseServerClient] Ignoring cookie mutation (set) outside of a Server Action/Route Handler.",
+              error
+            );
+          }
+        }
       },
       remove(name: string, options: any) {
-        store.set({ name, value: "", ...options });
+        try {
+          if (typeof (store as any).delete === "function") {
+            (store as any).delete({ name, ...options });
+            return;
+          }
+
+          store.set({ name, value: "", ...options });
+        } catch (error) {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn(
+              "[createSupabaseServerClient] Ignoring cookie mutation (remove) outside of a Server Action/Route Handler.",
+              error
+            );
+          }
+        }
       },
     },
   });

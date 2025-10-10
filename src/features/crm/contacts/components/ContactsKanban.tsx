@@ -10,9 +10,12 @@ import {
   useSensor,
   useSensors,
   KeyboardSensor,
+  closestCorners,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { Button } from "@vibe/core";
+import { Button, IconButton, Menu, MenuButton, MenuItem } from "@vibe/core";
+import { Add, Column, MoreActions } from "@vibe/icons";
+import clsx from "clsx";
 import {
   CONTACT_STAGES,
   ContactRecord,
@@ -25,12 +28,16 @@ type ContactsKanbanProps = {
   contacts: ContactRecord[];
   onStageChange: (contactId: string, stage: ContactStageId) => void;
   onOpenContact: (contactId: string) => void;
+  onAddContact?: (stage: ContactStageId) => void;
+  onConfigureColumn?: (stage: ContactStageId) => void;
 };
 
 type KanbanColumnProps = {
   stage: ContactStageDefinition;
   contacts: ContactRecord[];
   onOpenContact: (contactId: string) => void;
+  onAddContact?: (stage: ContactStageId) => void;
+  onConfigureColumn?: (stage: ContactStageId) => void;
 };
 
 type KanbanCardProps = {
@@ -38,22 +45,85 @@ type KanbanCardProps = {
   onOpenContact: (contactId: string) => void;
 };
 
-function StageColumn({ stage, contacts, onOpenContact }: KanbanColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({ id: stage.id });
+function StageColumn({ stage, contacts, onOpenContact, onAddContact, onConfigureColumn }: KanbanColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: stage.id, data: { stageId: stage.id } });
+
+  const handleAddContact = () => {
+    onAddContact?.(stage.id);
+  };
+
+  const handleConfigureColumn = () => {
+    onConfigureColumn?.(stage.id);
+  };
+
   return (
     <section
       ref={setNodeRef}
       className={styles.column}
       aria-label={`Coluna ${stage.label}`}
       data-over={isOver || undefined}
+      data-tone={stage.tone}
     >
       <header className={styles.columnHeader}>
-        <span>{stage.label}</span>
-        <span>{contacts.length}</span>
+        <div className={styles.columnHeaderInfo}>
+          <span className={styles.columnTitle}>{stage.label}</span>
+          <span className={styles.columnCount}>{contacts.length}</span>
+        </div>
+        <div className={styles.columnActions}>
+          <MenuButton
+            ariaLabel={`Abrir opções da coluna ${stage.label}`}
+            dialogPosition={MenuButton.dialogPositions.BOTTOM_END}
+            dialogClassName={styles.columnMenu}
+            closeMenuOnItemClick
+            tooltipContent={`Opções de ${stage.label}`}
+            component={() => (
+              <IconButton
+                icon={MoreActions}
+                className={styles.columnActionButton}
+                kind={IconButton.kinds.TERTIARY}
+                size={IconButton.sizes.SMALL}
+                tabIndex={-1}
+                aria-hidden="true"
+              />
+            )}
+          >
+            <Menu>
+              <MenuItem
+                icon={Add}
+                title="Adicionar novo contato"
+                onClick={handleAddContact}
+                disabled={!onAddContact}
+              />
+              <MenuItem
+                icon={Column}
+                title="Definir limite da coluna"
+                onClick={handleConfigureColumn}
+                disabled={!onConfigureColumn}
+              />
+            </Menu>
+          </MenuButton>
+          <IconButton
+            icon={Add}
+            ariaLabel={`Adicionar contato em ${stage.label}`}
+            className={styles.columnActionButton}
+            kind={IconButton.kinds.PRIMARY}
+            size={IconButton.sizes.SMALL}
+            tooltipContent={`Adicionar contato em ${stage.label}`}
+            onClick={handleAddContact}
+            disabled={!onAddContact}
+          />
+        </div>
       </header>
       <div className={styles.columnBody} role="list">
         {contacts.length === 0 ? (
-          <div className={styles.columnEmpty}>Arraste contatos para este estágio</div>
+          <button
+            type="button"
+            className={styles.columnEmpty}
+            onClick={handleAddContact}
+            disabled={!onAddContact}
+          >
+            {onAddContact ? "Adicionar contato" : "Arraste contatos para este estágio"}
+          </button>
         ) : (
           contacts.map((contact) => (
             <KanbanCard key={contact.id} contact={contact} onOpenContact={onOpenContact} />
@@ -83,7 +153,7 @@ function KanbanCard({ contact, onOpenContact }: KanbanCardProps) {
   return (
     <article
       ref={setNodeRef}
-      className={`${styles.card}${isDragging ? ` ${styles.dragging}` : ""}`}
+      className={clsx(styles.card, isDragging && styles.dragging)}
       style={style}
       {...draggableProps}
     >
@@ -118,7 +188,13 @@ function KanbanCard({ contact, onOpenContact }: KanbanCardProps) {
   );
 }
 
-export default function ContactsKanban({ contacts, onStageChange, onOpenContact }: ContactsKanbanProps) {
+export default function ContactsKanban({
+  contacts,
+  onStageChange,
+  onOpenContact,
+  onAddContact,
+  onConfigureColumn,
+}: ContactsKanbanProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -144,7 +220,7 @@ export default function ContactsKanban({ contacts, onStageChange, onOpenContact 
       return;
     }
     const contactId = String(active.id);
-    const targetStage = over.id as ContactStageId;
+    const targetStage = (over.data?.current?.stageId ?? over.id) as ContactStageId;
     const contact = contacts.find((item) => item.id === contactId);
     if (!contact || contact.stage === targetStage) {
       return;
@@ -153,7 +229,7 @@ export default function ContactsKanban({ contacts, onStageChange, onOpenContact 
   };
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
       <div className={styles.board}>
         {CONTACT_STAGES.map((stage) => (
           <StageColumn
@@ -161,6 +237,8 @@ export default function ContactsKanban({ contacts, onStageChange, onOpenContact 
             stage={stage}
             contacts={grouped.get(stage.id) ?? []}
             onOpenContact={onOpenContact}
+            onAddContact={onAddContact}
+            onConfigureColumn={onConfigureColumn}
           />
         ))}
       </div>

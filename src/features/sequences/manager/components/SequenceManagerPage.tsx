@@ -280,6 +280,10 @@ export default function SequenceManagerPage({
     router.replace("/sequences", { scroll: false });
   }, [autoOpenNewModal, router]);
 
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
   const handleOpenModal = () => {
     setCreateError(null);
     setNewSequenceName("");
@@ -552,13 +556,12 @@ export default function SequenceManagerPage({
               }
             >
               <Button
-                kind={filtersDialogOpen ? Button.kinds.PRIMARY : Button.kinds.SECONDARY}
-                leftIcon="Filter"
-                onClick={() => setFiltersDialogOpen((prev) => !prev)}
-                aria-haspopup="dialog"
-                aria-expanded={filtersDialogOpen}
+                kind={Button.kinds.SECONDARY}
+                leftIcon="Help"
+                className={styles.utilityButton}
+                aria-label="Aprender mais sobre sequências"
               >
-                Filtrar
+                Aprender mais
               </Button>
             </PopoverDialog>
           </div>

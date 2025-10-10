@@ -1,0 +1,34 @@
+.modal {
+  width: clamp(360px, 60vw, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.timezoneTrigger {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.menuList {
+  max-height: 240px;
+  overflow-y: auto;
+}

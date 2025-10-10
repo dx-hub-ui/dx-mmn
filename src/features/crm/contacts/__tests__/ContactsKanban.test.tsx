@@ -32,14 +32,44 @@ const contacts: ContactRecord[] = [
 
 const stageChange = vi.fn();
 const openContact = vi.fn();
+const addContact = vi.fn();
 
 describe("ContactsKanban", () => {
   it("renderiza colunas e permite abrir contato", () => {
-    render(<ContactsKanban contacts={contacts} onStageChange={stageChange} onOpenContact={openContact} />);
+    render(
+      <ContactsKanban
+        contacts={contacts}
+        onStageChange={stageChange}
+        onOpenContact={openContact}
+        onAddContact={addContact}
+      />
+    );
     expect(screen.getByText(/Novo/)).toBeInTheDocument();
     const nameButton = screen.getByText(/Maria Teste/).closest("button");
     expect(nameButton).toBeTruthy();
     fireEvent.click(nameButton!);
     expect(openContact).toHaveBeenCalledWith("1");
+  });
+
+  it("permite adicionar contato pela coluna", async () => {
+    render(
+      <ContactsKanban
+        contacts={contacts}
+        onStageChange={stageChange}
+        onOpenContact={openContact}
+        onAddContact={addContact}
+      />
+    );
+
+    const addButton = screen.getByRole("button", { name: /Adicionar contato em Novo/i });
+    fireEvent.click(addButton);
+    expect(addContact).toHaveBeenCalledWith("novo");
+
+    const menuButton = screen.getByRole("button", { name: /Abrir opções da coluna Novo/i });
+    fireEvent.click(menuButton);
+
+    const menuItem = await screen.findByRole("menuitem", { name: /Adicionar novo contato/i });
+    fireEvent.click(menuItem);
+    expect(addContact).toHaveBeenCalledWith("novo");
   });
 });

@@ -3,6 +3,7 @@ import { renderEmail, EmailRecipient } from "@/lib/email";
 import { getMailProvider } from "@/lib/email/provider";
 import { TransactionalLayout } from "../../../emails/TransactionalLayout";
 import { trackServerEvent } from "@/lib/analytics/track";
+import { WeeklyMentionsDigest } from "../../../emails/WeeklyMentionsDigest";
 
 export type NotificationContext = {
   orgId?: string | null;
@@ -140,6 +141,58 @@ export async function sendPasswordlessMagicLink({ to, magicLink, orgId, userId, 
         </p>
         <p>Este link expira em 15 minutos.</p>
       </>
+    ),
+  });
+}
+
+export type WeeklyDigestSection = {
+  label: string;
+  items: {
+    id: string;
+    title: string | null;
+    snippet: string | null;
+    link: string | null;
+    actorName: string;
+    createdAt: string;
+  }[];
+};
+
+export async function sendWeeklyMentionDigestEmail({
+  to,
+  orgId,
+  userId,
+  requestId,
+  timezone,
+  sections,
+}: {
+  to: EmailRecipient;
+  orgId: string;
+  userId: string;
+  requestId?: string | null;
+  timezone: string;
+  sections: WeeklyDigestSection[];
+}) {
+  const totalMentions = sections.reduce((sum, section) => sum + section.items.length, 0);
+  const subject =
+    totalMentions === 1
+      ? "Você teve 1 menção nesta semana"
+      : `Você teve ${totalMentions} menções nesta semana`;
+
+  return send({
+    to,
+    subject,
+    heading: "Resumo semanal de menções",
+    orgId,
+    userId,
+    requestId,
+    tags: ["weekly-digest", "mentions"],
+    body: (
+      <WeeklyMentionsDigest
+        name={to.name ?? to.email ?? "time"}
+        timezone={timezone}
+        totalMentions={totalMentions}
+        sections={sections}
+      />
     ),
   });
 }
