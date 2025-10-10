@@ -6,6 +6,20 @@
 
 ### Documentation
 - Atualizamos o guia de notificações para registrar o uso de `Avatar.types.ICON` combinado ao `Counter` negativo com `pointer-events: none`, evitando regressões visuais e de acessibilidade na topbar.
+# 2025-11-25
+
+### Changed
+- Inserimos um divisor visual na Topbar entre os ícones de atalho e o menu do usuário para separar a área do avatar sem alterar o espaçamento geral.
+
+### Documentation
+- Atualizamos `docs/monday_design_guide.md` para registrar o divisor entre os atalhos e o menu do usuário na Topbar.
+# 2025-11-26
+
+### Fixed
+- Recriamos o acionador de notificações da topbar com `Avatar` + `Counter`, restaurando o badge visível, suporte ao contador em tempo real e foco acessível mesmo quando o fetch do contador falhar.
+
+### Documentation
+- Documentamos no guia de notificações que o sino usa `Avatar` (`type="icon"`, fundo `royal`) com `Counter` negativo sobreposto, prevenindo regressões visuais e de acessibilidade no topo do shell.
 
 # 2025-11-24
 
