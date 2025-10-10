@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertBanner, AlertBannerText, Button, Loader, Text } from "@vibe/core";
+import {
+  AlertBanner,
+  AlertBannerButton,
+  AlertBannerText,
+  Button,
+  Loader,
+  Text,
+} from "@vibe/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { InboxItemDTO } from "@/types/inbox";
 import InboxCard from "./InboxCard";
@@ -123,9 +130,14 @@ export default function InboxPanel({
       {error ? (
         <AlertBanner className={styles.banner} backgroundColor={AlertBanner.backgroundColors.NEGATIVE}>
           <AlertBannerText text="Não foi possível carregar as atualizações." />
-          <Button kind={Button.kinds.TERTIARY} size={Button.sizes.SMALL} onClick={onRetry}>
+          <AlertBannerButton
+            kind={Button.kinds.TERTIARY}
+            size={Button.sizes.SMALL}
+            onClick={onRetry}
+            isDarkBackground
+          >
             Tentar novamente
-          </Button>
+          </AlertBannerButton>
         </AlertBanner>
       ) : null}
       <div ref={containerRef} className={styles.scrollArea}>

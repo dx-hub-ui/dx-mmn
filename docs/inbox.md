@@ -32,6 +32,7 @@ Todas as rotas exigem `orgId` e aproveitam a view `public.v_user_updates` criada
 - Após a adoção do join de favoritos, tipamos o helper de filtros com um genérico explícito para evitar dependência do tipo `this` e manter o build da Vercel estável.
 - Blindamos a coleta de IDs nas rotas do inbox iterando manualmente pelas linhas, aplicando um type guard que ignora payloads sem `id` e impede que respostas parcialmente tipadas (`GenericStringError`) derrubem o build quando o Supabase retorna erros em forma de linha.
 - Envolvemos o selo "Novo" dentro do label da aba correspondente para manter compatibilidade com os tipos do `@vibe/core/Tab` durante o build.
+- Dentro dos banners de erro usamos `AlertBannerButton` para o CTA de tentar novamente, evitando o erro de runtime "Alert banner child is not supported" disparado ao usar `Button` diretamente.
 
 ## Telemetria
 

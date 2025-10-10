@@ -1,3 +1,11 @@
+# 2025-11-28
+
+### Fixed
+- Substituímos o `Button` direto dentro do banner de erro do inbox por `AlertBannerButton`, eliminando o erro de runtime "Alert banner child is not supported" ao abrir o modal.
+
+### Documentation
+- Documentamos em `docs/inbox.md` que os CTAs dos banners de erro devem usar `AlertBannerButton` para manter compatibilidade com o `@vibe/core`.
+
 # 2025-11-27
 
 ### Changed
