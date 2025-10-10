@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type KeyboardEvent,
+} from "react";
 import clsx from "clsx";
 import { Button, EmptyState, Text } from "@vibe/core";
 import { useRouter } from "next/navigation";
@@ -112,6 +120,9 @@ function formatDate(value: string | null) {
 
 export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageProps) {
   const router = useRouter();
+  const tabIdPrefix = useId();
+  const tabPanelId = useId();
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [filter, setFilter] = useState<MyTasksFilter>("todos");
   const [items, setItems] = useState<MyTaskItem[]>(tasks);
   const [selectedTask, setSelectedTask] = useState<MyTaskItem | null>(null);
@@ -155,6 +166,21 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
       ),
     []
   );
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const direction = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 1;
+    const nextIndex = (index + direction + FILTERS.length) % FILTERS.length;
+    const nextFilter = FILTERS[nextIndex];
+
+    setFilter(nextFilter.id);
+    tabRefs.current[nextIndex]?.focus();
+  };
 
   const emptyState = (
     <EmptyState
@@ -281,22 +307,38 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
       </header>
 
       <div className={styles.pageBody}>
-        <div className={styles.toolbar} role="toolbar" aria-label="Filtros de tarefas">
-          <div className={styles.tabList} role="tablist" aria-label="Filtros de tarefas">
-            {FILTERS.map((item) => (
+        <nav
+          className={styles.toolbar}
+          aria-label="Filtros de tarefas"
+          aria-controls={tabPanelId}
+        >
+          <div
+            className={styles.tabList}
+            role="tablist"
+            aria-label="Filtros de tarefas"
+            id={`${tabIdPrefix}-tablist`}
+          >
+            {FILTERS.map((item, index) => (
               <button
                 key={item.id}
                 type="button"
                 role="tab"
                 aria-selected={filter === item.id}
+                aria-controls={tabPanelId}
+                id={`${tabIdPrefix}-${item.id}`}
+                tabIndex={filter === item.id ? 0 : -1}
                 className={styles.tabButton}
                 onClick={() => setFilter(item.id)}
+                onKeyDown={(event) => handleTabKeyDown(event, index)}
+                ref={(element) => {
+                  tabRefs.current[index] = element;
+                }}
               >
                 {item.label}
               </button>
             ))}
           </div>
-        </div>
+        </nav>
 
         {pageError ? (
           <div role="alert" className={styles.errorBanner}>
@@ -304,7 +346,13 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
           </div>
         ) : null}
 
-        <div className={styles.tableRegion} role="region" aria-live="polite">
+        <div
+          id={tabPanelId}
+          className={styles.tableRegion}
+          role="tabpanel"
+          aria-live="polite"
+          aria-labelledby={`${tabIdPrefix}-${filter}`}
+        >
           <TableContainer className={styles.tableShell}>
             <Table
               aria-labelledby="my-tasks-title"
