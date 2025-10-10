@@ -8,7 +8,7 @@
   background: var(--primary-background-color);
   border-radius: 20px;
   box-shadow: var(--dx-shadow-floating-strong);
-  z-index: 11100;
+  z-index: 3001;
 }
 
 .header {
