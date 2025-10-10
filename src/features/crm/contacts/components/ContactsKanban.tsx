@@ -226,7 +226,36 @@ function DraggableKanbanCard({ contact, onOpenContact }: KanbanCardProps) {
 
   const style: React.CSSProperties = {};
   if (transform) {
-    style.transform = `translate3d(${transform.x}px, ${transform.y}px, 0)`;
+    const { x = 0, y = 0, scaleX = 1, scaleY = 1 } = transform;
+    const extended = transform as typeof transform & {
+      scale?: number;
+      scaleZ?: number;
+      rotate?: number;
+      rotateX?: number;
+      rotateY?: number;
+      rotateZ?: number;
+    };
+    const resolvedScaleX = scaleX ?? extended.scale ?? 1;
+    const resolvedScaleY = scaleY ?? extended.scale ?? 1;
+    const resolvedScaleZ = extended.scaleZ ?? 1;
+    const rotateX = extended.rotateX ?? 0;
+    const rotateY = extended.rotateY ?? 0;
+    const rotateZ = extended.rotateZ ?? extended.rotate ?? 0;
+
+    const pieces = [`translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`];
+    if ([resolvedScaleX, resolvedScaleY, resolvedScaleZ].some((value) => value !== 1)) {
+      pieces.push(`scale3d(${resolvedScaleX}, ${resolvedScaleY}, ${resolvedScaleZ})`);
+    }
+    if (rotateX) {
+      pieces.push(`rotateX(${rotateX}deg)`);
+    }
+    if (rotateY) {
+      pieces.push(`rotateY(${rotateY}deg)`);
+    }
+    if (rotateZ) {
+      pieces.push(`rotateZ(${rotateZ}deg)`);
+    }
+    style.transform = pieces.join(" ");
   }
   if (isDragging) {
     style.zIndex = 160;
@@ -394,18 +423,20 @@ export default function ContactsKanban({
       onDragCancel={handleDragCancel}
       collisionDetection={closestCorners}
     >
-      <div className={styles.board}>
-        {CONTACT_STAGES.map((stage) => (
-          <StageColumn
-            key={stage.id}
-            stage={stage}
-            contacts={grouped.get(stage.id) ?? []}
-            onOpenContact={onOpenContact}
-            onAddContact={onAddContact}
-            onConfigureColumn={onConfigureColumn}
-            isCreating={creatingStageId === stage.id}
-          />
-        ))}
+      <div className={styles.boardWrapper}>
+        <div className={styles.board}>
+          {CONTACT_STAGES.map((stage) => (
+            <StageColumn
+              key={stage.id}
+              stage={stage}
+              contacts={grouped.get(stage.id) ?? []}
+              onOpenContact={onOpenContact}
+              onAddContact={onAddContact}
+              onConfigureColumn={onConfigureColumn}
+              isCreating={creatingStageId === stage.id}
+            />
+          ))}
+        </div>
       </div>
       <DragOverlay dropAnimation={null}>
         {activeContact ? (

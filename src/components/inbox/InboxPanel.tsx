@@ -66,9 +66,10 @@ export default function InboxPanel({
   }, [initialScrollTop]);
 
   useEffect(() => {
+    const node = containerRef.current;
     return () => {
-      if (containerRef.current) {
-        saveScroll(containerRef.current.scrollTop);
+      if (node) {
+        saveScroll(node.scrollTop);
       }
     };
   }, [saveScroll]);

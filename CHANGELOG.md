@@ -1,13 +1,17 @@
 # 2025-11-29
 
 ### Changed
-- Compactamos os cartões de etapas do editor de sequências, reduzindo o layout à combinação título + descrição, adicionando menu de ações em três pontos e alinhando a coluna esquerda a 550px com painel direito em largura mínima de 550px/padding de 40px.
+- Ajustamos o `ContactsKanban` para preencher toda a altura útil da página, trocando o corpo das colunas para `flex` e reduzindo o botão "Adicionar contato" vazio ao tamanho de um cartão para evitar cliques imprecisos.
+- Atualizamos a visão em tabela para edição célula a célula: os campos usam `InlineTextField`/`InlineSelectField` com autosave ao perder foco e o status passou a ocupar a célula inteira com o novo `StatusCell` colorido.
+- Aplicamos bordas internas/externas consistentes (`styles.table`) na grade para alinhar o visual ao monday.com.
 
 ### Fixed
-- Eliminamos as props/closures não utilizadas do menu de etapas e centralizamos a lógica de mover cartões, removendo os avisos de ESLint (`no-unused-vars`) que impediam o `pnpm run build`.
+- Corrigimos o deslocamento dos cartões no arraste do Kanban gerando manualmente a string de `transform` (translate/scale/rotate), garantindo que o preview siga o cursor sem defasar e sem depender de novos pacotes utilitários.
+- Evitamos regressões de build no Kanban normalizando o cálculo do `transform` sem acessar campos inexistentes (`scaleZ`), mantendo a compatibilidade com o typecheck do Next.js Edge Runtime.
+- Silenciamos os avisos do React Hooks no inbox guardando a ref do painel ao salvar o scroll e estabilizando os cálculos de memoização, garantindo `pnpm run build` limpo.
 
 ### Documentation
-- Atualizamos `docs/sequences_module.md` para registrar o novo layout compacto dos cartões e as larguras fixas de 550px no workspace do editor.
+- Registramos em `docs/crm_readme.md` a nova edição inline da tabela e o Kanban em altura total, incluindo o popover de status.
 
 # 2025-11-28
 

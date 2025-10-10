@@ -54,7 +54,7 @@ export function useInboxFeed({ orgId, tab, show, board }: UseInboxFeedOptions) {
     keepPreviousData: true,
   });
 
-  const pages = data ?? [];
+  const pages = useMemo(() => data ?? [], [data]);
 
   const items = useMemo<InboxItemDTO[]>(() => pages.flatMap((page) => page.items), [pages]);
   const counts = pages[0]?.counts ?? { all: 0, without: 0 };

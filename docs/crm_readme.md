@@ -34,6 +34,14 @@
 - Cards menores: espaçamento reduzido, meta convertida em lista e badge de estágio enxuto, seguindo tokens da aplicação.
 - Falhas ao inserir/consultar `contact_events` com erro `PGRST205` (banco sem migração) agora geram apenas um aviso e seguem com timeline vazia, mantendo salvamentos/edições funcionando.
 
+## Atualização de Dezembro/2026 — Tabela com edição célula a célula e Kanban de altura total
+- `ContactsKanban` agora ocupa toda a altura útil da página (`boardWrapper` + `columnBody` flex), mantendo cabeçalhos fixos e colunas alinhadas mesmo em telas altas. O botão “Adicionar contato” da coluna vazia foi reduzido ao tamanho de um cartão padrão para evitar confusão com a área de drop.
+- O arraste dos cartões agora normaliza manualmente a string de `transform` (translate/scale/rotate) para eliminar o deslocamento que deixava o preview longe do cursor em navegadores desktop.
+- O normalizador de `transform` evita acessar campos inexistentes como `scaleZ`, preservando o typecheck do Next.js Edge Runtime quando o componente roda durante o `pnpm run build`.
+- A visão Tabela renomeou **Estágio** para **Status** e o chip virou um botão colorido de largura total (`StatusCell`) com popover (`MenuButton`) para alternar estágios reutilizando as mesmas tonalidades do Kanban.
+- Cada célula da grade tornou-se editável por clique único: `InlineTextField`/`InlineSelectField` abrem inputs em contexto, fazem autosave on-blur e mostram erros/salvamento inline. O botão “Editar” foi removido; basta clicar no campo desejado.
+- A grade recebeu bordas internas/externas consistentes (`styles.table`), combinando com o grid do monday.com e tornando a seleção visual mais nítida.
+
 ## Revisão de Bugs (Junho/2025)
 - **Prioridade Alta — Geração de convites bloqueada:** a rota `POST /api/invites/generate` lia apenas a variável `SUPABASE_URL`. Em ambientes que expõem apenas `NEXT_PUBLIC_SUPABASE_URL` (setup recomendado no restante do app) o endpoint retornava "Server configuration missing" e nenhum convite podia ser criado. A correção passa a aceitar ambas as chaves e normaliza a URL antes de chamar a função Edge do Supabase.
 - **Prioridade Média — Menu do usuário quebrado:** `GET /api/user/profile` lançava 500 quando a consulta de memberships retornava `permission denied` (códigos `PGRST301`/`42501`), impedindo o carregamento do avatar e das opções. A rota agora registra o incidente em telemetria e continua respondendo com os dados do perfil, retornando `org_id`/`member_id` nulos.
