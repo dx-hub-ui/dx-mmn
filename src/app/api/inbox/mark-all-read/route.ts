@@ -16,16 +16,27 @@ const bodySchema = z.object({
 
 const MAX_BATCH = 1000;
 
-type FilterableQuery<T> = T & {
-  eq(column: string, value: unknown): T;
-  is(column: string, value: unknown): T;
+type FilterableQuery = {
+  eq(column: string, value: unknown): this;
+  is(column: string, value: unknown): this;
 };
 
-function applyFilters<T extends FilterableQuery<T>>(query: T, params: { orgId: string; userId: string; tab?: string | null; board?: string | null }) {
+function selectWithBookmarks(select: string, tab: string) {
+  return tab === "bookmarked" ? `${select},notification_bookmarks!inner()` : select;
+}
+
+function applyFilters<T extends FilterableQuery>(
+  query: T,
+  params: { orgId: string; userId: string; tab?: string | null; board?: string | null }
+) {
   let next = query.eq("org_id", params.orgId).eq("user_id", params.userId);
 
   if (params.tab === "mentions") {
     next = next.eq("type", "mention");
+  } else if (params.tab === "bookmarked") {
+    next = next
+      .eq("notification_bookmarks.org_id", params.orgId)
+      .eq("notification_bookmarks.user_id", params.userId);
   }
 
   if (params.board === "without") {
@@ -69,7 +80,7 @@ export async function POST(request: NextRequest) {
   let selectQuery = applyFilters(
     supabase
       .from("v_user_updates")
-      .select("id")
+      .select(selectWithBookmarks("id", tab))
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(MAX_BATCH),

@@ -1,3 +1,11 @@
+# 2025-11-26
+
+### Fixed
+- Blindamos `POST /api/inbox/mark-all-read` para incluir o filtro de favoritos com `notification_bookmarks` e evitamos o erro de tipagem que quebrava o `pnpm run build`.
+
+### Documentation
+- Atualizamos `docs/inbox.md` para registrar que a ação de marcar tudo como lido na aba de favoritos aplica o `inner join` com `notification_bookmarks`.
+
 # 2025-11-25
 
 ### Added
