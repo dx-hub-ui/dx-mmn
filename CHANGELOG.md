@@ -4,10 +4,12 @@
 - Removemos estados duplicados (`pauseDraft`, `hasStepDraftChanges`) e callbacks mortos no editor de sequências, eliminando os avisos de ESLint que impediam `pnpm run build` após o refresh da UI.
 - Limpamos o manager de sequências ao remover a referência obsoleta a `setIsHydrated`, restaurando o build do Next.js sem erros de nome indefinido.
 - Tornamos a função de ordenação do manager tolerante a métricas indefinidas, permitindo que `totalEnrollments` (e demais colunas numéricas) sejam comparadas sem quebrar o typecheck.
+- Blindamos o formatter numérico do manager para tratar valores `undefined`/`null`, evitando que a renderização das métricas derrube o `pnpm run build`.
 
 ### Documentation
 - Documentamos no guia de sequências que o painel de notas usa um único rascunho controlado e que o toggle "Pausar" persiste diretamente no passo selecionado, evitando estados locais não utilizados.
 - Atualizamos o guia do módulo de sequências para registrar que as colunas de métricas do manager tratam valores ausentes como `null` durante a ordenação, prevenindo regressões no build.
+- Registramos que a formatação de métricas no manager converte valores ausentes em traço (`—`), garantindo consistência visual e evitando acessos indevidos durante o build.
 
 # 2025-11-23
 

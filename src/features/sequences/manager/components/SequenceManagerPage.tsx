@@ -215,12 +215,16 @@ function formatDate(value: string | null) {
   }
 }
 
-function formatNumber(value: number) {
+function formatNumber(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return "—";
+  }
+
   return new Intl.NumberFormat("pt-BR").format(value);
 }
 
-function formatPercent(value: number | null) {
-  if (value === null || Number.isNaN(value)) {
+function formatPercent(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
     return "—";
   }
 

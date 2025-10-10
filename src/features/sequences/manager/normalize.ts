@@ -55,6 +55,17 @@ function normalizeCreator(row: SequenceManagerRow["created_by"]): SequenceManage
 }
 
 export function normalizeSequenceManagerRow(row: SequenceManagerRow): SequenceManagerItem {
+  const completionRate = parseNumber(row.completion_rate);
+  const totalEnrollments =
+    row.total_enrollments === null || row.total_enrollments === undefined
+      ? null
+      : parseNumber(row.total_enrollments);
+  const openRate = toNumber(row.open_rate);
+  const replyRate = toNumber(row.reply_rate);
+  const clickRate = toNumber(row.click_rate);
+  const estimatedDays = row.estimated_days ?? null;
+  const creator = normalizeCreator(row.created_by ?? null);
+
   return {
     id: row.sequence_id,
     orgId: row.org_id,
@@ -65,19 +76,15 @@ export function normalizeSequenceManagerRow(row: SequenceManagerRow): SequenceMa
     activeVersionNumber: row.active_version_number ?? 0,
     stepsTotal: row.steps_total ?? 0,
     activeEnrollments: row.active_enrollments ?? 0,
-    totalEnrollments: row.active_enrollments ?? 0,
+    totalEnrollments,
     durationDays: null,
-    openRate: null,
-    replyRate: null,
-    clickRate: null,
+    openRate,
+    replyRate,
+    clickRate,
     createdBy: null,
-    completionRate: parseNumber(row.completion_rate),
-    totalEnrollments: parseNumber(row.total_enrollments) ?? 0,
-    openRate: toNumber(row.open_rate),
-    replyRate: toNumber(row.reply_rate),
-    clickRate: toNumber(row.click_rate),
-    estimatedDays: row.estimated_days ?? null,
-    creator: normalizeCreator(row.created_by ?? null),
+    completionRate,
+    estimatedDays,
+    creator,
     boardName: row.board_name ?? null,
     lastActivationAt: row.last_activation_at,
     updatedAt: row.updated_at,
