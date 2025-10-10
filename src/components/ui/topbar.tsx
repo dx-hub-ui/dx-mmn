@@ -28,7 +28,7 @@ export default function Topbar({ isSidebarOpen, className, activeOrg }: TopbarPr
         <nav className={styles.nav} aria-label="Topbar actions">
           {/* Added Notifications icon */}
           <IconButton
-            icon={<Notifications />}
+            icon={Notifications}
             ariaLabel="Abrir notificações"
             tooltipContent="Notificações"
             size={IconButton.sizes.MEDIUM}
@@ -39,7 +39,7 @@ export default function Topbar({ isSidebarOpen, className, activeOrg }: TopbarPr
             <NotificationsBell orgId={activeOrg.id} orgName={activeOrg.name} />
           ) : (
             <IconButton
-              icon={<Inbox />}
+              icon={Inbox}
               ariaLabel="Abrir inbox"
               tooltipContent="Inbox"
               size={IconButton.sizes.MEDIUM}
