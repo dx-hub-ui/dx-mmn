@@ -226,10 +226,25 @@ function DraggableKanbanCard({ contact, onOpenContact }: KanbanCardProps) {
 
   const style: React.CSSProperties = {};
   if (transform) {
-    const { x = 0, y = 0, scaleX = 1, scaleY = 1, scaleZ = 1, rotateX = 0, rotateY = 0, rotateZ = 0 } = transform;
+    const { x = 0, y = 0, scaleX = 1, scaleY = 1 } = transform;
+    const extended = transform as typeof transform & {
+      scale?: number;
+      scaleZ?: number;
+      rotate?: number;
+      rotateX?: number;
+      rotateY?: number;
+      rotateZ?: number;
+    };
+    const resolvedScaleX = scaleX ?? extended.scale ?? 1;
+    const resolvedScaleY = scaleY ?? extended.scale ?? 1;
+    const resolvedScaleZ = extended.scaleZ ?? 1;
+    const rotateX = extended.rotateX ?? 0;
+    const rotateY = extended.rotateY ?? 0;
+    const rotateZ = extended.rotateZ ?? extended.rotate ?? 0;
+
     const pieces = [`translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`];
-    if ([scaleX, scaleY, scaleZ].some((value) => value !== 1)) {
-      pieces.push(`scale3d(${scaleX}, ${scaleY}, ${scaleZ})`);
+    if ([resolvedScaleX, resolvedScaleY, resolvedScaleZ].some((value) => value !== 1)) {
+      pieces.push(`scale3d(${resolvedScaleX}, ${resolvedScaleY}, ${resolvedScaleZ})`);
     }
     if (rotateX) {
       pieces.push(`rotateX(${rotateX}deg)`);

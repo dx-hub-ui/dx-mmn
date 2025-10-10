@@ -45,7 +45,7 @@ export default function InboxModal({ open, orgId, initialTab, onClose }: InboxMo
     });
   }, [context?.userId, open, orgId, state.board, state.show, state.tab]);
 
-  const initialScrollTop = useMemo(() => readScroll(), [readScroll, state.board, state.show, state.tab]);
+  const initialScrollTop = useMemo(() => readScroll(), [readScroll]);
 
   const handleTabChange = (tab: InboxTab) => {
     setState((prev) => ({ ...prev, tab }));

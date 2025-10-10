@@ -7,6 +7,8 @@
 
 ### Fixed
 - Corrigimos o deslocamento dos cartões no arraste do Kanban gerando manualmente a string de `transform` (translate/scale/rotate), garantindo que o preview siga o cursor sem defasar e sem depender de novos pacotes utilitários.
+- Evitamos regressões de build no Kanban normalizando o cálculo do `transform` sem acessar campos inexistentes (`scaleZ`), mantendo a compatibilidade com o typecheck do Next.js Edge Runtime.
+- Silenciamos os avisos do React Hooks no inbox guardando a ref do painel ao salvar o scroll e estabilizando os cálculos de memoização, garantindo `pnpm run build` limpo.
 
 ### Documentation
 - Registramos em `docs/crm_readme.md` a nova edição inline da tabela e o Kanban em altura total, incluindo o popover de status.
