@@ -30,63 +30,44 @@ const FILTERS: { id: MyTasksFilter; label: string }[] = [
   { id: "adiadas", label: "Adiados" },
 ];
 
-type ColumnConfig = {
-  definition: TableColumn;
-  header?: {
-    sticky?: boolean;
-    className?: string;
-  };
+type ColumnConfig = TableColumn & {
+  sticky?: boolean;
+  headerClassName?: string;
 };
 
 const COLUMN_CONFIGS: ColumnConfig[] = [
   {
-    definition: {
-      id: "task",
-      title: "Tarefa",
-      width: "2fr",
-    },
-    header: {
-      sticky: true,
-      className: styles.headerCellPrimary,
-    },
+    id: "task",
+    title: "Tarefa",
+    width: "2fr",
+    sticky: true,
+    headerClassName: styles.headerCellPrimary,
   },
   {
-    definition: {
-      id: "sequence",
-      title: "Sequência › Step",
-      width: "1.6fr",
-    },
+    id: "sequence",
+    title: "Sequência › Step",
+    width: "1.6fr",
   },
   {
-    definition: {
-      id: "due",
-      title: "Vencimento",
-      width: "1fr",
-    },
+    id: "due",
+    title: "Vencimento",
+    width: "1fr",
   },
   {
-    definition: {
-      id: "status",
-      title: "Status",
-      width: "1fr",
-    },
+    id: "status",
+    title: "Status",
+    width: "1fr",
   },
   {
-    definition: {
-      id: "signals",
-      title: "Sinais",
-      width: "1.2fr",
-    },
+    id: "signals",
+    title: "Sinais",
+    width: "1.2fr",
   },
   {
-    definition: {
-      id: "actions",
-      title: "Ações rápidas",
-      width: "1.4fr",
-    },
-    header: {
-      className: styles.headerCellEnd,
-    },
+    id: "actions",
+    title: "Ações rápidas",
+    width: "1.4fr",
+    headerClassName: styles.headerCellEnd,
   },
 ];
 
@@ -153,17 +134,13 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
 
   const filteredTasks = useMemo(() => filterTasks(items, filter), [items, filter]);
   const tableColumns = useMemo<TableColumn[]>(
-    () => COLUMN_CONFIGS.map((column) => column.definition),
-    []
-  );
-
-  const stickyColumnIds = useMemo(
     () =>
-      new Set(
-        COLUMN_CONFIGS.filter((column) => column.header?.sticky).map(
-          (column) => column.definition.id
-        )
-      ),
+      COLUMN_CONFIGS.map((column) => {
+        const { headerClassName, sticky, ...tableColumn } = column;
+        void headerClassName;
+        void sticky;
+        return tableColumn;
+      }),
     []
   );
 
@@ -346,14 +323,8 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
           </div>
         ) : null}
 
-        <div
-          id={tabPanelId}
-          className={styles.tableRegion}
-          role="tabpanel"
-          aria-live="polite"
-          aria-labelledby={`${tabIdPrefix}-${filter}`}
-        >
-          <TableContainer className={styles.tableShell}>
+        <div className={styles.tableShell} role="region" aria-live="polite">
+          <TableContainer>
             <Table
               aria-labelledby="my-tasks-title"
               columns={tableColumns}
@@ -361,83 +332,83 @@ export default function MyTasksPage({ orgId, membershipId, tasks }: MyTasksPageP
               errorState={tableErrorState}
               withoutBorder
             >
-              <TableHeader>
-                <TableRow>
-                  {COLUMN_CONFIGS.map((column) => (
-                    <TableHeaderCell
-                      key={column.definition.id}
-                      sticky={column.header?.sticky}
-                      className={column.header?.className}
-                      title={column.definition.title}
-                    />
-                  ))}
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {filteredTasks.map((task) => (
-                  <TableRow
-                    key={task.id}
-                    highlighted={selectedTask?.id === task.id}
-                    className={styles.tableRow}
-                  >
-                    <TableCell sticky={stickyColumnIds.has("task")} className={styles.primaryCell}>
-                      <div className={styles.primaryTitle}>{task.stepTitle}</div>
-                    </TableCell>
-                    <TableCell className={styles.sequenceCell}>
-                      <div className={styles.sequenceName}>{task.sequenceName}</div>
-                      <div className={styles.metaCaption}>{task.targetType === "contact" ? "Contato" : "Membro"}</div>
-                    </TableCell>
-                    <TableCell className={styles.metaCell}>{formatDate(task.dueAt)}</TableCell>
-                    <TableCell className={styles.statusCell}>
-                      <span className={clsx(styles.statusBadge, STATUS_CLASS_MAP[task.status] ?? styles.statusOpen)}>
-                        {statusLabel(task.status)}
-                      </span>
-                    </TableCell>
-                    <TableCell className={styles.signalsCell}>
-                      <div className={styles.flags}>
-                        {task.isOverdue ? <span className={styles.flag}>Em atraso</span> : null}
-                        {task.isSnoozed ? <span className={styles.flag}>Adiado</span> : null}
-                        {task.isBlocked ? <span className={styles.flag}>Bloqueado</span> : null}
-                      </div>
-                    </TableCell>
-                    <TableCell className={styles.actionsCell}>
-                      <div className={styles.actions}>
-                        <Button
-                          kind={Button.kinds.SECONDARY}
-                          size={Button.sizes.SMALL}
-                          onClick={() => handleComplete(task)}
-                          disabled={isBusy}
-                        >
-                          Concluir
-                        </Button>
-                        <Button
-                          kind={Button.kinds.TERTIARY}
-                          size={Button.sizes.SMALL}
-                          onClick={() => {
-                            setSelectedTask(task);
-                            setActionError(null);
-                          }}
-                          disabled={isBusy}
-                        >
-                          Adiar
-                        </Button>
-                        <Button
-                          kind={Button.kinds.TERTIARY}
-                          size={Button.sizes.SMALL}
-                          onClick={() => {
-                            setSelectedTask(task);
-                            setActionError(null);
-                          }}
-                          disabled={isBusy}
-                        >
-                          Ver detalhes
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+            <TableHeader>
+              <TableRow>
+                {COLUMN_CONFIGS.map((column) => (
+                  <TableHeaderCell
+                    key={column.id}
+                    title={column.title}
+                    sticky={column.sticky}
+                    className={column.headerClassName}
+                  />
                 ))}
-              </TableBody>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {filteredTasks.map((task) => (
+                <TableRow
+                  key={task.id}
+                  highlighted={selectedTask?.id === task.id}
+                  className={styles.tableRow}
+                >
+                  <TableCell sticky className={styles.primaryCell}>
+                    <div className={styles.primaryTitle}>{task.stepTitle}</div>
+                  </TableCell>
+                  <TableCell className={styles.sequenceCell}>
+                    <div className={styles.sequenceName}>{task.sequenceName}</div>
+                    <div className={styles.metaCaption}>{task.targetType === "contact" ? "Contato" : "Membro"}</div>
+                  </TableCell>
+                  <TableCell className={styles.metaCell}>{formatDate(task.dueAt)}</TableCell>
+                  <TableCell className={styles.statusCell}>
+                    <span className={clsx(styles.statusBadge, STATUS_CLASS_MAP[task.status] ?? styles.statusOpen)}>
+                      {statusLabel(task.status)}
+                    </span>
+                  </TableCell>
+                  <TableCell className={styles.signalsCell}>
+                    <div className={styles.flags}>
+                      {task.isOverdue ? <span className={styles.flag}>Em atraso</span> : null}
+                      {task.isSnoozed ? <span className={styles.flag}>Adiado</span> : null}
+                      {task.isBlocked ? <span className={styles.flag}>Bloqueado</span> : null}
+                    </div>
+                  </TableCell>
+                  <TableCell className={styles.actionsCell}>
+                    <div className={styles.actions}>
+                      <Button
+                        kind={Button.kinds.SECONDARY}
+                        size={Button.sizes.SMALL}
+                        onClick={() => handleComplete(task)}
+                        disabled={isBusy}
+                      >
+                        Concluir
+                      </Button>
+                      <Button
+                        kind={Button.kinds.TERTIARY}
+                        size={Button.sizes.SMALL}
+                        onClick={() => {
+                          setSelectedTask(task);
+                          setActionError(null);
+                        }}
+                        disabled={isBusy}
+                      >
+                        Adiar
+                      </Button>
+                      <Button
+                        kind={Button.kinds.TERTIARY}
+                        size={Button.sizes.SMALL}
+                        onClick={() => {
+                          setSelectedTask(task);
+                          setActionError(null);
+                        }}
+                        disabled={isBusy}
+                      >
+                        Ver detalhes
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
             </Table>
           </TableContainer>
         </div>

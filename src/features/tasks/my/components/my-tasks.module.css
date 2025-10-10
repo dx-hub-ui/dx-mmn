@@ -38,8 +38,8 @@
 .toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   gap: var(--dx-space-2);
+  align-items: center;
 }
 
 .tabList {
@@ -81,10 +81,6 @@
   border: 1px solid color-mix(in srgb, var(--negative-color) 28%, transparent);
   color: var(--negative-color);
   font: var(--dx-font-text2-medium);
-}
-
-.tableRegion {
-  position: relative;
 }
 
 .tableShell {

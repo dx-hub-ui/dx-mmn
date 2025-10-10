@@ -106,25 +106,7 @@
 - Acrescentada referência na seção de tabelas do guia Monday destacando `MyTasksPage` como implementação alinhada aos padrões de board.
 
 ### Fixed
-- Reorganizamos as colunas da tabela em `/tasks/my` separando metadados visuais do cabeçalho da definição consumida pelo `@vibe/core/Table`, garantindo build limpo sem perder os comportamentos sticky monday-style.
-- Ajustamos a toolbar de filtros de `/tasks/my` para aplicar os roles ARIA em um wrapper estilizado, evitando o erro de tipos do `@vibe/core/Flex` durante `pnpm run build`.
-- Garantimos que os títulos das colunas sejam configurados via prop `title` do `TableHeaderCell` (que aceita `ReactNode`), evitando dependência de props internas e mantendo o texto acessível para leitores de tela.
-- Envolvemos o shell da tabela em `/tasks/my` com um wrapper acessível para aplicar `aria-live` e tokens de superfície via CSS, removendo o uso indevido da prop `surface` do `TableContainer` e destravando o `pnpm run build`.
-# 2025-11-19
-
-### Fixed
-- Corrigimos a importação do skeleton da tabela de contatos substituindo o uso direto de `TableCellSkeleton` (não exportado pelo pacote) por um wrapper local baseado em `@vibe/core/Skeleton`, evitando novas falhas em `pnpm run build`.
-
-### Documentation
-- Documentamos em `docs/crm_readme.md` que a tabela utiliza um skeleton local para não depender de exports internos do Vibe.
-
-# 2025-11-18
-
-### Changed
-- CRM: `ContactsBoardPage` passou a usar `Tabs` e `Table` do Vibe com layout enxuto, remoção da toolbar antiga, ordenação por coluna e skeletons nativos.
-
-### Documentation
-- Atualizamos `docs/crm_readme.md` com a nova experiência do board em abas e a simplificação dos filtros.
+- Corrigimos a configuração das colunas da tabela em `/tasks/my` para evitar erros de lint durante o build (remoção segura de metadata apenas visual do cabeçalho).
 
 # 2025-11-17
 
