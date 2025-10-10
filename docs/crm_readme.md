@@ -1,6 +1,6 @@
 # CRM de Contatos — Notas de Arquitetura
 
-## Visão Geral
+## Visão Geras
 - A área `/crm` é servida via página `src/app/(app)/crm/page.tsx`, carregada dentro do AppShell padrão descrito em `page_design_guidelines.md`.
 - O módulo utiliza o Supabase (RLS) para carregar contatos e memberships visíveis através das funções utilitárias `listContacts` e `fetchVisibleMemberships`.
 - A listagem principal (`ContactsBoardPage`) usa componentes do Vibe (`Tabs`, `Table`) para alternar entre a visão em tabela e o Kanban. A tabela oferece ordenação por coluna, skeletons durante carregamentos e mantém a navegação por teclado acessível (`role="grid"`).
