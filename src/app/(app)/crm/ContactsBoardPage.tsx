@@ -968,6 +968,8 @@ export default function ContactsBoardPage({
     }
   }, [visibleContacts, modalState]);
 
+  const pendingInlineFormsRef = useRef<Map<string, EditableContactForm>>(new Map());
+
   const submitContactForm = useCallback(
     async (contactId: string, form: EditableContactForm): Promise<ContactUpdateResult> => {
       try {
@@ -1015,10 +1017,17 @@ export default function ContactsBoardPage({
       if (!existing) {
         return { success: false, error: "Contato não encontrado" };
       }
-      const nextForm = { ...contactToEditable(existing), ...updates };
+      const baseForm =
+        pendingInlineFormsRef.current.get(contactId) ?? contactToEditable(existing);
+      const nextForm = { ...baseForm, ...updates };
+      pendingInlineFormsRef.current.set(contactId, nextForm);
+
       const result = await submitContactForm(contactId, nextForm);
       if (!result.success) {
         setFeedback({ type: "error", message: result.error });
+        if (pendingInlineFormsRef.current.get(contactId) === nextForm) {
+          pendingInlineFormsRef.current.delete(contactId);
+        }
         return result;
       }
       const updated = result.contact;
@@ -1035,9 +1044,19 @@ export default function ContactsBoardPage({
       if (shouldRefreshTimeline && modalState?.contactId === contactId) {
         await loadModalDetail(contactId);
       }
+      if (pendingInlineFormsRef.current.get(contactId) === nextForm) {
+        pendingInlineFormsRef.current.delete(contactId);
+      }
       return { success: true, contact: updated };
     },
-    [contacts, emitContactTelemetry, submitContactForm, loadModalDetail, modalState]
+    [
+      contacts,
+      emitContactTelemetry,
+      submitContactForm,
+      loadModalDetail,
+      modalState,
+      setFeedback,
+    ]
   );
 
   const handleModalRefresh = useCallback(() => {
