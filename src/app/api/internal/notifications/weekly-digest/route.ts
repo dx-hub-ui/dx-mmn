@@ -35,6 +35,74 @@ type NotificationRow = {
   } | null;
 };
 
+type RawNotificationRow = Omit<NotificationRow, "actor"> & {
+  actor: unknown;
+};
+
+type RawActorRecord = {
+  id?: string | null;
+  email?: string | null;
+  raw_user_meta_data?: Record<string, unknown> | null;
+};
+
+function normalizeActor(actor: RawNotificationRow["actor"]): NotificationRow["actor"] {
+  if (!actor) {
+    return null;
+  }
+
+  const toRecord = (value: unknown): RawActorRecord | null => {
+    if (!value || typeof value !== "object") {
+      return null;
+    }
+    const candidate = value as RawActorRecord;
+    if (!candidate.id) {
+      return null;
+    }
+    return candidate;
+  };
+
+  if (Array.isArray(actor)) {
+    const first = actor.find((value) => Boolean(toRecord(value)));
+    if (!first) {
+      return null;
+    }
+    const record = toRecord(first);
+    if (!record) {
+      return null;
+    }
+    return {
+      id: record.id!,
+      email: record.email ?? null,
+      raw_user_meta_data: record.raw_user_meta_data ?? null,
+    };
+  }
+
+  const record = toRecord(actor);
+  if (!record) {
+    return null;
+  }
+
+  return {
+    id: record.id!,
+    email: record.email ?? null,
+    raw_user_meta_data: record.raw_user_meta_data ?? null,
+  };
+}
+
+function normalizeRow(row: RawNotificationRow): NotificationRow {
+  return {
+    id: row.id,
+    type: row.type,
+    source_type: row.source_type,
+    source_id: row.source_id,
+    title: row.title,
+    snippet: row.snippet,
+    link: row.link,
+    created_at: row.created_at,
+    actor: normalizeActor(row.actor),
+  };
+}
+
 function resolveActorName(row: NotificationRow["actor"]): string {
   if (!row) {
     return "Alguém";
@@ -112,7 +180,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Falha ao consultar notificações" }, { status: 500 });
   }
 
-  const rows = (data as NotificationRow[] | null) ?? [];
+  const rows = Array.isArray(data) ? data.map((row) => normalizeRow(row as RawNotificationRow)) : [];
 
   if (rows.length === 0) {
     await trackServerEvent(

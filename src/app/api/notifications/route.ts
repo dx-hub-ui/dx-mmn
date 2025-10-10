@@ -1,12 +1,84 @@
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { captureException } from "@sentry/nextjs";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { decodeCursor, encodeCursor } from "@/lib/notifications/utils";
 import { peopleSchema, tabSchema } from "@/lib/notifications/schema";
-import type { NotificationItemDTO } from "@/types/notifications";
+import type { NotificationItemDTO, NotificationStatus } from "@/types/notifications";
 import { ensureOrgMembership, HttpError } from "@/lib/notifications/server";
+
+type RawNotificationRow = {
+  id: string;
+  org_id: string;
+  user_id: string;
+  type: string;
+  source_type: string;
+  source_id: string;
+  actor_id: string | null;
+  title: string | null;
+  snippet: string | null;
+  link: string | null;
+  status: string;
+  created_at: string;
+  read_at: string | null;
+  actor: unknown;
+};
+
+type ActorRecord = {
+  id: string;
+  email: string | null;
+  raw_user_meta_data: Record<string, unknown> | null;
+};
+
+type NormalizedNotificationRow = Omit<RawNotificationRow, "actor"> & {
+  actor: ActorRecord | null;
+};
+
+function toActorRecord(value: unknown): ActorRecord | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const candidate = value as Partial<ActorRecord> & { id?: string | null };
+  if (!candidate.id) {
+    return null;
+  }
+  return {
+    id: candidate.id,
+    email: candidate.email ?? null,
+    raw_user_meta_data: candidate.raw_user_meta_data ?? null,
+  };
+}
+
+function normalizeActor(actor: RawNotificationRow["actor"]): NormalizedNotificationRow["actor"] {
+  if (!actor) {
+    return null;
+  }
+
+  if (Array.isArray(actor)) {
+    for (const value of actor) {
+      const record = toActorRecord(value);
+      if (record) {
+        return record;
+      }
+    }
+    return null;
+  }
+
+  return toActorRecord(actor);
+}
+
+function normalizeRows(data: unknown): NormalizedNotificationRow[] {
+  if (!Array.isArray(data)) {
+    return [];
+  }
+
+  return (data as RawNotificationRow[]).map((row) => ({
+    ...row,
+    actor: normalizeActor(row.actor),
+  }));
+}
 
 export async function GET(request: NextRequest) {
   const supabase = createSupabaseServerClient();
@@ -80,7 +152,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Falha ao carregar notificações" }, { status: 500 });
   }
 
-  const rows = data ?? [];
+  const rows = normalizeRows(data);
   let nextCursor: string | undefined;
   if (rows.length > 20) {
     const last = rows.pop();
@@ -116,7 +188,7 @@ export async function GET(request: NextRequest) {
       title: row.title,
       snippet: row.snippet,
       link: row.link,
-      status: row.status,
+      status: row.status as NotificationStatus,
       createdAt: row.created_at,
       readAt: row.read_at,
     };

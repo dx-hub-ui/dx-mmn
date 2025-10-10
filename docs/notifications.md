@@ -106,6 +106,7 @@ Todas as tabelas possuem RLS obrigando `org_id = current_org()` e `user_id = aut
 | Rotas `/api/notifications/*` falham no build | Runtime Edge tentando importar `@supabase/supabase-js` | Forçamos `export const runtime = "nodejs"` em todos os handlers; mantenha a declaração ao criar novos endpoints. |
 | Emails não enviados | Provider em modo noop | Veja `ENABLE_EMAIL_SEND` e as variáveis `RESEND_API_KEY`/`BREVO_API_KEY`. Logs em `notifications:email_failed` detalham a causa. |
 | Erro de tipos ao resolver organização ativa (`property 'id' does not exist on type ...[]`) | Supabase retorna o join `organizations` como array quando o relacionamento não é singular | Normalize a resposta com `Array.isArray(organization)` antes de acessar os campos e mantenha o `setServerRequestContext` com o `orgId` derivado. |
+| Build do digest semanal falha com `Conversion of type '{ ... actor: { }[] }'` | Supabase entrega `profiles` como array ou `null`/`{}` no join `notifications_actor_id_fkey` | Converta o campo para um registro seguro com um helper que valide `typeof value === "object"` e procure o primeiro item válido quando vier em array (vide `normalizeActor` nos handlers `GET /api/notifications` e `POST /api/internal/notifications/weekly-digest`). |
 
 ## Referências rápidas
 

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWRInfinite from "swr/infinite";
 import {
   AlertBanner,
+  AlertBannerButton,
+  AlertBannerText,
   Button,
   Menu,
   MenuButton,
@@ -437,17 +439,30 @@ export default function NotificationsPanel({
           </div>
         ) : null}
         {errorBanner ? (
-          <AlertBanner className={styles.bannerArea} type={AlertBanner.types.DANGER} text={errorBanner} onClose={() => setErrorBanner(null)} />
+          <AlertBanner
+            className={styles.bannerArea}
+            backgroundColor={AlertBanner.backgroundColors.NEGATIVE}
+            onClose={() => setErrorBanner(null)}
+          >
+            <AlertBannerText text={errorBanner} />
+          </AlertBanner>
         ) : null}
         {error ? (
           <AlertBanner
             className={styles.bannerArea}
-            type={AlertBanner.types.DANGER}
-            text="Não foi possível carregar as notificações."
-            actionText="Tentar novamente"
-            onAction={handleRetry}
+            backgroundColor={AlertBanner.backgroundColors.NEGATIVE}
             onClose={() => setErrorBanner(null)}
-          />
+          >
+            <AlertBannerText text="Não foi possível carregar as notificações." />
+            <AlertBannerButton
+              kind={Button.kinds.TERTIARY}
+              size={Button.sizes.SMALL}
+              onClick={handleRetry}
+              isDarkBackground
+            >
+              Tentar novamente
+            </AlertBannerButton>
+          </AlertBanner>
         ) : null}
       </header>
       <div ref={bodyRef} className={styles.body} role="list" aria-live="polite">

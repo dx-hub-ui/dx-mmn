@@ -177,8 +177,8 @@ export async function logContactEvents(
       const sourceType = mention.sourceType ?? rest.type;
       const sourceId = mention.sourceId ?? inserted.id;
       notificationTasks.push(
-        supabase
-          .rpc("queue_notification", {
+        (async () => {
+          const { error: rpcError } = await supabase.rpc("queue_notification", {
             p_org_id: rest.organizationId,
             p_user_id: mention.userId,
             p_type: "mention",
@@ -196,13 +196,11 @@ export async function logContactEvents(
                 ? (rest.payload.note as string)
                 : (rest.payload?.message as string | null) ?? null),
             p_link: mention.link ?? null,
-          })
-          .then(({ error: rpcError }) => {
-            if (rpcError) {
-              throw rpcError;
-            }
-            return null;
-          })
+          });
+          if (rpcError) {
+            throw rpcError;
+          }
+        })()
       );
     });
   }

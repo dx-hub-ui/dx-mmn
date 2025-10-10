@@ -1,10 +1,22 @@
 // src/app/(app)/layout.tsx
+export const dynamic = "force-dynamic";
+
 import AppShell, { type AppShellActiveOrg } from "@/components/ui/AppShell";
+import { isSupabaseConfigurationError } from "@/lib/supabase/errors";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { setServerRequestContext } from "@/lib/request-context";
 
 async function resolveActiveOrg(): Promise<AppShellActiveOrg | null> {
-  const supabase = createSupabaseServerClient();
+  let supabase;
+
+  try {
+    supabase = createSupabaseServerClient();
+  } catch (error) {
+    if (isSupabaseConfigurationError(error)) {
+      return null;
+    }
+    throw error;
+  }
   const {
     data: { user },
   } = await supabase.auth.getUser();

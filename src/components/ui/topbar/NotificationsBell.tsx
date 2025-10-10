@@ -94,14 +94,15 @@ export default function NotificationsBell({ orgId, orgName }: NotificationsBellP
 
     channel
       .on("broadcast", { event: "notification.created" }, handleRealtimeEvent)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` }, handleRealtimeEvent);
-
-    channel.subscribe().catch((subscribeError) => {
-      captureException(subscribeError, {
-        tags: { module: "notifications", action: "subscribe" },
-        extra: { userId, orgId },
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` }, handleRealtimeEvent)
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          captureException(new Error("Falha ao assinar canal de notificações"), {
+            tags: { module: "notifications", action: "subscribe" },
+            extra: { userId, orgId },
+          });
+        }
       });
-    });
 
     return () => {
       client.removeChannel(channel);
@@ -117,6 +118,26 @@ export default function NotificationsBell({ orgId, orgName }: NotificationsBellP
   }
 
   const hasError = Boolean(error);
+
+  const triggerButton = (
+    <IconButton
+      ref={buttonRef}
+      icon={Notifications}
+      ariaLabel={hasError ? "Erro ao carregar notificações" : "Notificações"}
+      tooltipContent={hasError ? "Tentar novamente" : "Notificações"}
+      size={IconButton.sizes.MEDIUM}
+      kind={IconButton.kinds.TERTIARY}
+      onClick={() => {
+        if (hasError) {
+          mutate();
+          return;
+        }
+        handleToggle();
+      }}
+      aria-haspopup="dialog"
+      aria-expanded={open}
+    />
+  );
 
   return (
     <PopoverDialog
@@ -145,28 +166,19 @@ export default function NotificationsBell({ orgId, orgName }: NotificationsBellP
       }
     >
       <div className={styles.button}>
-        <IconButton
-          ref={buttonRef}
-          icon={Notifications}
-          ariaLabel={hasError ? "Erro ao carregar notificações" : "Notificações"}
-          tooltipContent={hasError ? "Tentar novamente" : "Notificações"}
-          size={IconButton.sizes.MEDIUM}
-          kind={IconButton.kinds.TERTIARY}
-          onClick={() => {
-            if (hasError) {
-              mutate();
-              return;
-            }
-            handleToggle();
-          }}
-          aria-haspopup="dialog"
-          aria-expanded={open}
-        />
         {showBadge ? (
-          <span className={styles.badgeWrapper} aria-hidden>
-            <Badge type={Badge.types.COUNTER} color={Badge.colors.PRIMARY} count={unreadCount} maxDigits={3} />
-          </span>
-        ) : null}
+          <Badge
+            type={Badge.types.COUNTER}
+            count={unreadCount}
+            maxDigits={3}
+            anchor={Badge.anchors.TOP_END}
+            alignment={Badge.alignments.OUTSIDE}
+          >
+            {triggerButton}
+          </Badge>
+        ) : (
+          triggerButton
+        )}
       </div>
     </PopoverDialog>
   );

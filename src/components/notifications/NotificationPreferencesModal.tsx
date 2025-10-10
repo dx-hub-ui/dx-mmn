@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ComponentProps, type ComponentType } from "react";
-import { AlertBanner, Button, Checkbox, Dialog, DialogContentContainer, Menu, MenuButton, MenuItem, Text } from "@vibe/core";
+import {
+  AlertBanner,
+  AlertBannerText,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogContentContainer,
+  Menu,
+  MenuButton,
+  MenuItem,
+  Text,
+} from "@vibe/core";
 import { NavigationChevronDown } from "@vibe/icons";
 import styles from "./notification-preferences-modal.module.css";
 
@@ -123,12 +134,17 @@ export default function NotificationPreferencesModal({ open, orgId, onClose, onS
             <Text type={Text.types.TEXT2} weight={Text.weights.BOLD}>
               Preferências de notificações
             </Text>
-            <Text type={Text.types.TEXT4} color={Text.colors.SECONDARY}>
+            <Text type={Text.types.TEXT3} color={Text.colors.SECONDARY}>
               Controle como você quer ser lembrado de menções e escolha seu fuso horário de referência.
             </Text>
           </div>
           {error ? (
-            <AlertBanner type={AlertBanner.types.DANGER} text={error} onClose={() => setError(null)} />
+            <AlertBanner
+              backgroundColor={AlertBanner.backgroundColors.NEGATIVE}
+              onClose={() => setError(null)}
+            >
+              <AlertBannerText text={error} />
+            </AlertBanner>
           ) : null}
           <div className={styles.body}>
             <Checkbox
@@ -150,7 +166,6 @@ export default function NotificationPreferencesModal({ open, orgId, onClose, onS
                     kind={Button.kinds.SECONDARY}
                     rightIcon={NavigationChevronDown}
                     className={styles.timezoneTrigger}
-                    fullWidth
                   >
                     {currentTimezone}
                   </Button>

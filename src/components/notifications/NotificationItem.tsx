@@ -29,7 +29,7 @@ function renderWithMentions(text: string | null) {
 type NotificationItemProps = {
   item: NotificationItemDTO;
   onOpen: (item: NotificationItemDTO) => void;
-  onToggleRead: (item: NotificationItemDTO, nextStatus: NotificationStatus) => void;
+  onToggleRead: (item: NotificationItemDTO, nextStatus: Exclude<NotificationStatus, "hidden">) => void;
   onMuteSource: (item: NotificationItemDTO, scope: "source" | "type") => void;
   isMutating?: boolean;
 };
@@ -84,7 +84,7 @@ export default function NotificationItem({ item, onOpen, onToggleRead, onMuteSou
           <Text type={Text.types.TEXT2} weight={Text.weights.BOLD} className={styles.title} aria-label={item.title ?? "Notificação"}>
             {item.title ?? "Notificação"}
           </Text>
-          <Text type={Text.types.TEXT4} className={styles.time} aria-label={relativeTime}>
+          <Text type={Text.types.TEXT3} className={styles.time} aria-label={relativeTime}>
             {relativeTime}
           </Text>
         </div>
