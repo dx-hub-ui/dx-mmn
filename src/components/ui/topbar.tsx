@@ -1,7 +1,7 @@
 "use client";
 
 import { IconButton } from "@vibe/core";
-import { Inbox } from "@vibe/icons";
+import { Inbox, Notifications } from "@vibe/icons";
 import clsx from "clsx";
 import styles from "./topbar.module.css";
 import UserMenu from "./topbar/UserMenu";
@@ -26,6 +26,15 @@ export default function Topbar({ isSidebarOpen, className, activeOrg }: TopbarPr
         </div>
         <div className={styles.middle} />
         <nav className={styles.nav} aria-label="Topbar actions">
+          {/* Added Notifications icon */}
+          <IconButton
+            icon={Notifications}
+            ariaLabel="Abrir notificações"
+            tooltipContent="Notificações"
+            size={IconButton.sizes.MEDIUM}
+            kind={IconButton.kinds.TERTIARY}
+          />
+
           {notificationsEnabled && activeOrg ? (
             <NotificationsBell orgId={activeOrg.id} orgName={activeOrg.name} />
           ) : (
