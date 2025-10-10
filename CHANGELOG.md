@@ -1,3 +1,14 @@
+# 2025-11-25
+
+### Changed
+- Remodelamos o cabeçalho de `/crm` para exibir somente "Meus Contatos" com menu em ícone e toolbar superior contendo Criar contato, Filtros (dialog `DialogContentContainer`) e Atualizar, alinhando a visão Tabela ao layout monday.com de referência.
+- Simplificamos o Kanban de contatos com cabeçalhos coloridos, corpo neutro (`--dark-background-color`) e cartões planos utilizando tokens do aplicativo, além de mover Relatórios/Importar para um menu de três pontos.
+
+### Fixed
+- Corrigimos o z-index dos cartões do Kanban para que permaneçam sobre as colunas durante o arrastar e adicionamos placeholder que bloqueia interações enquanto a criação via API está em andamento.
+- A ação "Adicionar Contato" no Kanban agora cria e salva o registro imediatamente no estágio selecionado, sincroniza com a Tabela e exibe toasts de sucesso, erro ou atenção em cores sólidas.
+- Refatoramos o helper `createContactRequest` para ser compartilhado entre a tabela e o Kanban sem violar o tempo de vida dos hooks, evitando o ReferenceError que impedia a criação direta após o primeiro render.
+
 # 2025-11-24
 
 ### Fixed
