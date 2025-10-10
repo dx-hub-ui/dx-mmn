@@ -340,22 +340,26 @@ type StepModalProps = {
   open: boolean;
   state: StepModalState | null;
   onClose: () => void;
-  onSubmit: (values: {
-    id?: string;
-    title: string;
-    shortDescription: string;
-    type: SequenceStepRecord["type"];
-    assigneeMode: SequenceStepRecord["assigneeMode"];
-    dueOffsetDays: number;
-    dueOffsetHours: number;
-    priority: string;
-    channelHint: string;
-    pauseUntilDone: boolean;
-    isActive: boolean;
-  }, options: { state: StepModalState }) => Promise<void>;
-    anchorStepId?: string;
-    position?: "before" | "after";
-  }) => Promise<void>;
+  onSubmit: (
+    values: {
+      id?: string;
+      title: string;
+      shortDescription: string;
+      type: SequenceStepRecord["type"];
+      assigneeMode: SequenceStepRecord["assigneeMode"];
+      dueOffsetDays: number;
+      dueOffsetHours: number;
+      priority: string;
+      channelHint: string;
+      pauseUntilDone: boolean;
+      isActive: boolean;
+    },
+    options: {
+      state: StepModalState;
+      anchorStepId?: string;
+      position?: "before" | "after";
+    },
+  ) => Promise<void>;
   pending: boolean;
   disabled: boolean;
 };
