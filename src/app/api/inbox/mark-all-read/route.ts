@@ -21,6 +21,15 @@ type FilterableQuery<T> = {
   is(column: string, value: unknown): T;
 };
 
+function hasId(row: unknown): row is { id: string } {
+  if (typeof row !== "object" || row === null) {
+    return false;
+  }
+
+  const candidate = row as { id?: unknown };
+  return typeof candidate.id === "string";
+}
+
 function selectWithBookmarks(select: string, tab: string) {
   return tab === "bookmarked" ? `${select},notification_bookmarks!inner()` : select;
 }
@@ -97,7 +106,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Falha ao coletar itens" }, { status: 500 });
   }
 
-  const ids = (rows ?? []).map((row) => row.id);
+  const ids = (rows ?? []).filter(hasId).map((row) => row.id);
   if (ids.length === 0) {
     const { data: counterData, error: counterError } = await supabase
       .from("notification_counters")
