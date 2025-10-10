@@ -8,6 +8,8 @@ import {
   useState,
   type ComponentType,
   type HTMLAttributes,
+  type InputHTMLAttributes,
+  type KeyboardEvent,
 } from "react";
 import {
   Button,
@@ -37,6 +39,7 @@ import {
 import type { TableColumn, TableRowProps } from "@vibe/core";
 import {
   ContactRecord,
+  ContactStageDefinition,
   ContactStageId,
   CONTACT_STAGES,
   MembershipSummary,
@@ -58,7 +61,16 @@ import ContactsKanban from "@/features/crm/contacts/components/ContactsKanban";
 import BulkActionsBar from "@/features/crm/contacts/components/BulkActionsBar";
 import ImportContactsModal from "@/features/crm/contacts/components/ImportContactsModal";
 import ReportsDialog from "@/features/crm/contacts/components/ReportsDialog";
-import { Add, Chart, CloseSmall, Filter, MoreActions, Retry, Upload } from "@vibe/icons";
+import {
+  Add,
+  Chart,
+  CloseSmall,
+  DropdownChevronDown,
+  Filter,
+  MoreActions,
+  Retry,
+  Upload,
+} from "@vibe/icons";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" });
 const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
@@ -72,6 +84,24 @@ const STAGE_TONES: Record<string, string> = {
   purple: styles.stagePillPurple,
   gray: styles.stagePillGray,
   red: styles.stagePillRed,
+};
+
+const STATUS_TONES: Record<string, string> = {
+  blue: styles.statusToneBlue,
+  green: styles.statusToneGreen,
+  orange: styles.statusToneOrange,
+  purple: styles.statusTonePurple,
+  gray: styles.statusToneGray,
+  red: styles.statusToneRed,
+};
+
+const STATUS_DOT_TONES: Record<string, string> = {
+  blue: styles.statusDotBlue,
+  green: styles.statusDotGreen,
+  orange: styles.statusDotOrange,
+  purple: styles.statusDotPurple,
+  gray: styles.statusDotGray,
+  red: styles.statusDotRed,
 };
 
 const STAGE_ORDER = new Map(CONTACT_STAGES.map((stage, index) => [stage.id, index] as const));
@@ -123,6 +153,7 @@ type ContactsBoardPageProps = {
 
 type ContactUpdateSource = "board" | "modal" | "kanban" | "bulk";
 type ContactUpdateResult = { success: true; contact: ContactRecord } | { success: false; error: string };
+type InlineCommitResult = { success: true } | { success: false; error: string };
 
 function nextStepSignature(contact: ContactRecord | undefined) {
   if (!contact) {
@@ -295,6 +326,408 @@ function sortContacts(
   return [...contacts].sort((a, b) => multiplier * compareContactByColumn(a, b, sorting.column));
 }
 
+type InlineTextFieldProps = {
+  value: string | null | undefined;
+  placeholder?: string;
+  ariaLabel: string;
+  onCommit: (value: string) => Promise<InlineCommitResult>;
+  renderDisplay?: (value: string, openEditor: () => void) => React.ReactNode;
+  type?: string;
+  inputMode?: InputHTMLAttributes<HTMLInputElement>["inputMode"];
+  multiline?: boolean;
+  align?: "left" | "right";
+  rows?: number;
+};
+
+type InlineSelectOption = { value: string; label: string };
+
+type InlineSelectFieldProps = {
+  value: string | null | undefined;
+  displayValue: string;
+  placeholder: string;
+  ariaLabel: string;
+  options: InlineSelectOption[];
+  onCommit: (value: string) => Promise<InlineCommitResult>;
+};
+
+type StatusCellProps = {
+  contact: ContactRecord;
+  onCommit: (stage: ContactStageId) => Promise<InlineCommitResult>;
+};
+
+function InlineTextField({
+  value,
+  placeholder = "—",
+  ariaLabel,
+  onCommit,
+  renderDisplay,
+  type = "text",
+  inputMode,
+  multiline = false,
+  align = "left",
+  rows = 3,
+}: InlineTextFieldProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState(value ?? "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fieldRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const skipCommitRef = useRef(false);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setDraft(value ?? "");
+    }
+  }, [value, isEditing]);
+
+  const setFieldRef = useCallback((node: HTMLInputElement | HTMLTextAreaElement | null) => {
+    fieldRef.current = node;
+  }, []);
+
+  useEffect(() => {
+    if (isEditing && fieldRef.current) {
+      const node = fieldRef.current;
+      requestAnimationFrame(() => {
+        if (!node) {
+          return;
+        }
+        node.focus();
+        if (!multiline && node instanceof HTMLInputElement && node.type !== "number") {
+          try {
+            node.setSelectionRange(node.value.length, node.value.length);
+          } catch {
+            // ignore selection errors
+          }
+        }
+      });
+    }
+  }, [isEditing, multiline]);
+
+  const openEditor = useCallback(() => {
+    if (isSaving) {
+      return;
+    }
+    setIsEditing(true);
+    setError(null);
+  }, [isSaving]);
+
+  const closeEditor = useCallback(() => {
+    skipCommitRef.current = true;
+    setIsEditing(false);
+    setDraft(value ?? "");
+    setError(null);
+  }, [value]);
+
+  const commit = useCallback(
+    async (next: string) => {
+      if (isSaving) {
+        return;
+      }
+      if ((value ?? "") === next) {
+        setIsEditing(false);
+        setError(null);
+        return;
+      }
+      setIsSaving(true);
+      const result = await onCommit(next);
+      if (!result.success) {
+        setIsSaving(false);
+        setError(result.error);
+        requestAnimationFrame(() => {
+          fieldRef.current?.focus();
+        });
+        return;
+      }
+      setIsSaving(false);
+      setIsEditing(false);
+      setError(null);
+    },
+    [isSaving, onCommit, value]
+  );
+
+  const handleBlur = useCallback(() => {
+    if (skipCommitRef.current) {
+      skipCommitRef.current = false;
+      return;
+    }
+    void commit(draft);
+  }, [commit, draft]);
+
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      event.stopPropagation();
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeEditor();
+        return;
+      }
+      if (!multiline && event.key === "Enter") {
+        event.preventDefault();
+        void commit(draft);
+      }
+      if (multiline && event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        void commit(draft);
+      }
+    },
+    [closeEditor, commit, draft, multiline]
+  );
+
+  const displayValue = value ?? "";
+  const displayContent = renderDisplay
+    ? renderDisplay(displayValue, openEditor)
+    : displayValue || placeholder;
+
+  return (
+    <div className={styles.inlineEditor} data-align={align}>
+      {isEditing ? (
+        multiline ? (
+          <textarea
+            ref={setFieldRef}
+            className={styles.inlineTextarea}
+            value={draft}
+            rows={rows}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            aria-label={ariaLabel}
+          />
+        ) : (
+          <input
+            ref={setFieldRef}
+            className={styles.inlineInput}
+            type={type}
+            inputMode={inputMode}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            aria-label={ariaLabel}
+          />
+        )
+      ) : (
+        <div
+          className={styles.inlineEditorDisplay}
+          role="button"
+          tabIndex={0}
+          data-placeholder={!displayValue ? "true" : undefined}
+          onClick={(event) => {
+            event.stopPropagation();
+            openEditor();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              openEditor();
+            }
+          }}
+          aria-label={ariaLabel}
+        >
+          {displayContent || placeholder}
+        </div>
+      )}
+      {isSaving ? <span className={styles.inlineSaving}>Salvando…</span> : null}
+      {error ? <div className={styles.inlineError}>{error}</div> : null}
+    </div>
+  );
+}
+
+function InlineSelectField({
+  value,
+  displayValue,
+  placeholder,
+  ariaLabel,
+  options,
+  onCommit,
+}: InlineSelectFieldProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const selectRef = useRef<HTMLSelectElement | null>(null);
+  const skipCloseRef = useRef(false);
+
+  useEffect(() => {
+    if (isEditing && selectRef.current) {
+      const node = selectRef.current;
+      requestAnimationFrame(() => node?.focus());
+    }
+  }, [isEditing]);
+
+  const openEditor = useCallback(() => {
+    if (isSaving) {
+      return;
+    }
+    setIsEditing(true);
+    setError(null);
+  }, [isSaving]);
+
+  const commit = useCallback(
+    async (next: string) => {
+      if (isSaving) {
+        return;
+      }
+      if ((value ?? "") === next) {
+        setIsEditing(false);
+        setError(null);
+        return;
+      }
+      setIsSaving(true);
+      const result = await onCommit(next);
+      if (!result.success) {
+        skipCloseRef.current = true;
+        setIsSaving(false);
+        setError(result.error);
+        requestAnimationFrame(() => {
+          selectRef.current?.focus();
+        });
+        return;
+      }
+      setIsSaving(false);
+      setIsEditing(false);
+      setError(null);
+    },
+    [isSaving, onCommit, value]
+  );
+
+  const handleBlur = useCallback(() => {
+    if (skipCloseRef.current) {
+      skipCloseRef.current = false;
+      return;
+    }
+    if (isSaving) {
+      return;
+    }
+    setIsEditing(false);
+    setError(null);
+  }, [isSaving]);
+
+  return (
+    <div className={styles.inlineEditor}>
+      {isEditing ? (
+        <select
+          ref={selectRef}
+          className={styles.inlineSelect}
+          value={value ?? ""}
+          onChange={(event) => void commit(event.target.value)}
+          onBlur={handleBlur}
+          onKeyDown={(event) => {
+            event.stopPropagation();
+            if (event.key === "Escape") {
+              event.preventDefault();
+              skipCloseRef.current = true;
+              setIsEditing(false);
+              setError(null);
+            }
+          }}
+          aria-label={ariaLabel}
+        >
+          <option value="">{placeholder}</option>
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <div
+          className={styles.inlineEditorDisplay}
+          role="button"
+          tabIndex={0}
+          data-placeholder={!displayValue ? "true" : undefined}
+          onClick={(event) => {
+            event.stopPropagation();
+            openEditor();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              openEditor();
+            }
+          }}
+          aria-label={ariaLabel}
+        >
+          {displayValue || placeholder}
+        </div>
+      )}
+      {isSaving ? <span className={styles.inlineSaving}>Salvando…</span> : null}
+      {error ? <div className={styles.inlineError}>{error}</div> : null}
+    </div>
+  );
+}
+
+function StatusCell({ contact, onCommit }: StatusCellProps) {
+  const stageDefinition = CONTACT_STAGES.find((stage) => stage.id === contact.stage);
+  const tone = stageDefinition?.tone ?? "gray";
+  const toneClass = STATUS_TONES[tone] ?? STATUS_TONES.gray;
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleStageSelect = useCallback(
+    async (stageId: ContactStageId) => {
+      if (stageId === contact.stage) {
+        return;
+      }
+      setIsSaving(true);
+      setError(null);
+      const result = await onCommit(stageId);
+      if (!result.success) {
+        setIsSaving(false);
+        setError(result.error);
+        return;
+      }
+      setIsSaving(false);
+    },
+    [contact.stage, onCommit]
+  );
+
+  return (
+    <div className={styles.statusCell}>
+      <MenuButton
+        ariaLabel={`Alterar status de ${contact.name}`}
+        dialogPosition={MenuButton.dialogPositions.BOTTOM_START}
+        closeMenuOnItemClick
+        className={styles.statusMenuButton}
+        component={() => (
+          <button
+            type="button"
+            className={`${styles.statusTrigger} ${toneClass}`}
+            disabled={isSaving}
+          >
+            <span>{stageDefinition?.label ?? contact.stage}</span>
+            {isSaving ? (
+              <span className={styles.inlineSaving}>Salvando…</span>
+            ) : (
+              <DropdownChevronDown aria-hidden="true" />
+            )}
+          </button>
+        )}
+      >
+        <Menu className={styles.statusMenu}>
+          {CONTACT_STAGES.map((stage) => {
+            const optionDot = STATUS_DOT_TONES[stage.tone] ?? STATUS_DOT_TONES.gray;
+            return (
+              <MenuItem
+                key={stage.id}
+                title={stage.label}
+                onClick={() => {
+                  if (!isSaving) {
+                    void handleStageSelect(stage.id);
+                  }
+                }}
+                selected={stage.id === contact.stage}
+                disabled={isSaving}
+                className={styles.statusMenuItem}
+                icon={() => <span className={`${styles.statusMenuDot} ${optionDot}`} />}
+              />
+            );
+          })}
+        </Menu>
+      </MenuButton>
+      {error ? <div className={styles.inlineError}>{error}</div> : null}
+    </div>
+  );
+}
+
 export default function ContactsBoardPage({
   organization,
   currentMembership,
@@ -310,8 +743,6 @@ export default function ContactsBoardPage({
   const [sorting, setSorting] = useState<{ column: SortColumn; direction: "asc" | "desc" } | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [selection, setSelection] = useState<Set<string>>(() => new Set());
-  const [editingContactId, setEditingContactId] = useState<string | null>(null);
-  const [editingForm, setEditingForm] = useState<EditableContactForm | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createForm, setCreateForm] = useState<EditableContactForm>(() =>
     emptyEditableForm(currentMembership.id)
@@ -712,6 +1143,24 @@ export default function ContactsBoardPage({
     [modalState, visibleContacts]
   );
 
+  const saveInlineField = useCallback(
+    async (
+      contactId: string,
+      updates: Partial<EditableContactForm>
+    ): Promise<InlineCommitResult> => {
+      const result = await applyContactUpdate(contactId, updates, "board");
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+      const keys = Object.keys(updates);
+      if (!keys.some((key) => key === "stage" || key === "nextActionAt" || key === "nextActionNote")) {
+        setFeedback({ type: "success", message: "Contato atualizado" });
+      }
+      return { success: true };
+    },
+    [applyContactUpdate, setFeedback]
+  );
+
   const closeModal = useCallback(() => {
     setModalState(null);
     setModalDetail(null);
@@ -820,58 +1269,28 @@ export default function ContactsBoardPage({
     }
   }, [createContactRequest, createForm, currentMembership.id]);
 
-  const beginEdit = useCallback((contact: ContactRecord) => {
-    setEditingContactId(contact.id);
-    setEditingForm(contactToEditable(contact));
-    setFormErrors(null);
-  }, []);
-
-  const cancelEdit = useCallback(() => {
-    setEditingContactId(null);
-    setEditingForm(null);
-    setFormErrors(null);
-  }, []);
-
-  const handleUpdate = useCallback(async () => {
-    if (!editingContactId || !editingForm) {
-      return;
-    }
-    const previous = contacts.find((contact) => contact.id === editingContactId);
-    setIsLoading(true);
-    setFormErrors(null);
-    try {
-      const result = await submitContactForm(editingContactId, editingForm);
-      if (!result.success) {
-        setFormErrors(result.error);
-        setFeedback({ type: "error", message: result.error });
-        return;
-      }
-      emitContactTelemetry(previous, result.contact, "board");
-      setFeedback({ type: "success", message: "Contato atualizado" });
-      cancelEdit();
-    } finally {
-      setIsLoading(false);
-    }
-  }, [contacts, editingContactId, editingForm, emitContactTelemetry, submitContactForm, cancelEdit]);
-
-
-  const isRowEditing = (contactId: string) => editingContactId === contactId;
-
   const tableColumns = useMemo<TableColumn[]>(
     () => [
       { id: "select", title: "", width: 48, loadingStateType: "circle" },
       { id: "name", title: "Contato", width: "2fr", loadingStateType: "long-text" },
       { id: "owner", title: "Dono", width: "1fr", loadingStateType: "medium-text" },
-      { id: "stage", title: "Estágio", width: "1fr", loadingStateType: "medium-text" },
+      { id: "stage", title: "Status", width: "1fr", loadingStateType: "medium-text" },
       { id: "lastTouch", title: "Último toque", width: "1fr", loadingStateType: "medium-text" },
       { id: "nextAction", title: "Próximo passo", width: "1.4fr", loadingStateType: "long-text" },
       { id: "referredBy", title: "Indicado por", width: "1fr", loadingStateType: "medium-text" },
       { id: "whatsapp", title: "WhatsApp", width: "1fr", loadingStateType: "medium-text" },
       { id: "tags", title: "Tags", width: "1.4fr", loadingStateType: "long-text" },
       { id: "score", title: "Score", width: 96, loadingStateType: "circle" },
-      { id: "actions", title: "Ações", width: 140, loadingStateType: "medium-text" },
     ],
     []
+  );
+  const ownerOptions = useMemo(
+    () => memberships.map((member) => ({ value: member.id, label: member.displayName })),
+    [memberships]
+  );
+  const referralOptions = useMemo(
+    () => contacts.map((contact) => ({ value: contact.id, label: contact.name })),
+    [contacts]
   );
   const skeletonRows = useMemo(() => Array.from({ length: 5 }, (_, index) => index), []);
   const headerCheckboxRef = useRef<HTMLInputElement | null>(null);
@@ -1166,6 +1585,7 @@ export default function ContactsBoardPage({
                 </div>
 
                 <Table
+                  className={styles.table}
                   columns={tableColumns}
                   dataState={{ isLoading: showSkeleton }}
                   emptyState={<div className={styles.emptyState}>Nenhum contato encontrado.</div>}
@@ -1200,10 +1620,10 @@ export default function ContactsBoardPage({
                       sortButtonAriaLabel="Ordenar por dono"
                     />
                     <TableHeaderCell
-                      title="Estágio"
+                      title="Status"
                       sortState={sortStateFor("stage")}
                       onSortClicked={(direction) => handleSortColumn("stage", direction)}
-                      sortButtonAriaLabel="Ordenar por estágio"
+                      sortButtonAriaLabel="Ordenar por status"
                     />
                     <TableHeaderCell
                       title="Último toque"
@@ -1241,427 +1661,320 @@ export default function ContactsBoardPage({
                       onSortClicked={(direction) => handleSortColumn("score", direction)}
                       sortButtonAriaLabel="Ordenar por score"
                     />
-                    <TableHeaderCell title="Ações" />
                   </TableHeader>
 
                   <TableBody>
                     {[
                       ...(isCreating
                         ? [
-                          <TableRow className={styles.tableRow} key="create-row">
-                        <TableCell>
-                          <Button kind={Button.kinds.TERTIARY} onClick={() => setIsCreating(false)}>
-                            Cancelar
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          <div className={styles.nameCell}>
-                            <input
-                              className={styles.inlineInput}
-                              placeholder="Nome"
-                              value={createForm.name}
-                              onChange={(event) =>
-                                setCreateForm((current) => ({ ...current, name: event.target.value }))
-                              }
-                              required
-                            />
-                            <input
-                              className={styles.inlineInput}
-                              placeholder="E-mail"
-                              value={createForm.email}
-                              onChange={(event) =>
-                                setCreateForm((current) => ({ ...current, email: event.target.value }))
-                              }
-                            />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <select
-                            className={styles.inlineSelect}
-                            value={createForm.ownerMembershipId}
-                            onChange={(event) =>
-                              setCreateForm((current) => ({ ...current, ownerMembershipId: event.target.value }))
-                            }
-                          >
-                            {memberships.map((member) => (
-                              <option key={member.id} value={member.id}>
-                                {member.displayName}
-                              </option>
-                            ))}
-                          </select>
-                        </TableCell>
-                        <TableCell>
-                          <select
-                            className={styles.inlineSelect}
-                            value={createForm.stage}
-                            onChange={(event) =>
-                              setCreateForm((current) => ({ ...current, stage: event.target.value as ContactStageId }))
-                            }
-                          >
-                            {CONTACT_STAGES.map((stage) => (
-                              <option key={stage.id} value={stage.id}>
-                                {stage.label}
-                              </option>
-                            ))}
-                          </select>
-                        </TableCell>
-                        <TableCell>
-                          <span>{formatDateTime(new Date().toISOString())}</span>
-                        </TableCell>
-                        <TableCell>
-                          <div className={styles.nameCell}>
-                            <input
-                              className={styles.inlineInput}
-                              type="date"
-                              value={createForm.nextActionAt}
-                              onChange={(event) =>
-                                setCreateForm((current) => ({ ...current, nextActionAt: event.target.value }))
-                              }
-                            />
-                            <textarea
-                              className={styles.inlineTextarea}
-                              placeholder="Próximo passo"
-                              value={createForm.nextActionNote}
-                              onChange={(event) =>
-                                setCreateForm((current) => ({ ...current, nextActionNote: event.target.value }))
-                              }
-                            />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <select
-                            className={styles.inlineSelect}
-                            value={createForm.referredByContactId}
-                            onChange={(event) =>
-                              setCreateForm((current) => ({ ...current, referredByContactId: event.target.value }))
-                            }
-                          >
-                            <option value="">Indicado por</option>
-                            {contacts.map((contactOption) => (
-                              <option key={contactOption.id} value={contactOption.id}>
-                                {contactOption.name}
-                              </option>
-                            ))}
-                          </select>
-                        </TableCell>
-                        <TableCell>
-                          <input
-                            className={styles.inlineInput}
-                            placeholder="Telefone/WhatsApp"
-                            value={createForm.whatsapp}
-                            onChange={(event) =>
-                              setCreateForm((current) => ({ ...current, whatsapp: event.target.value }))
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <input
-                            className={styles.inlineInput}
-                            placeholder="Tags (separadas por vírgula)"
-                            value={createForm.tags}
-                            onChange={(event) =>
-                              setCreateForm((current) => ({ ...current, tags: event.target.value }))
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <input
-                            className={styles.inlineInput}
-                            placeholder="Score"
-                            type="number"
-                            min={0}
-                            max={100}
-                            value={createForm.score}
-                            onChange={(event) =>
-                              setCreateForm((current) => ({ ...current, score: event.target.value }))
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <div className={styles.rowActions}>
-                            <Button kind={Button.kinds.PRIMARY} onClick={handleCreate} loading={isLoading}>
-                              Salvar
-                            </Button>
-                          </div>
-                          {formErrors && <div className={styles.formError}>{formErrors}</div>}
-                        </TableCell>
-                          </TableRow>,
+                            <TableRow className={styles.tableRow} key="create-row">
+                              <TableCell>
+                                <div className={styles.rowActions}>
+                                  <Button kind={Button.kinds.TERTIARY} onClick={() => setIsCreating(false)}>
+                                    Cancelar
+                                  </Button>
+                                  <Button kind={Button.kinds.PRIMARY} onClick={handleCreate} loading={isLoading}>
+                                    Salvar
+                                  </Button>
+                                </div>
+                                {formErrors ? <div className={styles.formError}>{formErrors}</div> : null}
+                              </TableCell>
+                              <TableCell>
+                                <div className={styles.nameCell}>
+                                  <input
+                                    className={styles.inlineInput}
+                                    placeholder="Nome"
+                                    value={createForm.name}
+                                    onChange={(event) =>
+                                      setCreateForm((current) => ({ ...current, name: event.target.value }))
+                                    }
+                                    required
+                                  />
+                                  <input
+                                    className={styles.inlineInput}
+                                    placeholder="E-mail"
+                                    value={createForm.email}
+                                    onChange={(event) =>
+                                      setCreateForm((current) => ({ ...current, email: event.target.value }))
+                                    }
+                                  />
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <select
+                                  className={styles.inlineSelect}
+                                  value={createForm.ownerMembershipId}
+                                  onChange={(event) =>
+                                    setCreateForm((current) => ({ ...current, ownerMembershipId: event.target.value }))
+                                  }
+                                >
+                                  {memberships.map((member) => (
+                                    <option key={member.id} value={member.id}>
+                                      {member.displayName}
+                                    </option>
+                                  ))}
+                                </select>
+                              </TableCell>
+                              <TableCell>
+                                <select
+                                  className={styles.inlineSelect}
+                                  value={createForm.stage}
+                                  onChange={(event) =>
+                                    setCreateForm((current) => ({
+                                      ...current,
+                                      stage: event.target.value as ContactStageId,
+                                    }))
+                                  }
+                                >
+                                  {CONTACT_STAGES.map((stage) => (
+                                    <option key={stage.id} value={stage.id}>
+                                      {stage.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </TableCell>
+                              <TableCell>
+                                <span>{formatDateTime(new Date().toISOString())}</span>
+                              </TableCell>
+                              <TableCell>
+                                <div className={styles.nameCell}>
+                                  <input
+                                    className={styles.inlineInput}
+                                    type="date"
+                                    value={createForm.nextActionAt}
+                                    onChange={(event) =>
+                                      setCreateForm((current) => ({ ...current, nextActionAt: event.target.value }))
+                                    }
+                                  />
+                                  <textarea
+                                    className={styles.inlineTextarea}
+                                    placeholder="Próximo passo"
+                                    value={createForm.nextActionNote}
+                                    onChange={(event) =>
+                                      setCreateForm((current) => ({ ...current, nextActionNote: event.target.value }))
+                                    }
+                                  />
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <select
+                                  className={styles.inlineSelect}
+                                  value={createForm.referredByContactId}
+                                  onChange={(event) =>
+                                    setCreateForm((current) => ({ ...current, referredByContactId: event.target.value }))
+                                  }
+                                >
+                                  <option value="">Indicado por</option>
+                                  {contacts.map((contactOption) => (
+                                    <option key={contactOption.id} value={contactOption.id}>
+                                      {contactOption.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </TableCell>
+                              <TableCell>
+                                <input
+                                  className={styles.inlineInput}
+                                  placeholder="Telefone/WhatsApp"
+                                  value={createForm.whatsapp}
+                                  onChange={(event) =>
+                                    setCreateForm((current) => ({ ...current, whatsapp: event.target.value }))
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <input
+                                  className={styles.inlineInput}
+                                  placeholder="Tags (separadas por vírgula)"
+                                  value={createForm.tags}
+                                  onChange={(event) =>
+                                    setCreateForm((current) => ({ ...current, tags: event.target.value }))
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <input
+                                  className={styles.inlineInput}
+                                  placeholder="Score"
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={createForm.score}
+                                  onChange={(event) =>
+                                    setCreateForm((current) => ({ ...current, score: event.target.value }))
+                                  }
+                                />
+                              </TableCell>
+                            </TableRow>,
                           ]
                         : []),
                       ...(showSkeleton
                         ? skeletonRows.map((rowIndex) => (
-                          <TableRow key={`skeleton-${rowIndex}`} className={styles.tableRow}>
-                            {tableColumns.map((column) => (
-                              <TableLoadingSkeletonCell
-                                key={column.id}
-                                type={column.loadingStateType}
-                              />
-                            ))}
-                          </TableRow>
-                        ))
+                            <TableRow key={`skeleton-${rowIndex}`} className={styles.tableRow}>
+                              {tableColumns.map((column) => (
+                                <TableLoadingSkeletonCell
+                                  key={column.id}
+                                  type={column.loadingStateType}
+                                />
+                              ))}
+                            </TableRow>
+                          ))
                         : visibleContacts.map((contact) => {
-                          const stageDefinition = CONTACT_STAGES.find(
-                            (stage) => stage.id === contact.stage
-                          );
-                          const pillClass =
-                            stageDefinition ? STAGE_TONES[stageDefinition.tone] : styles.stagePillGray;
-                          const isSelected = selection.has(contact.id);
-
-                          if (isRowEditing(contact.id) && editingForm) {
+                            const isSelected = selection.has(contact.id);
+                            const contactReferralOptions = referralOptions.filter(
+                              (option) => option.value !== contact.id
+                            );
                             return (
-                              <TableRow key={contact.id} className={styles.tableRow}>
+                              <InteractiveTableRow
+                                key={contact.id}
+                                className={styles.tableRow}
+                                data-selected={isSelected}
+                                onDoubleClick={() => handleOpenContact(contact.id)}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    handleOpenContact(contact.id);
+                                  }
+                                  if (event.key.toLowerCase() === "o") {
+                                    event.preventDefault();
+                                    handleOpenContact(contact.id);
+                                  }
+                                }}
+                                tabIndex={0}
+                              >
                                 <TableCell>
-                                  <Button kind={Button.kinds.TERTIARY} onClick={cancelEdit}>
-                                    Cancelar
-                                  </Button>
+                                  <input
+                                    type="checkbox"
+                                    aria-label={`Selecionar ${contact.name}`}
+                                    checked={isSelected}
+                                    onChange={() => toggleSelection(contact.id)}
+                                  />
                                 </TableCell>
                                 <TableCell>
                                   <div className={styles.nameCell}>
-                                    <input
-                                      className={styles.inlineInput}
-                                      value={editingForm.name}
-                                      onChange={(event) =>
-                                        setEditingForm((current) =>
-                                          current ? { ...current, name: event.target.value } : current
-                                        )
-                                      }
+                                    <InlineTextField
+                                      value={contact.name}
+                                      placeholder="Nome"
+                                      ariaLabel={`Editar nome de ${contact.name}`}
+                                      onCommit={(next) => saveInlineField(contact.id, { name: next.trim() })}
+                                      renderDisplay={() => (
+                                        <button
+                                          type="button"
+                                          className={styles.nameLink}
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            handleOpenContact(contact.id);
+                                          }}
+                                        >
+                                          {contact.name || "Sem nome"}
+                                        </button>
+                                      )}
                                     />
-                                    <input
-                                      className={styles.inlineInput}
-                                      value={editingForm.email}
-                                      onChange={(event) =>
-                                        setEditingForm((current) =>
-                                          current ? { ...current, email: event.target.value } : current
-                                        )
-                                      }
+                                    <InlineTextField
+                                      value={contact.email ?? ""}
+                                      placeholder="E-mail"
+                                      ariaLabel={`Editar e-mail de ${contact.name}`}
+                                      onCommit={(next) => saveInlineField(contact.id, { email: next.trim() })}
+                                      renderDisplay={() => (
+                                        <span className={styles.metaLine}>{contact.email ?? "—"}</span>
+                                      )}
                                     />
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <select
-                                    className={styles.inlineSelect}
-                                    value={editingForm.ownerMembershipId}
-                                    onChange={(event) =>
-                                      setEditingForm((current) =>
-                                        current ? { ...current, ownerMembershipId: event.target.value } : current
-                                      )
-                                    }
-                                  >
-                                    {memberships.map((member) => (
-                                      <option key={member.id} value={member.id}>
-                                        {member.displayName}
-                                      </option>
-                                    ))}
-                                  </select>
+                                  <InlineSelectField
+                                    value={contact.ownerMembershipId}
+                                    displayValue={contact.owner?.displayName ?? ""}
+                                    placeholder="Sem dono"
+                                    ariaLabel={`Editar dono de ${contact.name}`}
+                                    options={ownerOptions}
+                                    onCommit={(next) => saveInlineField(contact.id, { ownerMembershipId: next })}
+                                  />
                                 </TableCell>
                                 <TableCell>
-                                  <select
-                                    className={styles.inlineSelect}
-                                    value={editingForm.stage}
-                                    onChange={(event) =>
-                                      setEditingForm((current) =>
-                                        current ? { ...current, stage: event.target.value as ContactStageId } : current
-                                      )
-                                    }
-                                  >
-                                    {CONTACT_STAGES.map((stage) => (
-                                      <option key={stage.id} value={stage.id}>
-                                        {stage.label}
-                                      </option>
-                                    ))}
-                                  </select>
+                                  <StatusCell
+                                    contact={contact}
+                                    onCommit={(stage) => saveInlineField(contact.id, { stage })}
+                                  />
                                 </TableCell>
                                 <TableCell>{formatDateTime(contact.lastTouchAt)}</TableCell>
                                 <TableCell>
-                                  <div className={styles.nameCell}>
-                                    <input
-                                      className={styles.inlineInput}
+                                  <div className={styles.nextActionCell}>
+                                    <InlineTextField
+                                      value={contact.nextActionAt ? contact.nextActionAt.substring(0, 10) : ""}
                                       type="date"
-                                      value={editingForm.nextActionAt}
-                                      onChange={(event) =>
-                                        setEditingForm((current) =>
-                                          current ? { ...current, nextActionAt: event.target.value } : current
-                                        )
-                                      }
+                                      ariaLabel={`Editar data do próximo passo de ${contact.name}`}
+                                      placeholder="Sem data"
+                                      onCommit={(next) => saveInlineField(contact.id, { nextActionAt: next })}
+                                      renderDisplay={() => <span>{formatDate(contact.nextActionAt)}</span>}
                                     />
-                                    <textarea
-                                      className={styles.inlineTextarea}
-                                      value={editingForm.nextActionNote}
-                                      onChange={(event) =>
-                                        setEditingForm((current) =>
-                                          current ? { ...current, nextActionNote: event.target.value } : current
-                                        )
-                                      }
+                                    <InlineTextField
+                                      value={contact.nextActionNote ?? ""}
+                                      ariaLabel={`Editar nota do próximo passo de ${contact.name}`}
+                                      placeholder="Sem nota"
+                                      multiline
+                                      rows={3}
+                                      onCommit={(next) => saveInlineField(contact.id, { nextActionNote: next })}
+                                      renderDisplay={() => (
+                                        <span className={styles.metaLine}>{contact.nextActionNote ?? "—"}</span>
+                                      )}
                                     />
                                   </div>
                                 </TableCell>
                                 <TableCell>
-                                  <select
-                                    className={styles.inlineSelect}
-                                    value={editingForm.referredByContactId}
-                                    onChange={(event) =>
-                                      setEditingForm((current) =>
-                                        current ? { ...current, referredByContactId: event.target.value } : current
-                                      )
-                                    }
-                                  >
-                                    <option value="">—</option>
-                                    {contacts
-                                      .filter((candidate) => candidate.id !== contact.id)
-                                      .map((candidate) => (
-                                        <option key={candidate.id} value={candidate.id}>
-                                          {candidate.name}
-                                        </option>
-                                      ))}
-                                  </select>
-                                  {editingForm.stage === "perdido" && (
-                                    <div className={styles.nameCell}>
-                                      <textarea
-                                        className={styles.inlineTextarea}
-                                        placeholder="Motivo da perda"
-                                        value={editingForm.lostReason}
-                                        onChange={(event) =>
-                                          setEditingForm((current) =>
-                                            current ? { ...current, lostReason: event.target.value } : current
-                                          )
-                                        }
-                                      />
-                                      <input
-                                        className={styles.inlineInput}
-                                        type="date"
-                                        value={editingForm.lostReviewAt}
-                                        onChange={(event) =>
-                                          setEditingForm((current) =>
-                                            current ? { ...current, lostReviewAt: event.target.value } : current
-                                          )
-                                        }
-                                      />
-                                    </div>
-                                  )}
+                                  <InlineSelectField
+                                    value={contact.referredByContactId ?? ""}
+                                    displayValue={contact.referredBy?.name ?? ""}
+                                    placeholder="Sem indicação"
+                                    ariaLabel={`Editar indicação de ${contact.name}`}
+                                    options={contactReferralOptions}
+                                    onCommit={(next) => saveInlineField(contact.id, { referredByContactId: next })}
+                                  />
                                 </TableCell>
                                 <TableCell>
-                                  <input
-                                    className={styles.inlineInput}
-                                    value={editingForm.whatsapp}
-                                    onChange={(event) =>
-                                      setEditingForm((current) =>
-                                        current ? { ...current, whatsapp: event.target.value } : current
+                                  <InlineTextField
+                                    value={contact.whatsapp ?? ""}
+                                    ariaLabel={`Editar WhatsApp de ${contact.name}`}
+                                    placeholder="Sem número"
+                                    inputMode="tel"
+                                    onCommit={(next) => saveInlineField(contact.id, { whatsapp: next })}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  <InlineTextField
+                                    value={contact.tags.join(", ")}
+                                    ariaLabel={`Editar tags de ${contact.name}`}
+                                    placeholder="Adicionar tags"
+                                    onCommit={(next) => saveInlineField(contact.id, { tags: next })}
+                                    renderDisplay={() =>
+                                      contact.tags.length === 0 ? (
+                                        <span className={styles.inlinePlaceholder}>—</span>
+                                      ) : (
+                                        <div className={styles.tagsCell}>
+                                          {contact.tags.map((tag) => (
+                                            <span key={tag} className={styles.tagPill}>
+                                              {tag}
+                                            </span>
+                                          ))}
+                                        </div>
                                       )
                                     }
                                   />
                                 </TableCell>
                                 <TableCell>
-                                  <input
-                                    className={styles.inlineInput}
-                                    value={editingForm.tags}
-                                    onChange={(event) =>
-                                      setEditingForm((current) =>
-                                        current ? { ...current, tags: event.target.value } : current
-                                      )
-                                    }
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <input
-                                    className={styles.inlineInput}
+                                  <InlineTextField
+                                    value={contact.score != null ? String(contact.score) : ""}
+                                    ariaLabel={`Editar score de ${contact.name}`}
+                                    placeholder="—"
                                     type="number"
-                                    min={0}
-                                    max={100}
-                                    value={editingForm.score}
-                                    onChange={(event) =>
-                                      setEditingForm((current) =>
-                                        current ? { ...current, score: event.target.value } : current
-                                      )
-                                    }
+                                    inputMode="numeric"
+                                    align="right"
+                                    onCommit={(next) => saveInlineField(contact.id, { score: next })}
                                   />
                                 </TableCell>
-                                <TableCell>
-                                  <div className={styles.rowActions}>
-                                    <Button kind={Button.kinds.SECONDARY} onClick={cancelEdit}>
-                                      Descartar
-                                    </Button>
-                                    <Button kind={Button.kinds.PRIMARY} onClick={handleUpdate} loading={isLoading}>
-                                      Salvar
-                                    </Button>
-                                  </div>
-                                  {formErrors && <div className={styles.formError}>{formErrors}</div>}
-                                </TableCell>
-                              </TableRow>
+                              </InteractiveTableRow>
                             );
-                          }
-
-                          return (
-                            <InteractiveTableRow
-                              key={contact.id}
-                              className={styles.tableRow}
-                              data-selected={isSelected}
-                              onDoubleClick={() => handleOpenContact(contact.id)}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter" || event.key === " ") {
-                                  event.preventDefault();
-                                  handleOpenContact(contact.id);
-                                }
-                                if (event.key.toLowerCase() === "o") {
-                                  event.preventDefault();
-                                  handleOpenContact(contact.id);
-                                }
-                              }}
-                              tabIndex={0}
-                            >
-                              <TableCell>
-                                <input
-                                  type="checkbox"
-                                  aria-label={`Selecionar ${contact.name}`}
-                                  checked={isSelected}
-                                  onChange={() => toggleSelection(contact.id)}
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <button
-                                  type="button"
-                                  className={styles.nameLink}
-                                  onClick={() => handleOpenContact(contact.id)}
-                                >
-                                  {contact.name}
-                                </button>
-                                <span className={styles.metaLine}>{contact.email ?? "—"}</span>
-                              </TableCell>
-                              <TableCell>{contact.owner?.displayName ?? "—"}</TableCell>
-                              <TableCell>
-                                <span className={`${styles.stagePill} ${pillClass}`}>
-                                  {stageDefinition?.label ?? contact.stage}
-                                </span>
-                              </TableCell>
-                              <TableCell>{formatDateTime(contact.lastTouchAt)}</TableCell>
-                              <TableCell>
-                                <div className={styles.nameCell}>
-                                  <span>{formatDate(contact.nextActionAt)}</span>
-                                  <span className={styles.metaLine}>{contact.nextActionNote ?? "—"}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>{contact.referredBy?.name ?? "—"}</TableCell>
-                              <TableCell>{contact.whatsapp ?? "—"}</TableCell>
-                              <TableCell>
-                                <div className={styles.tagsCell}>
-                                  {contact.tags.length === 0
-                                    ? "—"
-                                    : contact.tags.map((tag) => (
-                                        <span key={tag} className={styles.tagPill}>
-                                          {tag}
-                                        </span>
-                                      ))}
-                                </div>
-                              </TableCell>
-                              <TableCell>{contact.score ?? "—"}</TableCell>
-                              <TableCell>
-                                <Button kind={Button.kinds.TERTIARY} onClick={() => beginEdit(contact)}>
-                                  Editar
-                                </Button>
-                              </TableCell>
-                            </InteractiveTableRow>
-                          );
-                        })
-                      ),
+                          })),
                     ]}
                   </TableBody>
                 </Table>

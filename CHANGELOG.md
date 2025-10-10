@@ -1,3 +1,16 @@
+# 2025-11-29
+
+### Changed
+- Ajustamos o `ContactsKanban` para preencher toda a altura útil da página, trocando o corpo das colunas para `flex` e reduzindo o botão "Adicionar contato" vazio ao tamanho de um cartão para evitar cliques imprecisos.
+- Atualizamos a visão em tabela para edição célula a célula: os campos usam `InlineTextField`/`InlineSelectField` com autosave ao perder foco e o status passou a ocupar a célula inteira com o novo `StatusCell` colorido.
+- Aplicamos bordas internas/externas consistentes (`styles.table`) na grade para alinhar o visual ao monday.com.
+
+### Fixed
+- Corrigimos o deslocamento dos cartões no arraste do Kanban convertendo o `transform` via `CSS.Transform.toString`, garantindo que o preview siga o cursor sem defasar.
+
+### Documentation
+- Registramos em `docs/crm_readme.md` a nova edição inline da tabela e o Kanban em altura total, incluindo o popover de status.
+
 # 2025-11-28
 
 ### Fixed

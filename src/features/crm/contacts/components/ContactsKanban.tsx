@@ -15,6 +15,7 @@ import {
   closestCorners,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button, IconButton, Menu, MenuButton, MenuItem } from "@vibe/core";
 import { Add, Column, MoreActions } from "@vibe/icons";
 import clsx from "clsx";
@@ -226,7 +227,7 @@ function DraggableKanbanCard({ contact, onOpenContact }: KanbanCardProps) {
 
   const style: React.CSSProperties = {};
   if (transform) {
-    style.transform = `translate3d(${transform.x}px, ${transform.y}px, 0)`;
+    style.transform = CSS.Transform.toString(transform);
   }
   if (isDragging) {
     style.zIndex = 160;
@@ -394,18 +395,20 @@ export default function ContactsKanban({
       onDragCancel={handleDragCancel}
       collisionDetection={closestCorners}
     >
-      <div className={styles.board}>
-        {CONTACT_STAGES.map((stage) => (
-          <StageColumn
-            key={stage.id}
-            stage={stage}
-            contacts={grouped.get(stage.id) ?? []}
-            onOpenContact={onOpenContact}
-            onAddContact={onAddContact}
-            onConfigureColumn={onConfigureColumn}
-            isCreating={creatingStageId === stage.id}
-          />
-        ))}
+      <div className={styles.boardWrapper}>
+        <div className={styles.board}>
+          {CONTACT_STAGES.map((stage) => (
+            <StageColumn
+              key={stage.id}
+              stage={stage}
+              contacts={grouped.get(stage.id) ?? []}
+              onOpenContact={onOpenContact}
+              onAddContact={onAddContact}
+              onConfigureColumn={onConfigureColumn}
+              isCreating={creatingStageId === stage.id}
+            />
+          ))}
+        </div>
       </div>
       <DragOverlay dropAnimation={null}>
         {activeContact ? (
