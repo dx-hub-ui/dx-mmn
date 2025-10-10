@@ -7,6 +7,7 @@ import styles from "./topbar.module.css";
 import UserMenu from "./topbar/UserMenu";
 import { useFeatureFlag } from "@/providers/ObservabilityProvider";
 import NotificationsBell from "./topbar/NotificationsBell";
+import InboxIconButton from "./topbar/InboxIconButton";
 import type { AppShellActiveOrg } from "./AppShell";
 
 export type TopbarProps = {
@@ -27,7 +28,12 @@ export default function Topbar({ isSidebarOpen, className, activeOrg }: TopbarPr
         <div className={styles.middle} />
         <nav className={styles.nav} aria-label="Topbar actions">
           {notificationsEnabled && activeOrg ? (
-            <NotificationsBell orgId={activeOrg.id} orgName={activeOrg.name} />
+            <>
+              <NotificationsBell orgId={activeOrg.id} orgName={activeOrg.name} />
+              <InboxIconButton orgId={activeOrg.id} />
+            </>
+          ) : activeOrg ? (
+            <InboxIconButton orgId={activeOrg.id} />
           ) : (
             <IconButton
               icon={Inbox}
@@ -35,6 +41,7 @@ export default function Topbar({ isSidebarOpen, className, activeOrg }: TopbarPr
               tooltipContent="Inbox"
               size={IconButton.sizes.MEDIUM}
               kind={IconButton.kinds.TERTIARY}
+              disabled
             />
           )}
           <UserMenu />

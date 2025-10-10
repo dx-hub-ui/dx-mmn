@@ -1,0 +1,91 @@
+.card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--dx-surface-primary);
+  border: 1px solid var(--dx-border-subtle);
+  box-shadow: var(--dx-shadow-floating);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card + .card {
+  margin-top: 12px;
+}
+
+.card:hover {
+  box-shadow: var(--dx-shadow-floating-strong);
+}
+
+.card[data-unread="true"] {
+  border-color: var(--dx-accent-primary);
+}
+
+.card[data-selected="true"] {
+  border-color: var(--dx-accent-primary);
+  box-shadow: 0 0 0 2px rgba(45, 156, 219, 0.25);
+}
+
+.checkboxArea {
+  display: flex;
+  align-items: flex-start;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.card:hover .checkboxArea,
+.card[data-selected="true"] .checkboxArea {
+  opacity: 1;
+}
+
+.checkbox {
+  pointer-events: auto;
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.actor {
+  color: var(--dx-text-primary);
+}
+
+.time {
+  white-space: nowrap;
+}
+
+.title {
+  color: var(--dx-text-primary);
+}
+
+.snippet {
+  margin: 0;
+  color: var(--dx-text-secondary);
+  line-height: 1.5;
+}
+
+.mention {
+  color: var(--dx-accent-primary);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
