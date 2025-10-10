@@ -1,3 +1,11 @@
+# 2025-11-19
+
+### Fixed
+- Atualizamos os atalhos "Aprender mais" e "Enviar feedback" do manager de sequências para usar `IconButton.icon`, garantindo compatibilidade com o build Edge do Next.js e eliminando o erro de tipagem que impedia `pnpm run build`.
+
+### Documentation
+- Registramos no guia de sequências que os atalhos do cabeçalho devem utilizar `IconButton.icon` em vez de filhos diretos, evitando regressões de tipagem no Edge runtime.
+
 # 2025-11-18
 
 ### Fixed
