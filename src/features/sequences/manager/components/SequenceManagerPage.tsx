@@ -364,7 +364,10 @@ export default function SequenceManagerPage({
     const directionFactor = sort.direction === "asc" ? 1 : -1;
 
     sortedItems.sort((a, b) => {
-      const compare = (valueA: number | string | null, valueB: number | string | null) => {
+      const compare = (
+        valueA: number | string | null | undefined,
+        valueB: number | string | null | undefined
+      ) => {
         if (valueA === valueB) {
           return 0;
         }
