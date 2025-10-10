@@ -1,3 +1,11 @@
+# 2025-11-24
+
+### Fixed
+- Atualizamos a toolbar de filtros de `/tasks/my` para usar um wrapper `<nav>` com ids estáveis em vez de aplicar `role` diretamente no `@vibe/core/Flex`, eliminando o erro de tipagem durante `pnpm run build` e mantendo a navegação por teclado nas abas.
+
+### Documentation
+- Documentamos no `docs/table_design_reference.md` o padrão de toolbar em abas reutilizado em `MyTasksPage`, incluindo o vínculo `tablist`/`tabpanel` com ids gerados via `useId`.
+
 # 2025-11-22
 
 ### Added
