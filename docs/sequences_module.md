@@ -66,6 +66,8 @@ das reps via "Minhas tarefas".
 
 ## Novembro/2025 — Refinos de UI/UX
 
+- **Cartões compactos no editor** fixam a coluna esquerda em 550px com cards reduzidos a título + descrição e menu em três pontos, enquanto o painel direito ganha largura mínima de 550px com padding de 40px para manter respiro com o novo grid.
+- **Menu compacto das etapas** concentra as ações de mover, duplicar e excluir em um único handler compartilhado, eliminando closures/props não utilizadas e mantendo o build livre de avisos `no-unused-vars`.
 - **Lista de sequências** apresenta cabeçalho enxuto com tag “Beta”, ações diretas (nova sequência, filtro popover, busca) e ícones de ajuda/feedback. A grade utiliza o `@vibe/core/Table` com skeleton nativo, ordenação em todos os cabeçalhos, chips de status do Vibe e colunas de métricas com tooltips (“Inscrições ativas/totais”, “Taxa de abertura/resposta/cliques”). Cada linha funciona como link para `/sequences/[id]`, exibe avatar do criador, tag de quadro “Contatos” e valores alinhados conforme tokens (`--dx-font-text2-normal`).
 - **Colunas numéricas** convertem métricas ausentes (`null`/`undefined`) em traço (`—`) antes de chamar `formatNumber`/`formatPercent`, assegurando consistência visual e impedindo erros de build quando a API ainda não retornou todos os totais.
 - **Ações do cabeçalho** usam `@vibe/core/IconButton` configurado via prop `icon` (ex.: `LearnMore`, `Feedback`) para manter compatibilidade com o Edge runtime do Next.js e evitar erros de tipagem durante o build.
