@@ -1,28 +1,26 @@
 # 2025-11-26
 
-### Changed
-- Substituímos a nomenclatura "CRM" da área `/crm` por cópias focadas em **Contatos**, alinhando comunicações e evitando o jargão na UI.
-- Compactamos o `ContactsKanban` com colunas mais estreitas, cabeçalhos reduzidos e cartões menores com botões terciários pequenos, deixando o board visualmente mais leve.
-
 ### Fixed
-- Corrigimos o drag-and-drop do Kanban utilizando `DragOverlay`, impedindo que o cartão arrastado fique atrás das colunas durante o movimento.
-- Tratamos erros `PGRST205`/`42P01` ao registrar ou ler `contact_events`, emitindo apenas aviso e mantendo o fluxo de atualização de contatos funcional mesmo sem a tabela migrada.
-- Ajustamos o `forwardRef` do cartão do Kanban para usar o tipo semântico `<article>`, evitando o erro de build `Cannot find name 'HTMLArticleElement'` ao publicar no Edge Runtime.
+- Blindamos `POST /api/inbox/mark-all-read` para incluir o filtro de favoritos com `notification_bookmarks` e evitamos o erro de tipagem que quebrava o `pnpm run build`.
+- Ajustamos o helper de filtros do `POST /api/inbox/mark-all-read` para usar uma tipagem genérica explícita em vez de `this`, eliminando o erro "A 'this' type is available only in a non-static member" durante o build da Vercel.
+- Adicionamos type guards aos resultados do Supabase ao listar o feed e ao marcar tudo como lido, iterando manualmente pelas linhas para ignorar payloads inválidos e impedir que o erro "Property 'id' does not exist on type 'GenericStringError'" volte a derrubar o `pnpm run build`.
+- Ajustamos a marcação das abas do inbox para encapsular o selo "Novo" dentro do label, atendendo aos requisitos de tipagem do `@vibe/core/Tab` durante o build.
 
 ### Documentation
-- Atualizamos `docs/crm_readme.md` com o redesenho compacto do Kanban, a remoção do termo CRM das cópias e o fallback de timeline quando `contact_events` não existe.
-- Documentamos a nova tipagem do `KanbanCardView` para garantir compatibilidade com builds Next/Edge.
+- Atualizamos `docs/inbox.md` para registrar que a ação de marcar tudo como lido na aba de favoritos aplica o `inner join` com `notification_bookmarks`.
+- Documentamos que os endpoints do inbox agora validam cada linha retornada antes de acessar o campo `id`, descrevendo a iteração manual que evita regressões quando o Supabase mescla erros à resposta.
 
 # 2025-11-25
 
-### Changed
-- Remodelamos o cabeçalho de `/crm` para exibir somente "Meus Contatos" com menu em ícone e toolbar superior contendo Criar contato, Filtros (dialog `DialogContentContainer`) e Atualizar, alinhando a visão Tabela ao layout monday.com de referência.
-- Simplificamos o Kanban de contatos com cabeçalhos coloridos, corpo neutro (`--dark-background-color`) e cartões planos utilizando tokens do aplicativo, além de mover Relatórios/Importar para um menu de três pontos.
+### Added
+- Entregamos o modal "Feed de atualizações" com layout em duas colunas, seleção em massa, virtualização e integração com Supabase, acessível pelo novo botão de inbox no topo da aplicação.
+- Criamos a view `public.v_user_updates`, endpoints `GET/POST /api/inbox` e suporte a favoritos para alimentar o novo feed sem duplicar regras existentes de notificações.
 
 ### Fixed
-- Corrigimos o z-index dos cartões do Kanban para que permaneçam sobre as colunas durante o arrastar e adicionamos placeholder que bloqueia interações enquanto a criação via API está em andamento.
-- A ação "Adicionar Contato" no Kanban agora cria e salva o registro imediatamente no estágio selecionado, sincroniza com a Tabela e exibe toasts de sucesso, erro ou atenção em cores sólidas.
-- Refatoramos o helper `createContactRequest` para ser compartilhado entre a tabela e o Kanban sem violar o tempo de vida dos hooks, evitando o ReferenceError que impedia a criação direta após o primeiro render.
+- Corrigimos o endpoint `POST /api/inbox/mark-all-read` para respeitar o filtro "Mostrar ▾ Todas as atualizações", evitando que a operação marcasse apenas itens não lidos quando o usuário solicitava limpar a fila completa.
+
+### Documentation
+- Registramos em `docs/inbox.md` a arquitetura do feed, contratos de API e persistência de preferências, incluindo captura da interface para alinhamento com o design system.
 
 # 2025-11-24
 
@@ -491,4 +489,9 @@
 - Corrigimos a troca de código PKCE em `/auth/callback` para usar a assinatura correta de `exchangeCodeForSession`, evitando falhas de build no fluxo de login por Magic Link.
 - Quando o Supabase não encontra `code_verifier` (ex.: link aberto em outro dispositivo), o callback agora ignora o erro e cai no `token_hash`, evitando o loop de autenticação ao validar magic links.
 - Ajustamos o componente `SortableStep` no editor de sequências para inicializar as props antes do hook `useSortable`, eliminando o erro de sintaxe que quebrava o build na Vercel.
+
+## 2025-10-16
+
+### Fixed
+- Ajustamos o handler `POST /api/inbox/mark-all-read` para usar a assinatura correta de `PostgrestFilterBuilder`, garantindo compilações bem-sucedidas no Next.js 14.
 

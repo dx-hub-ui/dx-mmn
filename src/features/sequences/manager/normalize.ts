@@ -56,10 +56,7 @@ function normalizeCreator(row: SequenceManagerRow["created_by"]): SequenceManage
 
 export function normalizeSequenceManagerRow(row: SequenceManagerRow): SequenceManagerItem {
   const completionRate = parseNumber(row.completion_rate);
-  const totalEnrollments =
-    row.total_enrollments === null || row.total_enrollments === undefined
-      ? null
-      : parseNumber(row.total_enrollments);
+  const totalEnrollments = parseNumber(row.total_enrollments);
   const openRate = toNumber(row.open_rate);
   const replyRate = toNumber(row.reply_rate);
   const clickRate = toNumber(row.click_rate);

@@ -1,0 +1,20 @@
+.tabList {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--dx-border-strong);
+  padding-bottom: 8px;
+}
+
+.tabLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.newBadge {
+  margin-left: 8px;
+}
+
+.panelPlaceholder {
+  display: none;
+}

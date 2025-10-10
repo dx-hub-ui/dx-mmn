@@ -1,0 +1,17 @@
+.root {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--dx-border-subtle);
+  gap: 12px;
+}
+
+.showButton {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.markAll {
+  color: var(--dx-accent-primary);
+}
