@@ -35,3 +35,11 @@
   gap: 8px;
   justify-self: end;
 }
+
+.avatarDivider {
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 6px;
+  color: var(--dx-border-weak, rgba(0, 0, 0, 0.2));
+  font: var(--dx-font-body, 400 14px/20px var(--font-family, system-ui));
+}

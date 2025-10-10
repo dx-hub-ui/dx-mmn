@@ -1,3 +1,11 @@
+# 2025-11-25
+
+### Changed
+- Inserimos um divisor visual na Topbar entre os ícones de atalho e o menu do usuário para separar a área do avatar sem alterar o espaçamento geral.
+
+### Documentation
+- Atualizamos `docs/monday_design_guide.md` para registrar o divisor entre os atalhos e o menu do usuário na Topbar.
+
 # 2025-11-24
 
 ### Fixed

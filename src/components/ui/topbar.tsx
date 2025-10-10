@@ -37,6 +37,9 @@ export default function Topbar({ isSidebarOpen, className, activeOrg }: TopbarPr
               kind={IconButton.kinds.TERTIARY}
             />
           )}
+          <span className={styles.avatarDivider} aria-hidden="true">
+            |
+          </span>
           <UserMenu />
         </nav>
       </div>
