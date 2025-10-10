@@ -32,6 +32,12 @@ describe("normalizeSequenceManagerRow", () => {
       activeVersionNumber: 2,
       stepsTotal: 4,
       activeEnrollments: 3,
+      totalEnrollments: 3,
+      durationDays: null,
+      openRate: null,
+      replyRate: null,
+      clickRate: null,
+      createdBy: null,
       completionRate: 87.5,
       lastActivationAt: "2024-05-10T12:00:00.000Z",
       updatedAt: "2024-05-10T12:00:00.000Z",
@@ -79,5 +85,16 @@ describe("filterSequences", () => {
 
     const result = filterSequences(items, filters);
     expect(result).toHaveLength(2);
+  });
+
+  it("ignora status e alvo na busca textual", () => {
+    const filters: SequenceManagerFilters = {
+      search: "paused",
+      status: "todos",
+      targetType: "todos",
+    };
+
+    const result = filterSequences(items, filters);
+    expect(result).toHaveLength(0);
   });
 });

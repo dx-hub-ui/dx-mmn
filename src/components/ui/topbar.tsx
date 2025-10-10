@@ -5,10 +5,18 @@ import { Inbox } from "@vibe/icons";
 import clsx from "clsx";
 import styles from "./topbar.module.css";
 import UserMenu from "./topbar/UserMenu";
+import { useFeatureFlag } from "@/providers/ObservabilityProvider";
+import NotificationsBell from "./topbar/NotificationsBell";
+import type { AppShellActiveOrg } from "./AppShell";
 
-export type TopbarProps = { isSidebarOpen: boolean; className?: string };
+export type TopbarProps = {
+  isSidebarOpen: boolean;
+  className?: string;
+  activeOrg?: AppShellActiveOrg | null;
+};
 
-export default function Topbar({ isSidebarOpen, className }: TopbarProps) {
+export default function Topbar({ isSidebarOpen, className, activeOrg }: TopbarProps) {
+  const notificationsEnabled = useFeatureFlag("notifications_v1", false);
   return (
     <header className={clsx(styles.topbar, className)} data-sidebar={isSidebarOpen ? "expanded" : "collapsed"}>
       <div className={styles.inner}>
@@ -18,13 +26,17 @@ export default function Topbar({ isSidebarOpen, className }: TopbarProps) {
         </div>
         <div className={styles.middle} />
         <nav className={styles.nav} aria-label="Topbar actions">
-          <IconButton
-            icon={Inbox}
-            ariaLabel="Abrir inbox"
-            tooltipContent="Inbox"
-            size={IconButton.sizes.MEDIUM}
-            kind={IconButton.kinds.TERTIARY}
-          />
+          {notificationsEnabled && activeOrg ? (
+            <NotificationsBell orgId={activeOrg.id} orgName={activeOrg.name} />
+          ) : (
+            <IconButton
+              icon={Inbox}
+              ariaLabel="Abrir inbox"
+              tooltipContent="Inbox"
+              size={IconButton.sizes.MEDIUM}
+              kind={IconButton.kinds.TERTIARY}
+            />
+          )}
           <UserMenu />
         </nav>
       </div>

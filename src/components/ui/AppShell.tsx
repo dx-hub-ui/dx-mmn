@@ -8,13 +8,19 @@ import Sidebar from "./sidebar";
 import styles from "./app-shell.module.css";
 import { NavigationChevronLeft, NavigationChevronRight } from "@vibe/icons";
 
-export default function AppShell({
-  children,
-  className
-}: {
+export type AppShellActiveOrg = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+type AppShellProps = {
   children: React.ReactNode;
   className?: string;
-}) {
+  activeOrg?: AppShellActiveOrg | null;
+};
+
+export default function AppShell({ children, className, activeOrg }: AppShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // trava o body scroll (padrão monday)
@@ -61,7 +67,7 @@ export default function AppShell({
       >
         {/* Topbar fixa */}
         <header className={styles.topbar} role="banner">
-          <Topbar isSidebarOpen={isSidebarOpen} />
+          <Topbar isSidebarOpen={isSidebarOpen} activeOrg={activeOrg ?? null} />
         </header>
 
         {/* Sidebar fixa */}

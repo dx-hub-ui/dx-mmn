@@ -1,3 +1,4 @@
+import { captureException } from "@sentry/nextjs";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   ContactDetail,
@@ -39,6 +40,15 @@ type ReferralRow = {
   status: string;
 };
 
+export type MentionTarget = {
+  userId: string;
+  link?: string | null;
+  snippet?: string | null;
+  title?: string | null;
+  sourceType?: string | null;
+  sourceId?: string | null;
+};
+
 export type ContactEventInsert = {
   contactId: string;
   organizationId: string;
@@ -46,6 +56,7 @@ export type ContactEventInsert = {
   payload?: Record<string, unknown>;
   actorMembershipId?: string | null;
   occurredAt?: string;
+  mentions?: MentionTarget[];
 };
 
 function mapActor(row: ContactEventRow["actor"]): MembershipSummary | null {
@@ -107,19 +118,100 @@ export async function logContactEvents(
     return;
   }
 
-  const payload = events.map((event) => ({
-    contact_id: event.contactId,
-    organization_id: event.organizationId,
-    event_type: event.type,
-    payload: event.payload ?? {},
-    actor_membership_id: event.actorMembershipId ?? null,
-    occurred_at: event.occurredAt ?? new Date().toISOString(),
-  }));
+  const membershipIds = Array.from(
+    new Set(
+      events
+        .map((event) => event.actorMembershipId)
+        .filter((id): id is string => Boolean(id))
+    )
+  );
 
-  const { error } = await supabase.from("contact_events").insert(payload);
+  const membershipMap = new Map<string, string>();
 
-  if (error) {
-    throw error;
+  if (membershipIds.length > 0) {
+    const { data: membershipRows, error: membershipError } = await supabase
+      .from("memberships")
+      .select("id, user_id")
+      .in("id", membershipIds);
+
+    if (membershipError) {
+      throw membershipError;
+    }
+
+    (membershipRows ?? []).forEach((row) => {
+      membershipMap.set(row.id, row.user_id);
+    });
+  }
+
+  const notificationTasks: Promise<unknown>[] = [];
+
+  for (const event of events) {
+    const { mentions, ...rest } = event;
+    const { data: inserted, error } = await supabase
+      .from("contact_events")
+      .insert({
+        contact_id: rest.contactId,
+        organization_id: rest.organizationId,
+        event_type: rest.type,
+        payload: rest.payload ?? {},
+        actor_membership_id: rest.actorMembershipId ?? null,
+        occurred_at: rest.occurredAt ?? new Date().toISOString(),
+      })
+      .select("id, organization_id, event_type, actor_membership_id")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!mentions?.length) {
+      continue;
+    }
+
+    const actorUserId = rest.actorMembershipId ? membershipMap.get(rest.actorMembershipId) ?? null : null;
+
+    mentions.forEach((mention) => {
+      if (!mention.userId || mention.userId === actorUserId) {
+        return;
+      }
+      const sourceType = mention.sourceType ?? rest.type;
+      const sourceId = mention.sourceId ?? inserted.id;
+      notificationTasks.push(
+        (async () => {
+          const { error: rpcError } = await supabase.rpc("queue_notification", {
+            p_org_id: rest.organizationId,
+            p_user_id: mention.userId,
+            p_type: "mention",
+            p_source_type: sourceType,
+            p_source_id: sourceId,
+            p_actor_id: actorUserId,
+            p_title:
+              mention.title ??
+              (typeof rest.payload?.title === "string"
+                ? (rest.payload.title as string)
+                : `Você foi mencionado em ${sourceType}`),
+            p_snippet:
+              mention.snippet ??
+              (typeof rest.payload?.note === "string"
+                ? (rest.payload.note as string)
+                : (rest.payload?.message as string | null) ?? null),
+            p_link: mention.link ?? null,
+          });
+          if (rpcError) {
+            throw rpcError;
+          }
+        })()
+      );
+    });
+  }
+
+  if (notificationTasks.length > 0) {
+    const results = await Promise.allSettled(notificationTasks);
+    results.forEach((result) => {
+      if (result.status === "rejected") {
+        captureException(result.reason, { tags: { module: "notifications", action: "queue_mention" } });
+      }
+    });
   }
 }
 
