@@ -15,7 +15,7 @@
   max-height: calc(100dvh - 64px);
   display: grid;
   grid-template-rows: auto auto auto 1fr;
-  background: var(--surface-color, #fff);
+  background: var(--dx-surface-elevated, #fff);
   color: var(--dx-text);
   border-radius: 16px;
   border: 1px solid var(--dx-border);
