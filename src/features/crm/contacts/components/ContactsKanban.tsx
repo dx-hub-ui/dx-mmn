@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -28,7 +28,7 @@ import styles from "./contacts-kanban.module.css";
 
 type ContactsKanbanProps = {
   contacts: ContactRecord[];
-  onStageChange: (contactId: string, stage: ContactStageId) => void;
+  onStageChange: (contactId: string, stage: ContactStageId) => void | Promise<void>;
   onOpenContact: (contactId: string) => void;
   onAddContact?: (stage: ContactStageId) => void;
   onConfigureColumn?: (stage: ContactStageId) => void;
@@ -254,8 +254,10 @@ export default function ContactsKanban({
   creatingStageId,
 }: ContactsKanbanProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [optimisticStages, setOptimisticStages] = useState<Record<string, ContactStageId>>({});
+  const previousStageMapRef = useRef<Record<string, ContactStageId>>({});
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -265,13 +267,78 @@ export default function ContactsKanban({
       byStage.set(stage.id, []);
     }
     for (const contact of contacts) {
-      if (!byStage.has(contact.stage)) {
-        byStage.set(contact.stage, []);
+      const stageOverride = optimisticStages[contact.id];
+      const stageId = stageOverride ?? contact.stage;
+      if (!byStage.has(stageId)) {
+        byStage.set(stageId, []);
       }
-      byStage.get(contact.stage)!.push(contact);
+      const normalizedContact = stageOverride ? { ...contact, stage: stageId } : contact;
+      byStage.get(stageId)!.push(normalizedContact);
     }
     return byStage;
+  }, [contacts, optimisticStages]);
+
+  useEffect(() => {
+    const previousStageMap = previousStageMapRef.current;
+
+    setOptimisticStages((current) => {
+      if (Object.keys(current).length === 0) {
+        return current;
+      }
+      const contactMap = new Map(contacts.map((contact) => [contact.id, contact] as const));
+      let changed = false;
+      const next: Record<string, ContactStageId> = { ...current };
+      for (const [contactId, stageId] of Object.entries(current)) {
+        const contact = contactMap.get(contactId);
+        if (!contact) {
+          delete next[contactId];
+          changed = true;
+          continue;
+        }
+
+        if (contact.stage !== stageId) {
+          if (previousStageMap[contactId] === contact.stage) {
+            continue;
+          }
+          delete next[contactId];
+          changed = true;
+          continue;
+        }
+
+        delete next[contactId];
+        changed = true;
+      }
+      return changed ? next : current;
+    });
+
+    previousStageMapRef.current = Object.fromEntries(
+      contacts.map((contact) => [contact.id, contact.stage] as const)
+    );
   }, [contacts]);
+
+  const clearOptimisticStage = (contactId: string) => {
+    setOptimisticStages((current) => {
+      if (!(contactId in current)) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[contactId];
+      return next;
+    });
+  };
+
+  const setOptimisticStage = (contactId: string, stageId: ContactStageId) => {
+    setOptimisticStages((current) => {
+      if (current[contactId] === stageId) {
+        return current;
+      }
+      return { ...current, [contactId]: stageId };
+    });
+  };
+
+  const isPromiseLike = (value: unknown): value is PromiseLike<unknown> => {
+    return typeof value === "object" && value !== null && "then" in value && typeof (value as any).then === "function";
+  };
 
   const handleDragStart = (event: DragStartEvent) => {
     if (!event.active) {
@@ -293,7 +360,13 @@ export default function ContactsKanban({
       setActiveId(null);
       return;
     }
-    onStageChange(contactId, targetStage);
+    setOptimisticStage(contactId, targetStage);
+    const result = onStageChange(contactId, targetStage);
+    if (isPromiseLike(result)) {
+      result.catch(() => {
+        clearOptimisticStage(contactId);
+      });
+    }
     setActiveId(null);
   };
 
@@ -301,10 +374,17 @@ export default function ContactsKanban({
     setActiveId(null);
   };
 
-  const activeContact = useMemo(
-    () => contacts.find((item) => item.id === activeId) ?? null,
-    [activeId, contacts]
-  );
+  const activeContact = useMemo(() => {
+    if (!activeId) {
+      return null;
+    }
+    const contact = contacts.find((item) => item.id === activeId);
+    if (!contact) {
+      return null;
+    }
+    const stageOverride = optimisticStages[activeId];
+    return stageOverride ? { ...contact, stage: stageOverride } : contact;
+  }, [activeId, contacts, optimisticStages]);
 
   return (
     <DndContext
