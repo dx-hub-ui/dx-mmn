@@ -903,6 +903,8 @@ export default function SequenceManagerPage({
                           const replyRate = item.replyRate ?? null;
                           const clickRate = item.clickRate ?? null;
 
+                          const targetTypeLabel = targetLabel[item.targetType] ?? targetLabel.contact;
+
                           return (
                             <SequenceTableDataRow
                               key={item.id}
@@ -935,7 +937,7 @@ export default function SequenceManagerPage({
                               <TableCell>
                                 <span className={styles.boardTag}>
                                   <Team size={16} aria-hidden />
-                                  <span>Contatos</span>
+                                  <span>{targetTypeLabel}</span>
                                 </span>
                               </TableCell>
                               <TableCell className={styles.metricCell}>{formatNumber(item.stepsTotal)}</TableCell>
