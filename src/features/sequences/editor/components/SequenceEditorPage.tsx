@@ -103,7 +103,6 @@ type StepMenuAction =
 
 type SortableStepProps = {
   step: SequenceStepRecord;
-  index: number;
   isSelected: boolean;
   disableReorder: boolean;
   disableActions: boolean;
@@ -123,7 +122,6 @@ const STEP_TYPE_LABEL: Record<SequenceStepRecord["type"], string> = {
 
 const SortableStep: SortableStepComponent = ({
   step,
-  index,
   isSelected,
   disableReorder,
   disableActions,
@@ -740,41 +738,6 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     });
   };
 
-  const moveStep = (step: SequenceStepRecord, direction: "up" | "down") => {
-    const currentIndex = localSteps.findIndex((item) => item.id === step.id);
-    if (currentIndex === -1) {
-      return;
-    }
-
-    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-    if (targetIndex < 0 || targetIndex >= localSteps.length) {
-      return;
-    }
-
-    const reordered = arrayMove(localSteps, currentIndex, targetIndex).map((item, index) => ({
-      ...item,
-      order: index + 1,
-    }));
-
-    setLocalSteps(reordered);
-
-    if (!currentVersion || sequenceActive) {
-      return;
-    }
-
-    startTransition(async () => {
-      await reorderSequenceStepsAction(
-        data.sequence.id,
-        currentVersion.id,
-        reordered.map((item) => item.id)
-      );
-      router.refresh();
-    });
-  };
-
-  const handleMoveStepUp = (step: SequenceStepRecord) => moveStep(step, "up");
-  const handleMoveStepDown = (step: SequenceStepRecord) => moveStep(step, "down");
-
   const openStepModal = (state: StepModalState) => {
     if (disableStepActions) {
       return;
@@ -789,22 +752,6 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
     startTransition(async () => {
       await duplicateSequenceStepAction(data.sequence.id, step.id);
       router.refresh();
-    });
-  };
-
-  const handleAddStepRelative = (step: SequenceStepRecord, position: "before" | "after") => {
-    openStepModal({
-      mode: "create",
-      presetType: step.type,
-      position: { kind: position, referenceId: step.id },
-    });
-  };
-
-  const handleAddWaitAfter = (step: SequenceStepRecord) => {
-    openStepModal({
-      mode: "create",
-      presetType: step.type,
-      position: { kind: "after", referenceId: step.id },
     });
   };
 
@@ -837,7 +784,10 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
       return;
     }
 
-    const reordered = arrayMove(localSteps, currentIndex, targetIndex);
+    const reordered = arrayMove(localSteps, currentIndex, targetIndex).map((item, index) => ({
+      ...item,
+      order: index + 1,
+    }));
     setLocalSteps(reordered);
 
     if (!currentVersion) {
@@ -1273,7 +1223,6 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                         <SortableStep
                           key={step.id}
                           step={step}
-                          index={index}
                           isSelected={selectedStepId === step.id}
                           disableReorder={disableStepActions}
                           disableActions={disableStepActions}
