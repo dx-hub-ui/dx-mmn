@@ -20,6 +20,12 @@
 - Ajustamos o z-index dos cartões durante o arrastar para que permaneçam sobre as colunas e evitem a sobreposição invertida reportada anteriormente.
 - O helper `createContactRequest` fica definido antes dos handlers React e é compartilhado pela tabela/Kanban para reaproveitar validações do `parseEditableContactForm` sem violar a ordem dos hooks.
 
+## Atualização de Novembro/2026 — Cartões menores e movimentação instantânea
+- Compactamos ainda mais o `ContactsKanban`, reduzindo colunas para `clamp(200px, 20vw, 236px)` e espaçamentos internos para aproximar do visual compacto do monday.com.
+- Ajustamos os cartões para altura menor: badge de estágio mini, metadados com tipografia `text4` e botões terciários com `min-height: 26px`, deixando o grid legível mesmo com muitas oportunidades.
+- A experiência de drag & drop agora aplica atualização otimista de estágio (`optimisticStages`), reposicionando o cartão imediatamente na coluna alvo enquanto a API responde; falhas revertidas removem o override automaticamente.
+- O sensor de ponteiro dispara com deslocamento de 3px e o cartão original some (`opacity: 0`) ao arrastar, mantendo o preview do `DragOverlay` colado ao cursor.
+
 ## Atualização de Outubro/2026 — Kanban compacto e fallback de timeline
 - O título e mensagens da página `/crm` passaram a falar apenas em **Contatos**, removendo a sigla CRM das cópias visíveis.
 - `ContactsKanban` foi redesenhado para um layout mais estreito (`clamp(220px, 22vw, 260px)` por coluna), com cabeçalhos compactos e cartões que usam botões terciários pequenos para as ações de WhatsApp/e-mail.

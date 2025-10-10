@@ -1,3 +1,15 @@
+# 2025-11-27
+
+### Changed
+- Compactamos novamente o `ContactsKanban` para colunas mais estreitas (`clamp(200px, 20vw, 236px)`), cartões com tipografia `text4` e botões terciários de 26px, aproximando o layout da referência do monday.com.
+- Ajustamos o sensor de arraste para disparar com 3px de movimento e escondemos o cartão original durante o drag, deixando o `DragOverlay` aderir ao cursor.
+
+### Fixed
+- Implementamos atualização otimista de estágio no `ContactsKanban`, movendo o cartão imediatamente para a coluna alvo e revertendo o override em caso de erro da API, eliminando o atraso percebido após o drop.
+
+### Documentation
+- Atualizamos `docs/crm_readme.md` com o redesenho compacto, o sensor de arraste e a estratégia otimista do Kanban.
+
 # 2025-11-26
 
 ### Changed
