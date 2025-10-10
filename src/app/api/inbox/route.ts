@@ -14,6 +14,10 @@ import type { InboxResponse } from "@/types/inbox";
 const SELECT_FIELDS =
   "id, org_id, user_id, type, source_type, source_id, actor_id, title, snippet, link, status, created_at, read_at, board_id, board_label, actor_email, actor_meta, actor_display_name, actor_avatar_url";
 
+function selectWithBookmarks(select: string, tab: string) {
+  return tab === "bookmarked" ? `${select},notification_bookmarks!inner()` : select;
+}
+
 type InboxBuilder = PostgrestFilterBuilder<InboxViewRow, InboxViewRow[], unknown>;
 
 function applyCommonFilters(query: InboxBuilder, params: {
@@ -26,6 +30,10 @@ function applyCommonFilters(query: InboxBuilder, params: {
 
   if (params.tab === "mentions") {
     nextQuery = nextQuery.eq("type", "mention");
+  } else if (params.tab === "bookmarked") {
+    nextQuery = nextQuery
+      .eq("notification_bookmarks.org_id", params.orgId)
+      .eq("notification_bookmarks.user_id", params.userId);
   }
 
   if (params.show === "unread") {
@@ -72,7 +80,7 @@ export async function GET(request: NextRequest) {
   let listQuery = applyCommonFilters(
     supabase
       .from("v_user_updates")
-      .select(SELECT_FIELDS)
+      .select(selectWithBookmarks(SELECT_FIELDS, tab))
       .order("created_at", { ascending: false })
       .order("id", { ascending: false }),
     { orgId, userId, tab, show }
@@ -119,11 +127,16 @@ export async function GET(request: NextRequest) {
           .in("notification_id", ids)
       : Promise.resolve({ data: [] as { notification_id: string }[], error: null }),
     applyCommonFilters(
-      supabase.from("v_user_updates").select("id", { head: true, count: "exact" }),
+      supabase
+        .from("v_user_updates")
+        .select(selectWithBookmarks("id", tab), { head: true, count: "exact" }),
       { orgId, userId, tab, show }
     ),
     applyCommonFilters(
-      supabase.from("v_user_updates").select("id", { head: true, count: "exact" }).is("board_id", null),
+      supabase
+        .from("v_user_updates")
+        .select(selectWithBookmarks("id", tab), { head: true, count: "exact" })
+        .is("board_id", null),
       { orgId, userId, tab, show }
     ),
     supabase
