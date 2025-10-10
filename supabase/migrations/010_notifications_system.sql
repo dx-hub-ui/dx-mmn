@@ -419,11 +419,18 @@ $$;
 COMMENT ON FUNCTION public.send_weekly_mentions_digest IS 'Aggregates mention notifications per user and dispatches them through the configured webhook.';
 
 -- schedule weekly digest (Sunday 06:00)
-SELECT cron.schedule(
-  'notifications_weekly_digest',
-  '0 6 * * 0',
-  $$SELECT public.send_weekly_mentions_digest();$$
-) ON CONFLICT DO NOTHING;
+DO $$
+BEGIN
+  PERFORM cron.schedule(
+    'notifications_weekly_digest',
+    '0 6 * * 0',
+    $$SELECT public.send_weekly_mentions_digest();$$
+  );
+EXCEPTION
+  WHEN duplicate_object THEN
+    NULL;
+END;
+$$;
 
 -- Enable RLS
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
