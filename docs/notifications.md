@@ -105,6 +105,7 @@ Todas as tabelas possuem RLS obrigando `org_id = current_org()` e `user_id = aut
 | Digest semanal não dispara | `pg_cron` desabilitado ou webhook sem segredo | Verifique se `app.weekly_digest_webhook` e `app.internal_webhook_secret` estão configurados e se o job `notifications_weekly_digest` está ativo. |
 | Rotas `/api/notifications/*` falham no build | Runtime Edge tentando importar `@supabase/supabase-js` | Forçamos `export const runtime = "nodejs"` em todos os handlers; mantenha a declaração ao criar novos endpoints. |
 | Emails não enviados | Provider em modo noop | Veja `ENABLE_EMAIL_SEND` e as variáveis `RESEND_API_KEY`/`BREVO_API_KEY`. Logs em `notifications:email_failed` detalham a causa. |
+| Erro de tipos ao resolver organização ativa (`property 'id' does not exist on type ...[]`) | Supabase retorna o join `organizations` como array quando o relacionamento não é singular | Normalize a resposta com `Array.isArray(organization)` antes de acessar os campos e mantenha o `setServerRequestContext` com o `orgId` derivado. |
 
 ## Referências rápidas
 

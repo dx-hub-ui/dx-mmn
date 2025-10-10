@@ -9,6 +9,7 @@
 ### Fixed
 - Substituímos o wrapper inexistente `Tabs` pelo `TabsContext` do `@vibe/core` no painel, garantindo build limpo e mantendo o foco/teclado funcionando nas abas.
 - Declaramos `export const runtime = "nodejs"` em todos os handlers de notificações/preferências para impedir que o bundle Edge quebre ao importar o cliente do Supabase.
+- Normalizamos a resposta do Supabase ao resolver a organização ativa no `AppShell`, lidando com payloads em array e evitando o erro de tipos "property 'id' does not exist on type" durante o build.
 
 ### Documentation
 - Criado `docs/notifications.md` com fluxos, payloads, métricas e troubleshooting do sistema de notificações multi-tenant.

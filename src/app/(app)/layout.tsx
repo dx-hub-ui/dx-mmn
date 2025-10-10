@@ -22,7 +22,16 @@ async function resolveActiveOrg(): Promise<AppShellActiveOrg | null> {
     .limit(1)
     .maybeSingle();
 
-  const organization = data?.organization;
+  type OrganizationRow = {
+    id: string;
+    name: string;
+    slug: string;
+  };
+
+  const organizationPayload = data?.organization;
+  const organization: OrganizationRow | undefined = Array.isArray(organizationPayload)
+    ? organizationPayload[0]
+    : organizationPayload ?? undefined;
   if (!organization) {
     return null;
   }
