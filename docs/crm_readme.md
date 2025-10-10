@@ -20,6 +20,14 @@
 - Ajustamos o z-index dos cartões durante o arrastar para que permaneçam sobre as colunas e evitem a sobreposição invertida reportada anteriormente.
 - O helper `createContactRequest` fica definido antes dos handlers React e é compartilhado pela tabela/Kanban para reaproveitar validações do `parseEditableContactForm` sem violar a ordem dos hooks.
 
+## Atualização de Outubro/2026 — Kanban compacto e fallback de timeline
+- O título e mensagens da página `/crm` passaram a falar apenas em **Contatos**, removendo a sigla CRM das cópias visíveis.
+- `ContactsKanban` foi redesenhado para um layout mais estreito (`clamp(220px, 22vw, 260px)` por coluna), com cabeçalhos compactos e cartões que usam botões terciários pequenos para as ações de WhatsApp/e-mail.
+- A renderização de drag & drop agora usa `DragOverlay`, evitando que o cartão arrastado fique atrás das colunas; o overlay recebe `box-shadow` suave para indicar que está em movimento.
+- Tipamos o `KanbanCardView` com `forwardRef` baseado no elemento semântico `<article>`, evitando dependências de tipos inexistentes no Edge Runtime ao gerar builds Next.
+- Cards menores: espaçamento reduzido, meta convertida em lista e badge de estágio enxuto, seguindo tokens da aplicação.
+- Falhas ao inserir/consultar `contact_events` com erro `PGRST205` (banco sem migração) agora geram apenas um aviso e seguem com timeline vazia, mantendo salvamentos/edições funcionando.
+
 ## Revisão de Bugs (Junho/2025)
 - **Prioridade Alta — Geração de convites bloqueada:** a rota `POST /api/invites/generate` lia apenas a variável `SUPABASE_URL`. Em ambientes que expõem apenas `NEXT_PUBLIC_SUPABASE_URL` (setup recomendado no restante do app) o endpoint retornava "Server configuration missing" e nenhum convite podia ser criado. A correção passa a aceitar ambas as chaves e normaliza a URL antes de chamar a função Edge do Supabase.
 - **Prioridade Média — Menu do usuário quebrado:** `GET /api/user/profile` lançava 500 quando a consulta de memberships retornava `permission denied` (códigos `PGRST301`/`42501`), impedindo o carregamento do avatar e das opções. A rota agora registra o incidente em telemetria e continua respondendo com os dados do perfil, retornando `org_id`/`member_id` nulos.
