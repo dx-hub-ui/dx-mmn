@@ -139,12 +139,12 @@ export default function NotificationsBell({ orgId, orgName }: NotificationsBellP
       <span className={styles.triggerContent} data-error={hasError ? "true" : undefined}>
         <Avatar
           id="notification-avatar"
-          type="icon"
+          type={Avatar.types.ICON}
+          size={Avatar.sizes.MEDIUM}
           icon={Notifications}
           backgroundColor={hasError ? "negative" : "royal"}
           ariaLabel={hasError ? "Erro ao carregar notificações" : "Notificações"}
           withoutTooltip
-          ariaHidden
         />
         {showBadge ? (
           <span className={styles.counterWrapper}>

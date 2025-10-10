@@ -4,7 +4,7 @@
 
 O sino no topo da aplicação exibe o contador de notificações não lidas em tempo real. Ao clicar, o painel ancorado mostra abas (Todas, Não lidas, Fui mencionado, Atribuídas a mim), busca com debounce de 250 ms, filtro por pessoas e ações rápidas. As notificações são agrupadas em "Últimos 7 dias" e "Mais antigas" e suportam infinite scroll.
 
-O componente de topo usa um `Avatar` do `@vibe/core` com `type="icon"` e plano de fundo `royal`, sobreposto por um `Counter` negativo fixado no canto superior direito. Essa combinação garante contraste AA, segue os tokens de espaçamento do shell e evita regressões nas props de `IconButton` que não suportam badges customizados.
+O componente de topo usa um `Avatar` do `@vibe/core` com `type = Avatar.types.ICON`, `size = Avatar.sizes.MEDIUM` e plano de fundo `royal`, sobreposto por um `Counter` negativo fixado no canto superior direito (`pointer-events: none`). Essa combinação garante contraste AA, segue os tokens de espaçamento do shell e evita regressões nas props de `IconButton` que não suportam badges customizados.
 
 A arquitetura é multi-tenant: todo acesso exige `org_id` explícito e a função `set_current_org` propaga o contexto para as políticas de RLS. O backend roda em Supabase (Postgres) com gatilhos que mantêm os contadores em `notification_counters` e emitem `pg_notify` para o canal `realtime:notifications:user_{user_id}`.
 

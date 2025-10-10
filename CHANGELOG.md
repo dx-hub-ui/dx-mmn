@@ -1,3 +1,11 @@
+# 2025-11-26
+
+### Fixed
+- Corrigimos o sino de notificações da topbar para usar explicitamente `Avatar.types.ICON` e `Avatar.sizes.MEDIUM`, garantindo que o ícone de notificações e o contador negativo permaneçam visíveis enquanto preservamos o foco acessível mesmo em estados de erro.
+- Centralizamos o botão do sino e bloqueamos interações no badge para impedir que o contador sobreposto esconda o clique principal, mantendo o acionador funcional em todos os estados.
+
+### Documentation
+- Atualizamos o guia de notificações para registrar o uso de `Avatar.types.ICON` combinado ao `Counter` negativo com `pointer-events: none`, evitando regressões visuais e de acessibilidade na topbar.
 # 2025-11-25
 
 ### Changed
