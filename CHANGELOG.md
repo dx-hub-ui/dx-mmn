@@ -1,3 +1,16 @@
+# 2025-11-26
+
+### Changed
+- Substituímos a nomenclatura "CRM" da área `/crm` por cópias focadas em **Contatos**, alinhando comunicações e evitando o jargão na UI.
+- Compactamos o `ContactsKanban` com colunas mais estreitas, cabeçalhos reduzidos e cartões menores com botões terciários pequenos, deixando o board visualmente mais leve.
+
+### Fixed
+- Corrigimos o drag-and-drop do Kanban utilizando `DragOverlay`, impedindo que o cartão arrastado fique atrás das colunas durante o movimento.
+- Tratamos erros `PGRST205`/`42P01` ao registrar ou ler `contact_events`, emitindo apenas aviso e mantendo o fluxo de atualização de contatos funcional mesmo sem a tabela migrada.
+
+### Documentation
+- Atualizamos `docs/crm_readme.md` com o redesenho compacto do Kanban, a remoção do termo CRM das cópias e o fallback de timeline quando `contact_events` não existe.
+
 # 2025-11-25
 
 ### Changed

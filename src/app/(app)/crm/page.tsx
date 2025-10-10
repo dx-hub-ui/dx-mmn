@@ -23,7 +23,7 @@ export default async function CRMPage() {
     supabase = createSupabaseServerClient();
   } catch (error) {
     if (isSupabaseConfigurationError(error)) {
-      return <SupabaseConfigNotice featureLabel="o CRM de contatos" documentationPath="docs/dev_setup_crm.md" />;
+      return <SupabaseConfigNotice featureLabel="a área de contatos" documentationPath="docs/dev_setup_crm.md" />;
     }
     throw error;
   }
@@ -60,9 +60,9 @@ export default async function CRMPage() {
 
   if (!membership || !membership.organization) {
     return (
-      <section className="page" aria-labelledby="crm-empty">
+      <section className="page" aria-labelledby="contacts-empty">
         <header className="pageHeader">
-          <h1 id="crm-empty">CRM de Contatos</h1>
+          <h1 id="contacts-empty">Contatos</h1>
           <p>Nenhuma organização ativa vinculada ao usuário.</p>
         </header>
       </section>
