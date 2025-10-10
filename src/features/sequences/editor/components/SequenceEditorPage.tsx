@@ -629,14 +629,12 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   const [enrollmentTargets, setEnrollmentTargets] = useState("");
   const [rulesNotes, setRulesNotes] = useState(data.currentVersion?.notes ?? "");
   const [noteDraft, setNoteDraft] = useState("");
-  const [pauseDraft, setPauseDraft] = useState(false);
   const [enrollmentBusy, setEnrollmentBusy] = useState(false);
   const [enrollmentSort, setEnrollmentSort] = useState<{ column: string; direction: "asc" | "desc" } | null>(null);
   const [isPending, startTransition] = useTransition();
   const [sequenceActive, setSequenceActive] = useState(data.sequence.isActive);
   const [activationError, setActivationError] = useState<string | null>(null);
   const [activationPending, startActivationTransition] = useTransition();
-  const [stepError, setStepError] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1234,50 +1232,6 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   const disableStepActions = sequenceActive || isPending || activationPending;
   const disableRulesForm = sequenceActive || activationPending;
   const disableEnrollmentForm = sequenceActive || activationPending;
-  const hasStepDraftChanges =
-    Boolean(selectedStep) &&
-    (noteDraft !== (selectedStep?.shortDescription ?? "") || pauseDraft !== (selectedStep?.pauseUntilDone ?? false));
-
-  const handleSaveSelectedStep = () => {
-    if (!selectedStep || !currentVersion) {
-      return;
-    }
-
-    if (sequenceActive) {
-      return;
-    }
-
-    setStepError(null);
-
-    startTransition(async () => {
-      try {
-        await upsertSequenceStepAction({
-          sequenceId: data.sequence.id,
-          versionId: currentVersion.id,
-          stepId: selectedStep.id,
-          title: selectedStep.title,
-          shortDescription: noteDraft,
-          type: selectedStep.type,
-          assigneeMode: selectedStep.assigneeMode,
-          dueOffsetDays: selectedStep.dueOffsetDays,
-          dueOffsetHours: selectedStep.dueOffsetHours,
-          priority: selectedStep.priority ?? undefined,
-          channelHint: selectedStep.channelHint ?? undefined,
-          pauseUntilDone: pauseDraft,
-          isActive: selectedStep.isActive,
-        });
-        router.refresh();
-      } catch (error) {
-        console.error("[sequences] falha ao salvar etapa", error);
-        setStepError(
-          error instanceof Error && error.message
-            ? error.message
-            : "Não foi possível salvar as alterações da etapa."
-        );
-      }
-    });
-  };
-
   if (!currentVersion) {
     return (
       <section className={styles.page} aria-labelledby="sequence-editor-empty">
