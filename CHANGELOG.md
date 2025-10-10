@@ -1,3 +1,23 @@
+# 2025-11-23
+
+### Fixed
+- Reestruturamos as linhas clicáveis da tabela de sequências com um wrapper acessível (`SequenceTableDataRow`) que replica o grid do Vibe e trata a navegação por teclado, eliminando o uso de props inexistentes (`tabIndex`) no `TableRow` e evitando novos erros no `pnpm run build`.
+- Corrigimos a busca da lista de sequências para usar o atributo padrão `aria-label` do `@vibe/core/Search`, evitando novos erros de tipagem no `pnpm run build` e preservando a acessibilidade da barra de filtros.
+- Adicionamos o `errorState` obrigatório ao `@vibe/core/Table` da lista de sequências com fallback acessível e CTA de recarregar, impedindo que o build volte a falhar por props ausentes.
+
+### Documentation
+- Atualizamos `docs/sequences_module.md` destacando que o `@vibe/core/Table` do manager deve receber `errorState` e um estado de erro acessível para manter o build saudável.
+
+# 2025-11-22
+
+### Fixed
+- Ajustamos as larguras dos skeletons da tabela de sequências para números em pixels compatíveis com o `@vibe/core/Skeleton`, evitando que o build falhe ao interpretar porcentagens nas props `width`.
+
+# 2025-11-21
+
+### Fixed
+- Ajustamos os estados de loading da tabela de sequências para usar apenas os tipos suportados pelo `@vibe/core/Table`, liberando o `pnpm run build` sem quebrar os skeletons responsivos das métricas.
+- Atualizamos o skeleton personalizado das colunas numéricas para mapear o tipo `"rectangle"` do Vibe aos placeholders de métricas, evitando comparações com valores inexistentes como `"short-text"`/`"number"` durante o build.
 # 2025-11-20
 
 ### Changed
@@ -20,6 +40,10 @@
 # 2025-11-20
 
 ### Changed
+- Página `/sequences`: reformulamos a lista com barra superior Monday-style (título + tag Beta + ações "Aprender mais"/"Feedback"), filtros em popover e tabela `@vibe/core/Table` com ordenação, skeleton inicial, chips de status do Vibe e colunas de métricas (inscrições e taxas) alinhadas à direita.
+
+### Documentation
+- Atualizamos `docs/sequences_module.md` com o novo layout da lista de sequências, detalhando ações da barra superior, chips de status, tooltips das métricas e busca focada no nome.
 - CRM Kanban remodelado para estilo monday.com com cabeçalhos coloridos, menu contextual e botão rápido de criação usando componentes `@vibe/core` (`IconButton`, `MenuButton`).
 
 ### Fixed

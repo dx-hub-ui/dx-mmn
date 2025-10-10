@@ -27,6 +27,16 @@ export type SequenceManagerItem = {
   activeVersionNumber: number;
   stepsTotal: number;
   activeEnrollments: number;
+  totalEnrollments?: number | null;
+  durationDays?: number | null;
+  openRate?: number | null;
+  replyRate?: number | null;
+  clickRate?: number | null;
+  createdBy?: {
+    id?: string;
+    name: string;
+    avatarUrl?: string | null;
+  } | null;
   completionRate: number;
   lastActivationAt: string | null;
   updatedAt: string;
