@@ -36,7 +36,10 @@
 }
 
 .toolbar {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--dx-space-2);
+  align-items: center;
 }
 
 .tabList {
