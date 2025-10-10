@@ -30,6 +30,7 @@ type ContactsKanbanProps = {
   onOpenContact: (contactId: string) => void;
   onAddContact?: (stage: ContactStageId) => void;
   onConfigureColumn?: (stage: ContactStageId) => void;
+  creatingStageId?: ContactStageId | null;
 };
 
 type KanbanColumnProps = {
@@ -38,6 +39,7 @@ type KanbanColumnProps = {
   onOpenContact: (contactId: string) => void;
   onAddContact?: (stage: ContactStageId) => void;
   onConfigureColumn?: (stage: ContactStageId) => void;
+  isCreating?: boolean;
 };
 
 type KanbanCardProps = {
@@ -45,11 +47,20 @@ type KanbanCardProps = {
   onOpenContact: (contactId: string) => void;
 };
 
-function StageColumn({ stage, contacts, onOpenContact, onAddContact, onConfigureColumn }: KanbanColumnProps) {
+function StageColumn({
+  stage,
+  contacts,
+  onOpenContact,
+  onAddContact,
+  onConfigureColumn,
+  isCreating,
+}: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id, data: { stageId: stage.id } });
 
   const handleAddContact = () => {
-    onAddContact?.(stage.id);
+    if (!isCreating) {
+      onAddContact?.(stage.id);
+    }
   };
 
   const handleConfigureColumn = () => {
@@ -63,6 +74,7 @@ function StageColumn({ stage, contacts, onOpenContact, onAddContact, onConfigure
       aria-label={`Coluna ${stage.label}`}
       data-over={isOver || undefined}
       data-tone={stage.tone}
+      data-creating={isCreating || undefined}
     >
       <header className={styles.columnHeader}>
         <div className={styles.columnHeaderInfo}>
@@ -110,17 +122,22 @@ function StageColumn({ stage, contacts, onOpenContact, onAddContact, onConfigure
             size={IconButton.sizes.SMALL}
             tooltipContent={`Adicionar contato em ${stage.label}`}
             onClick={handleAddContact}
-            disabled={!onAddContact}
+            disabled={!onAddContact || isCreating}
           />
         </div>
       </header>
       <div className={styles.columnBody} role="list">
+        {isCreating ? (
+          <div className={styles.columnCreating} role="status" aria-live="polite">
+            Criando contato…
+          </div>
+        ) : null}
         {contacts.length === 0 ? (
           <button
             type="button"
             className={styles.columnEmpty}
             onClick={handleAddContact}
-            disabled={!onAddContact}
+            disabled={!onAddContact || isCreating}
           >
             {onAddContact ? "Adicionar contato" : "Arraste contatos para este estágio"}
           </button>
@@ -136,11 +153,10 @@ function StageColumn({ stage, contacts, onOpenContact, onAddContact, onConfigure
 
 function KanbanCard({ contact, onOpenContact }: KanbanCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: contact.id });
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined;
+  const style = {
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    zIndex: isDragging ? 120 : undefined,
+  };
 
   const { role, tabIndex, ...attributeRest } = attributes;
   const draggableProps = {
@@ -194,6 +210,7 @@ export default function ContactsKanban({
   onOpenContact,
   onAddContact,
   onConfigureColumn,
+  creatingStageId,
 }: ContactsKanbanProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -239,6 +256,7 @@ export default function ContactsKanban({
             onOpenContact={onOpenContact}
             onAddContact={onAddContact}
             onConfigureColumn={onConfigureColumn}
+            isCreating={creatingStageId === stage.id}
           />
         ))}
       </div>

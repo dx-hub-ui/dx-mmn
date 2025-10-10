@@ -1,8 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type HTMLAttributes } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+  type HTMLAttributes,
+} from "react";
 import {
   Button,
+  Checkbox,
+  Dialog,
+  type DialogProps,
+  type DialogType,
+  DialogContentContainer,
+  IconButton,
+  Menu,
+  MenuButton,
+  MenuItem,
   TabsContext,
   TabList,
   Tab,
@@ -14,6 +31,7 @@ import {
   TableBody,
   TableRow,
   TableCell,
+  TextField,
   Skeleton,
 } from "@vibe/core";
 import type { TableColumn, TableRowProps } from "@vibe/core";
@@ -40,6 +58,7 @@ import ContactsKanban from "@/features/crm/contacts/components/ContactsKanban";
 import BulkActionsBar from "@/features/crm/contacts/components/BulkActionsBar";
 import ImportContactsModal from "@/features/crm/contacts/components/ImportContactsModal";
 import ReportsDialog from "@/features/crm/contacts/components/ReportsDialog";
+import { Add, Chart, CloseSmall, Filter, MoreActions, Retry, Upload } from "@vibe/icons";
 
 const dateFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" });
 const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
@@ -58,6 +77,7 @@ const STAGE_TONES: Record<string, string> = {
 const STAGE_ORDER = new Map(CONTACT_STAGES.map((stage, index) => [stage.id, index] as const));
 
 const Tabs = TabsContext;
+const PopoverDialog = Dialog as unknown as ComponentType<DialogProps & { type?: DialogType }>;
 
 type TableLoadingStateType = NonNullable<TableColumn["loadingStateType"]>;
 
@@ -81,7 +101,7 @@ type OrganizationInfo = {
   slug: string;
 };
 
-type FeedbackState = { type: "success" | "error"; message: string } | null;
+type FeedbackState = { type: "success" | "error" | "warning"; message: string } | null;
 
 type SortColumn =
   | "name"
@@ -102,6 +122,7 @@ type ContactsBoardPageProps = {
 };
 
 type ContactUpdateSource = "board" | "modal" | "kanban" | "bulk";
+type ContactUpdateResult = { success: true; contact: ContactRecord } | { success: false; error: string };
 
 function nextStepSignature(contact: ContactRecord | undefined) {
   if (!contact) {
@@ -285,6 +306,7 @@ export default function ContactsBoardPage({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [savedView, setSavedView] = useState<SavedViewId | null>(DEFAULT_VIEW);
   const [filters, setFilters] = useState<ContactFilters>({});
+  const [filtersDialogOpen, setFiltersDialogOpen] = useState(false);
   const [sorting, setSorting] = useState<{ column: SortColumn; direction: "asc" | "desc" } | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [selection, setSelection] = useState<Set<string>>(() => new Set());
@@ -296,6 +318,7 @@ export default function ContactsBoardPage({
   );
   const [importOpen, setImportOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
+  const [kanbanCreatingStage, setKanbanCreatingStage] = useState<ContactStageId | null>(null);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [formErrors, setFormErrors] = useState<string | null>(null);
   const [modalState, setModalState] = useState<{ contactId: string; index: number } | null>(null);
@@ -395,22 +418,74 @@ export default function ContactsBoardPage({
     [handleBulkUpdate]
   );
 
-  const handleCreateContactForStage = useCallback(
-    (stageId: ContactStageId) => {
-      setActiveTab(0);
-      setIsCreating(true);
-      setCreateForm(() => {
-        const base = emptyEditableForm(currentMembership.id);
-        return { ...base, stage: stageId };
-      });
+  const createContactRequest = useCallback(
+    async (form: EditableContactForm): Promise<ContactUpdateResult> => {
+      try {
+        const payload = parseEditableContactForm(form);
+        const response = await fetch("/api/crm/contacts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...payload,
+            organizationId: organization.id,
+            actorMembershipId: currentMembership.id,
+          }),
+        });
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const firstError: string = body?.errors?.[0]?.message ?? body?.error ?? "Erro ao criar contato";
+          return { success: false, error: firstError };
+        }
+        const newContact: ContactRecord = body.contact;
+        return { success: true, contact: newContact };
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "Erro ao criar contato",
+        };
+      }
     },
-    [currentMembership.id]
+    [organization.id, currentMembership.id]
+  );
+
+  const handleCreateContactForStage = useCallback(
+    async (stageId: ContactStageId) => {
+      if (kanbanCreatingStage) {
+        setFeedback({ type: "warning", message: "Aguarde a criação em andamento" });
+        return;
+      }
+      setKanbanCreatingStage(stageId);
+      try {
+        const base = emptyEditableForm(currentMembership.id);
+        const existingInStage = contacts.filter((contact) => contact.stage === stageId);
+        const defaultName = existingInStage.length > 0 ? `Novo contato ${existingInStage.length + 1}` : "Novo contato";
+        const form: EditableContactForm = { ...base, stage: stageId, name: defaultName };
+        const result = await createContactRequest(form);
+        if (!result.success) {
+          setFeedback({ type: "error", message: result.error });
+          return;
+        }
+        setContacts((current) => [result.contact, ...current.filter((contact) => contact.id !== result.contact.id)]);
+        setFeedback({ type: "success", message: "Contato criado no Kanban" });
+      } finally {
+        setKanbanCreatingStage(null);
+      }
+    },
+    [kanbanCreatingStage, currentMembership.id, contacts, createContactRequest]
   );
 
   useEffect(() => {
     trackEvent("crm/board_view_loaded", { organizationId: organization.id, total: contacts.length });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!feedback) {
+      return;
+    }
+    const timeout = window.setTimeout(() => setFeedback(null), 4000);
+    return () => window.clearTimeout(timeout);
+  }, [feedback]);
 
   const visibleContacts = useMemo(() => {
     const base = savedView
@@ -471,8 +546,6 @@ export default function ContactsBoardPage({
       setModalState((current) => (current ? { ...current, index: newIndex } : current));
     }
   }, [visibleContacts, modalState]);
-
-  type ContactUpdateResult = { success: true; contact: ContactRecord } | { success: false; error: string };
 
   const submitContactForm = useCallback(
     async (contactId: string, form: EditableContactForm): Promise<ContactUpdateResult> => {
@@ -650,9 +723,18 @@ export default function ContactsBoardPage({
 
   const handleKanbanStageChange = useCallback(
     async (contactId: string, stage: ContactStageId) => {
+      const existing = contacts.find((item) => item.id === contactId);
+      if (!existing) {
+        setFeedback({ type: "error", message: "Contato não encontrado" });
+        return;
+      }
+      if (existing.stage === stage) {
+        setFeedback({ type: "warning", message: "Contato já está neste estágio" });
+        return;
+      }
       await applyContactUpdate(contactId, { stage }, "kanban");
     },
-    [applyContactUpdate]
+    [contacts, applyContactUpdate]
   );
 
   const toggleSelection = useCallback(
@@ -723,40 +805,20 @@ export default function ContactsBoardPage({
     setIsLoading(true);
     setFormErrors(null);
     try {
-      const payload = parseEditableContactForm(createForm);
-      const response = await fetch("/api/crm/contacts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...payload,
-          organizationId: organization.id,
-          actorMembershipId: currentMembership.id,
-        }),
-      });
-
-      if (!response.ok) {
-        const body = await response.json();
-        const firstError: string = body?.errors?.[0]?.message ?? "Erro ao criar contato";
-        setFormErrors(firstError);
-        setFeedback({ type: "error", message: firstError });
+      const result = await createContactRequest(createForm);
+      if (!result.success) {
+        setFormErrors(result.error);
+        setFeedback({ type: "error", message: result.error });
         return;
       }
-
-      const body = await response.json();
-      const newContact: ContactRecord = body.contact;
-      setContacts((current) => [newContact, ...current.filter((contact) => contact.id !== newContact.id)]);
+      setContacts((current) => [result.contact, ...current.filter((contact) => contact.id !== result.contact.id)]);
       setFeedback({ type: "success", message: "Contato criado com sucesso" });
       setCreateForm(emptyEditableForm(currentMembership.id));
       setIsCreating(false);
-    } catch (error) {
-      setFeedback({
-        type: "error",
-        message: error instanceof Error ? error.message : "Erro ao criar contato",
-      });
     } finally {
       setIsLoading(false);
     }
-  }, [createForm, currentMembership.id, organization.id]);
+  }, [createContactRequest, createForm, currentMembership.id]);
 
   const beginEdit = useCallback((contact: ContactRecord) => {
     setEditingContactId(contact.id);
@@ -841,29 +903,29 @@ export default function ContactsBoardPage({
   return (
     <section className={styles.page} aria-labelledby="crm-board-heading">
       <header className={styles.header}>
-        <div className={styles.titleRow}>
-          <div className={styles.titleBlock}>
-            <h1 id="crm-board-heading">Contatos — {organization.name}</h1>
-            <span className={styles.subtitle}>
-              Pipeline operacional para equipe multinível. {visibleContacts.length} de {contacts.length} contato(s)
-              visível(is).
-            </span>
-          </div>
-          <div className={styles.actionsRow}>
-            <Button kind={Button.kinds.PRIMARY} onClick={() => setIsCreating(true)}>
-              Novo contato
-            </Button>
-            <Button kind={Button.kinds.SECONDARY} onClick={() => setImportOpen(true)}>
-              Importar CSV
-            </Button>
-            <Button kind={Button.kinds.SECONDARY} onClick={() => setReportsOpen(true)}>
-              Relatórios
-            </Button>
-            <Button kind={Button.kinds.SECONDARY} loading={isRefreshing} onClick={handleRefresh}>
-              Atualizar
-            </Button>
-          </div>
-        </div>
+        <h1 id="crm-board-heading" className={styles.headerTitle}>
+          Meus Contatos
+        </h1>
+        <MenuButton
+          ariaLabel="Abrir ações adicionais"
+          dialogPosition={MenuButton.dialogPositions.BOTTOM_END}
+          tooltipContent="Mais ações"
+          closeMenuOnItemClick
+          component={() => (
+            <IconButton
+              icon={MoreActions}
+              ariaLabel="Mais ações"
+              kind={IconButton.kinds.SECONDARY}
+              size={IconButton.sizes.SMALL}
+              className={styles.headerMenuButton}
+            />
+          )}
+        >
+          <Menu>
+            <MenuItem icon={Chart} title="Relatórios" onClick={() => setReportsOpen(true)} />
+            <MenuItem icon={Upload} title="Importar contatos" onClick={() => setImportOpen(true)} />
+          </Menu>
+        </MenuButton>
       </header>
 
       <div className={styles.content}>
@@ -879,22 +941,212 @@ export default function ContactsBoardPage({
           <TabPanels activeTabId={activeTab}>
             <TabPanel index={0}>
               <div className={styles.tablePanel}>
+                <div
+                  className={styles.tableToolbar}
+                  role="toolbar"
+                  aria-label="Ações da tabela de contatos"
+                >
+                  <div className={styles.toolbarPrimary}>
+                    <Button
+                      kind={Button.kinds.PRIMARY}
+                      leftIcon={Add}
+                      onClick={() => {
+                        setActiveTab(0);
+                        setIsCreating(true);
+                        setCreateForm(() => emptyEditableForm(currentMembership.id));
+                        setFormErrors(null);
+                      }}
+                      disabled={isCreating || isLoading}
+                    >
+                      Criar contato
+                    </Button>
+                    <PopoverDialog
+                      open={filtersDialogOpen}
+                      useDerivedStateFromProps
+                      type="popover"
+                      position="bottom-start"
+                      moveBy={{ main: 0, secondary: 8 }}
+                      showTrigger={[]}
+                      hideTrigger={[]}
+                      onClickOutside={() => setFiltersDialogOpen(false)}
+                      onDialogDidHide={() => setFiltersDialogOpen(false)}
+                      content={
+                        <DialogContentContainer className={styles.filtersDialog}>
+                          <div className={styles.filtersHeader}>
+                            <span className={styles.filtersTitle}>Filtros</span>
+                            <button
+                              type="button"
+                              className={styles.clearFilters}
+                              onClick={() => {
+                                setFilters({});
+                                setFiltersDialogOpen(false);
+                              }}
+                            >
+                              Limpar tudo
+                            </button>
+                          </div>
+                          <div className={styles.filterGroup}>
+                            <span className={styles.filterLabel}>Estágios</span>
+                            <div className={styles.filterList}>
+                              {CONTACT_STAGES.map((stage) => {
+                                const checked = filters.stages?.includes(stage.id) ?? false;
+                                return (
+                                  <Checkbox
+                                    key={stage.id}
+                                    label={stage.label}
+                                    checked={checked}
+                                    onChange={(event) => {
+                                      const { checked } = event.target;
+                                      setFilters((current) => {
+                                        const next = new Set(current.stages ?? []);
+                                        if (checked) {
+                                          next.add(stage.id);
+                                        } else {
+                                          next.delete(stage.id);
+                                        }
+                                        return {
+                                          ...current,
+                                          stages: next.size > 0 ? Array.from(next) : undefined,
+                                        };
+                                      });
+                                    }}
+                                  />
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div className={styles.filterGroup}>
+                            <span className={styles.filterLabel}>Donos</span>
+                            <div className={styles.filterList}>
+                              {memberships.map((member) => {
+                                const checked = filters.ownerIds?.includes(member.id) ?? false;
+                                return (
+                                  <Checkbox
+                                    key={member.id}
+                                    label={member.displayName}
+                                    checked={checked}
+                                    onChange={(event) => {
+                                      const { checked } = event.target;
+                                      setFilters((current) => {
+                                        const next = new Set(current.ownerIds ?? []);
+                                        if (checked) {
+                                          next.add(member.id);
+                                        } else {
+                                          next.delete(member.id);
+                                        }
+                                        return {
+                                          ...current,
+                                          ownerIds: next.size > 0 ? Array.from(next) : undefined,
+                                        };
+                                      });
+                                    }}
+                                  />
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div className={styles.filterGroup}>
+                            <TextField
+                              title="Tags"
+                              placeholder="marketing, vip"
+                              value={filters.tags?.join(", ") ?? ""}
+                              onChange={(value) =>
+                                setFilters((current) => {
+                                  const normalized = value
+                                    .split(",")
+                                    .map((tag) => tag.trim())
+                                    .filter(Boolean);
+                                  return { ...current, tags: normalized.length > 0 ? normalized : undefined };
+                                })
+                              }
+                            />
+                          </div>
+                          <div className={styles.filterGroup}>
+                            <span className={styles.filterLabel}>Próximo passo</span>
+                            <div className={styles.filterDates}>
+                              <TextField
+                                type="date"
+                                title="De"
+                                value={
+                                  filters.nextActionBetween?.start
+                                    ? filters.nextActionBetween.start.substring(0, 10)
+                                    : ""
+                                }
+                                onChange={(value) =>
+                                  setFilters((current) => {
+                                    const isoValue = value
+                                      ? new Date(`${value}T00:00:00Z`).toISOString()
+                                      : null;
+                                    const next = { ...(current.nextActionBetween ?? { start: null, end: null }) };
+                                    next.start = isoValue;
+                                    if (!next.start && !next.end) {
+                                      return { ...current, nextActionBetween: undefined };
+                                    }
+                                    return { ...current, nextActionBetween: next };
+                                  })
+                                }
+                              />
+                              <TextField
+                                type="date"
+                                title="Até"
+                                value={
+                                  filters.nextActionBetween?.end
+                                    ? filters.nextActionBetween.end.substring(0, 10)
+                                    : ""
+                                }
+                                onChange={(value) =>
+                                  setFilters((current) => {
+                                    const isoValue = value
+                                      ? new Date(`${value}T23:59:59Z`).toISOString()
+                                      : null;
+                                    const next = { ...(current.nextActionBetween ?? { start: null, end: null }) };
+                                    next.end = isoValue;
+                                    if (!next.start && !next.end) {
+                                      return { ...current, nextActionBetween: undefined };
+                                    }
+                                    return { ...current, nextActionBetween: next };
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+                        </DialogContentContainer>
+                      }
+                    >
+                      <Button
+                        kind={Button.kinds.SECONDARY}
+                        leftIcon={Filter}
+                        onClick={() => setFiltersDialogOpen((open) => !open)}
+                        aria-haspopup="dialog"
+                        aria-expanded={filtersDialogOpen}
+                      >
+                        Filtros
+                      </Button>
+                    </PopoverDialog>
+                    <Button
+                      kind={Button.kinds.SECONDARY}
+                      leftIcon={Retry}
+                      onClick={handleRefresh}
+                      loading={isRefreshing}
+                    >
+                      Atualizar
+                    </Button>
+                  </div>
+                </div>
                 <div className={styles.tableControls}>
                   <div className={styles.savedViews}>
-                        {SAVED_VIEWS.map((view) => (
-                          <Button
-                            key={view.id}
-                            kind={savedView === view.id ? Button.kinds.PRIMARY : Button.kinds.TERTIARY}
-                            className={`${styles.savedViewButton} ${
-                              savedView === view.id ? styles.savedViewButtonActive : ""
-                            }`}
-                            onClick={() =>
-                              setSavedView((current) => (current === view.id ? null : view.id))
-                            }
-                          >
-                            {view.label}
-                          </Button>
-                        ))}
+                    {SAVED_VIEWS.map((view) => (
+                      <Button
+                        key={view.id}
+                        kind={savedView === view.id ? Button.kinds.PRIMARY : Button.kinds.TERTIARY}
+                        className={`${styles.savedViewButton} ${
+                          savedView === view.id ? styles.savedViewButtonActive : ""
+                        }`}
+                        onClick={() => setSavedView((current) => (current === view.id ? null : view.id))}
+                      >
+                        {view.label}
+                      </Button>
+                    ))}
                   </div>
                   <div className={styles.searchRow}>
                     <label htmlFor="crm-search" className={styles.srOnly}>
@@ -912,17 +1164,6 @@ export default function ContactsBoardPage({
                     />
                   </div>
                 </div>
-
-                    {feedback && (
-                      <div
-                        className={`${styles.feedbackBanner} ${
-                          feedback.type === "success" ? styles.feedbackSuccess : styles.feedbackError
-                        }`}
-                        role="status"
-                      >
-                    {feedback.message}
-                  </div>
-                )}
 
                 <Table
                   columns={tableColumns}
@@ -1433,6 +1674,7 @@ export default function ContactsBoardPage({
                   onStageChange={handleKanbanStageChange}
                   onOpenContact={handleOpenContact}
                   onAddContact={handleCreateContactForStage}
+                  creatingStageId={kanbanCreatingStage}
                 />
               </div>
             </TabPanel>
@@ -1482,6 +1724,31 @@ export default function ContactsBoardPage({
         onImported={handleImportedContacts}
       />
       <ReportsDialog open={reportsOpen} onClose={() => setReportsOpen(false)} contacts={contacts} />
+      {feedback ? (
+        <div className={styles.toastStack} role="presentation">
+          <div
+            className={`${styles.toast} ${
+              feedback.type === "success"
+                ? styles.toastSuccess
+                : feedback.type === "error"
+                ? styles.toastError
+                : styles.toastWarning
+            }`}
+            role={feedback.type === "error" ? "alert" : "status"}
+            aria-live="polite"
+          >
+            <span>{feedback.message}</span>
+            <button
+              type="button"
+              className={styles.toastDismiss}
+              onClick={() => setFeedback(null)}
+              aria-label="Fechar notificação"
+            >
+              <CloseSmall aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

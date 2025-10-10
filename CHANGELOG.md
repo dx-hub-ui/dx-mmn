@@ -1,25 +1,13 @@
-# 2025-11-26
-
-### Fixed
-- Corrigimos o sino de notificações da topbar para usar explicitamente `Avatar.types.ICON` e `Avatar.sizes.MEDIUM`, garantindo que o ícone de notificações e o contador negativo permaneçam visíveis enquanto preservamos o foco acessível mesmo em estados de erro.
-- Centralizamos o botão do sino e bloqueamos interações no badge para impedir que o contador sobreposto esconda o clique principal, mantendo o acionador funcional em todos os estados.
-
-### Documentation
-- Atualizamos o guia de notificações para registrar o uso de `Avatar.types.ICON` combinado ao `Counter` negativo com `pointer-events: none`, evitando regressões visuais e de acessibilidade na topbar.
 # 2025-11-25
 
 ### Changed
-- Inserimos um divisor visual na Topbar entre os ícones de atalho e o menu do usuário para separar a área do avatar sem alterar o espaçamento geral.
-
-### Documentation
-- Atualizamos `docs/monday_design_guide.md` para registrar o divisor entre os atalhos e o menu do usuário na Topbar.
-# 2025-11-26
+- Remodelamos o cabeçalho de `/crm` para exibir somente "Meus Contatos" com menu em ícone e toolbar superior contendo Criar contato, Filtros (dialog `DialogContentContainer`) e Atualizar, alinhando a visão Tabela ao layout monday.com de referência.
+- Simplificamos o Kanban de contatos com cabeçalhos coloridos, corpo neutro (`--dark-background-color`) e cartões planos utilizando tokens do aplicativo, além de mover Relatórios/Importar para um menu de três pontos.
 
 ### Fixed
-- Recriamos o acionador de notificações da topbar com `Avatar` + `Counter`, restaurando o badge visível, suporte ao contador em tempo real e foco acessível mesmo quando o fetch do contador falhar.
-
-### Documentation
-- Documentamos no guia de notificações que o sino usa `Avatar` (`type="icon"`, fundo `royal`) com `Counter` negativo sobreposto, prevenindo regressões visuais e de acessibilidade no topo do shell.
+- Corrigimos o z-index dos cartões do Kanban para que permaneçam sobre as colunas durante o arrastar e adicionamos placeholder que bloqueia interações enquanto a criação via API está em andamento.
+- A ação "Adicionar Contato" no Kanban agora cria e salva o registro imediatamente no estágio selecionado, sincroniza com a Tabela e exibe toasts de sucesso, erro ou atenção em cores sólidas.
+- Refatoramos o helper `createContactRequest` para ser compartilhado entre a tabela e o Kanban sem violar o tempo de vida dos hooks, evitando o ReferenceError que impedia a criação direta após o primeiro render.
 
 # 2025-11-24
 
