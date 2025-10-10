@@ -30,7 +30,6 @@ import {
   Toggle,
   Tooltip,
   MenuDivider,
-  MenuItem,
   Table,
   TableBody,
   TableCell,
@@ -38,9 +37,6 @@ import {
   TableHeader,
   TableHeaderCell,
   TableRow,
-  Text,
-  TextArea,
-  Toggle,
   type TableColumn,
 } from "@vibe/core";
 import { Add, Code, Drag, MoreActions, NavigationChevronLeft, TextFormatting } from "@vibe/icons";
@@ -49,6 +45,7 @@ import { useSentrySequenceScope } from "@/lib/observability/sentryClient";
 import { calculateDueDate } from "../dates";
 import type {
   SequenceEditorData,
+  SequenceEnrollmentRecord,
   SequenceStepRecord,
   SequenceTargetType,
 } from "../types";
@@ -93,8 +90,6 @@ type StepModalState = {
     dueOffsetHours: number;
     pauseUntilDone: boolean;
   }>;
-  anchorStepId?: string;
-  position?: "before" | "after";
 };
 
 type StepMenuAction =
@@ -356,8 +351,6 @@ type StepModalProps = {
     },
     options: {
       state: StepModalState;
-      anchorStepId?: string;
-      position?: "before" | "after";
     },
   ) => Promise<void>;
   pending: boolean;
@@ -686,6 +679,37 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   }, [sequenceActive]);
 
   const currentVersion = data.currentVersion;
+  const sortedEnrollments = useMemo(() => {
+    const base = [...data.enrollments];
+    if (!enrollmentSort) {
+      return base;
+    }
+
+    const { column, direction } = enrollmentSort;
+    const modifier = direction === "asc" ? 1 : -1;
+
+    return [...base].sort((a, b) => {
+      const getComparable = (item: SequenceEnrollmentRecord) => {
+        switch (column) {
+          case "targetId":
+            return item.targetId ?? "";
+          case "targetType":
+            return item.targetType;
+          case "status":
+            return item.status;
+          case "enrolledAt":
+            return item.enrolledAt;
+          default:
+            return "";
+        }
+      };
+
+      const aValue = getComparable(a);
+      const bValue = getComparable(b);
+
+      return aValue.localeCompare(bValue) * modifier;
+    });
+  }, [data.enrollments, enrollmentSort]);
   const sequenceStatusLabel: Record<string, string> = {
     draft: "Rascunho",
     active: "Ativa",
@@ -726,15 +750,19 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
       return;
     }
 
-    const anchorIndex = values.anchorStepId
-      ? localSteps.findIndex((step) => step.id === values.anchorStepId)
+    const anchorStepId = state.position?.referenceId;
+    const anchorIndex = anchorStepId
+      ? localSteps.findIndex((step) => step.id === anchorStepId)
       : -1;
-    const insertAtIndex =
-      !values.id && values.position && anchorIndex >= 0
-        ? values.position === "before"
-          ? anchorIndex
-          : anchorIndex + 1
-        : null;
+    let insertAtIndex: number | null = null;
+
+    if (!values.id && state.position) {
+      if (state.position.kind === "end") {
+        insertAtIndex = localSteps.length;
+      } else if (anchorIndex >= 0) {
+        insertAtIndex = state.position.kind === "before" ? anchorIndex : anchorIndex + 1;
+      }
+    }
 
     startTransition(async () => {
       const newStepId = await upsertSequenceStepAction({
@@ -879,15 +907,18 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   };
 
   const handleAddStepRelative = (step: SequenceStepRecord, position: "before" | "after") => {
-    openStepModal({ mode: "create", presetType: step.type, anchorStepId: step.id, position });
+    openStepModal({
+      mode: "create",
+      presetType: step.type,
+      position: { kind: position, referenceId: step.id },
+    });
   };
 
   const handleAddWaitAfter = (step: SequenceStepRecord) => {
     openStepModal({
       mode: "create",
       presetType: step.type,
-      anchorStepId: step.id,
-      position: "after",
+      position: { kind: "after", referenceId: step.id },
     });
   };
 
@@ -1407,6 +1438,15 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                           onSelect={(selected) => setSelectedStepId(selected.id)}
                           onToggle={handleToggle}
                           onMenuAction={handleStepMenuAction}
+                          onDuplicate={handleDuplicate}
+                          onDelete={handleDelete}
+                          onAddBefore={(target) => handleAddStepRelative(target, "before")}
+                          onAddAfter={(target) => handleAddStepRelative(target, "after")}
+                          onAddWait={handleAddWaitAfter}
+                          onMoveUp={handleMoveStepUp}
+                          onMoveDown={handleMoveStepDown}
+                          canMoveUp={index > 0}
+                          canMoveDown={index < localSteps.length - 1}
                         />
                       ))}
                     </div>

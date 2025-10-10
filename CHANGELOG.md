@@ -1,10 +1,10 @@
 # 2025-11-23
 
 ### Fixed
-- Corrigimos a tipagem de `StepModal.onSubmit`, garantindo que os parâmetros opcionais (`anchorStepId`, `position`) fiquem dentro do objeto de opções e evitando o erro de sintaxe `Expected ';'` durante `pnpm run build`.
+- Corrigimos a tipagem de `StepModal.onSubmit`, movendo a lógica de ancoragem para `state.position` e removendo duplicidades de import/export em `SequenceEditorPage.tsx`, eliminando os erros de build (`Expected ';'`, nomes redefinidos) identificados pela Vercel.
 
 ### Documentation
-- Atualizamos `docs/sequences_module.md` para esclarecer como o modal de passos recebe `state`, `anchorStepId` e `position`, garantindo que implementações futuras sigam a mesma estrutura tipada.
+- Atualizamos `docs/sequences_module.md` para detalhar que o modal encaminha posicionamento e referência de etapa via `state.position`, evitando contratos duplicados (`anchorStepId`, `position`) e mantendo o editor alinhado ao design system.
 
 # 2025-11-19
 
