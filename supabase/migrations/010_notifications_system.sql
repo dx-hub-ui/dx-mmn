@@ -473,7 +473,7 @@ FOR SELECT
 USING (user_id = auth.uid());
 
 GRANT EXECUTE ON FUNCTION public.queue_notification(uuid, uuid, text, text, uuid, uuid, text, text, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.send_weekly_mentions_digest() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.send_weekly_mentions_digest() TO service_role;
 
 CREATE OR REPLACE FUNCTION public.set_current_org(p_org_id uuid)
 RETURNS void
