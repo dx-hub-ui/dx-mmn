@@ -110,13 +110,6 @@ type SortableStepProps = {
   onSelect: (step: SequenceStepRecord) => void;
   onToggle: (step: SequenceStepRecord, isActive: boolean) => void;
   onMenuAction: (action: StepMenuAction, step: SequenceStepRecord) => void;
-  onDuplicate: (step: SequenceStepRecord) => void;
-  onDelete: (step: SequenceStepRecord) => void;
-  onAddBefore: (step: SequenceStepRecord) => void;
-  onAddAfter: (step: SequenceStepRecord) => void;
-  onAddWait: (step: SequenceStepRecord) => void;
-  onMoveUp: (step: SequenceStepRecord) => void;
-  onMoveDown: (step: SequenceStepRecord) => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
 };
@@ -137,13 +130,6 @@ const SortableStep: SortableStepComponent = ({
   onSelect,
   onToggle,
   onMenuAction,
-  onDuplicate,
-  onDelete,
-  onAddBefore,
-  onAddAfter,
-  onAddWait,
-  onMoveUp,
-  onMoveDown,
   canMoveUp,
   canMoveDown,
 }) => {
@@ -188,39 +174,26 @@ const SortableStep: SortableStepComponent = ({
         <Drag aria-hidden />
       </button>
 
-      <div className={styles.stepContent}>
-        <div className={styles.stepHeaderRow}>
-          <span className={styles.stepIndex}>{index + 1}.</span>
-          <div className={styles.stepTextGroup}>
-            <h3>{step.title}</h3>
-            <p>{shortDescription}</p>
-          </div>
-          <Label
-            kind={Label.kinds.FILL}
-            color={step.isActive ? Label.colors.POSITIVE : Label.colors.NEGATIVE}
-            text={step.isActive ? "Ativa" : "Inativa"}
-          />
-        </div>
-        <div className={styles.stepMetaRow}>
-          <span>{STEP_TYPE_LABEL[step.type]}</span>
-          <span>
-            {step.dueOffsetDays} dia(s) • {step.dueOffsetHours} hora(s)
-          </span>
-        </div>
+      <div className={styles.stepInfo}>
+        <h3>{step.title.trim() || STEP_TYPE_LABEL[step.type]}</h3>
+        <p>{shortDescription}</p>
       </div>
 
       <MenuButton
         ariaLabel={`Abrir menu da etapa ${step.title}`}
         disabled={disableActions}
         closeMenuOnItemClick
-        onClick={(event) => event.stopPropagation()}
         tooltipContent="Ações da etapa"
-        component={() => (
+        component={({ onClick, ...buttonProps }) => (
           <button
             type="button"
+            {...buttonProps}
             className={styles.stepMenuTrigger}
             aria-label={`Opções da etapa ${step.title}`}
-            onClick={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              onClick?.(event);
+            }}
           >
             <MoreActions aria-hidden />
           </button>
@@ -230,8 +203,10 @@ const SortableStep: SortableStepComponent = ({
           <MenuItem title="Adicionar tempo de espera" onClick={() => onMenuAction("add-wait", step)} />
           <MenuItem title="Adicionar etapa antes" onClick={() => onMenuAction("add-before", step)} />
           <MenuItem title="Adicionar etapa depois" onClick={() => onMenuAction("add-after", step)} />
-          <MenuItem title="Mover etapa para cima" onClick={() => onMenuAction("move-up", step)} />
-          <MenuItem title="Mover etapa para baixo" onClick={() => onMenuAction("move-down", step)} />
+          <MenuDivider />
+          <MenuItem title="Mover etapa para cima" disabled={!canMoveUp} onClick={() => onMenuAction("move-up", step)} />
+          <MenuItem title="Mover etapa para baixo" disabled={!canMoveDown} onClick={() => onMenuAction("move-down", step)} />
+          <MenuDivider />
           <MenuItem title="Duplicar etapa" onClick={() => onMenuAction("duplicate", step)} />
           <MenuItem title="Excluir etapa" onClick={() => onMenuAction("delete", step)} />
           <MenuItem
@@ -240,93 +215,6 @@ const SortableStep: SortableStepComponent = ({
           />
         </Menu>
       </MenuButton>
-      <div className={styles.stepCardInner}>
-        <button
-          type="button"
-          className={styles.dragHandle}
-          aria-label="Reordenar etapa"
-          {...attributes}
-          {...(disableReorder ? {} : listeners)}
-          disabled={disableReorder}
-        >
-          ⋮⋮
-        </button>
-        <div className={styles.stepCardContent}>
-          <div className={styles.stepTitleRow}>
-            <span className={styles.stepOrder}>{`${index + 1}.`}</span>
-            <div className={styles.stepTextGroup}>
-              <h3>{step.title.trim() || STEP_TYPE_LABEL[step.type]}</h3>
-              <p>{step.shortDescription?.trim() || "Sem descrição"}</p>
-            </div>
-          </div>
-          <span className={styles.stepType}>{STEP_TYPE_LABEL[step.type]}</span>
-        </div>
-        <MenuButton
-          className={styles.stepMenuButton}
-          ariaLabel={`Ações para ${step.title}`}
-          disabled={disableActions}
-          closeMenuOnItemClick
-          component={({ onClick }) => (
-            <button
-              type="button"
-              className={styles.stepMenuTrigger}
-              onClick={(event) => {
-                event.stopPropagation();
-                onClick(event);
-              }}
-              aria-label={`Abrir menu de ações da etapa ${index + 1}`}
-            >
-              ⋯
-            </button>
-          )}
-        >
-          <Menu>
-            <MenuItem
-              title="Adicionar tempo de espera"
-              disabled={disableActions}
-              onClick={() => onAddWait(step)}
-            />
-            <MenuItem
-              title={step.isActive ? "Desativar etapa" : "Ativar etapa"}
-              disabled={disableActions}
-              onClick={() => onToggle(step, !step.isActive)}
-            />
-            <MenuDivider />
-            <MenuItem
-              title="Adicionar etapa antes"
-              disabled={disableActions}
-              onClick={() => onAddBefore(step)}
-            />
-            <MenuItem
-              title="Adicionar etapa depois"
-              disabled={disableActions}
-              onClick={() => onAddAfter(step)}
-            />
-            <MenuDivider />
-            <MenuItem
-              title="Mover etapa para cima"
-              disabled={disableActions || !canMoveUp}
-              onClick={() => onMoveUp(step)}
-            />
-            <MenuItem
-              title="Mover etapa para baixo"
-              disabled={disableActions || !canMoveDown}
-              onClick={() => onMoveDown(step)}
-            />
-            <MenuDivider />
-            <MenuItem
-              title="Duplicar etapa"
-              disabled={disableActions}
-              onClick={() => onDuplicate(step)}
-            />
-            <MenuItem
-              title="Excluir etapa"
-              disabled={disableActions}
-              onClick={() => onDelete(step)}
-            />
-          </Menu>
-        </MenuButton>
-      </div>
     </article>
   );
 };
@@ -1392,13 +1280,6 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                           onSelect={(selected) => setSelectedStepId(selected.id)}
                           onToggle={handleToggle}
                           onMenuAction={handleStepMenuAction}
-                          onDuplicate={handleDuplicate}
-                          onDelete={handleDelete}
-                          onAddBefore={(target) => handleAddStepRelative(target, "before")}
-                          onAddAfter={(target) => handleAddStepRelative(target, "after")}
-                          onAddWait={handleAddWaitAfter}
-                          onMoveUp={handleMoveStepUp}
-                          onMoveDown={handleMoveStepDown}
                           canMoveUp={index > 0}
                           canMoveDown={index < localSteps.length - 1}
                         />

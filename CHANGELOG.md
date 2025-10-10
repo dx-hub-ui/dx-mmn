@@ -1,3 +1,11 @@
+# 2025-11-29
+
+### Changed
+- Compactamos os cartões de etapas do editor de sequências, reduzindo o layout à combinação título + descrição, adicionando menu de ações em três pontos e alinhando a coluna esquerda a 550px com painel direito em largura mínima de 550px/padding de 40px.
+
+### Documentation
+- Atualizamos `docs/sequences_module.md` para registrar o novo layout compacto dos cartões e as larguras fixas de 550px no workspace do editor.
+
 # 2025-11-28
 
 ### Fixed
