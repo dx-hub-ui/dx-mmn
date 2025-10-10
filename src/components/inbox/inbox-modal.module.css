@@ -8,6 +8,7 @@
   background: var(--dx-surface-elevated);
   border-radius: 20px;
   box-shadow: var(--dx-shadow-floating-strong);
+  z-index: 3001;
 }
 
 .header {
@@ -30,7 +31,7 @@
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: var(--dx-surface-highlight);
+  background: var(--dx-surface-elevated);
 }
 
 .actions {
