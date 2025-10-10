@@ -96,6 +96,7 @@
 
   --dx-bg: var(--application-background-color);
   --dx-surface: var(--application-background-color);
+  --dx-surface-elevated: var(--application-background-color);
   --dx-border: var(--application-border-color);
   --dx-text: #1f2328;
   
@@ -175,6 +176,7 @@ body#main.default-app-theme {
 
   --dx-bg: var(--application-surface-color);
   --dx-surface: var(--surface-color);
+  --dx-surface-elevated: var(--application-background-color);
   --dx-border: var(--application-border-color);
   --dx-text: var(--primary-text-color);
 
@@ -208,6 +210,7 @@ body#main.black-app-theme {
 
   --dx-bg: var(--application-surface-color);
   --dx-surface: var(--surface-color);
+  --dx-surface-elevated: var(--application-background-color);
   --dx-border: var(--application-border-color);
   --dx-text: #e9eaee;
 
@@ -244,6 +247,7 @@ body#main.night-app-theme {
 
   --dx-bg: var(--application-surface-color);
   --dx-surface: var(--surface-color);
+  --dx-surface-elevated: var(--application-background-color);
   --dx-border: var(--application-border-color);
   --dx-text: #efefff;
 
