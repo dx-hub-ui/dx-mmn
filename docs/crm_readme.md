@@ -5,6 +5,12 @@
 - O módulo utiliza o Supabase (RLS) para carregar contatos e memberships visíveis através das funções utilitárias `listContacts` e `fetchVisibleMemberships`.
 - A listagem principal (`ContactsBoardPage`) usa componentes do Vibe (`Tabs`, `Table`) para alternar entre a visão em tabela e o Kanban. A tabela oferece ordenação por coluna, skeletons durante carregamentos e mantém a navegação por teclado acessível (`role="grid"`).
 
+## Atualização de Junho/2025 — Kanban estilo monday.com
+- O componente `ContactsKanban` recebeu cabeçalhos coloridos por estágio reutilizando as mesmas cores vibrantes dos badges de status da tabela. Os tons são definidos via `data-tone` em `contacts-kanban.module.css` para facilitar ajustes futuros.
+- Cada coluna agora exibe menu de três pontos (`MenuButton` + `IconButton` com `MoreActions`) com atalhos "Adicionar novo contato" e "Definir limite da coluna" e um botão `+` dedicado que dispara `onAddContact(stageId)`.
+- O estado vazio de coluna passou a exibir um botão de atalho para criação rápida quando `onAddContact` estiver disponível, alinhado ao comportamento esperado em monday.com.
+- O drag and drop utiliza `closestCorners` e dados explícitos de estágio no `useDroppable`, resolvendo cenários em que o cartão não reconhecia o drop target e trazendo feedback visual com borda/acento ao arrastar.
+
 ## Revisão de Bugs (Junho/2025)
 - **Prioridade Alta — Geração de convites bloqueada:** a rota `POST /api/invites/generate` lia apenas a variável `SUPABASE_URL`. Em ambientes que expõem apenas `NEXT_PUBLIC_SUPABASE_URL` (setup recomendado no restante do app) o endpoint retornava "Server configuration missing" e nenhum convite podia ser criado. A correção passa a aceitar ambas as chaves e normaliza a URL antes de chamar a função Edge do Supabase.
 - **Prioridade Média — Menu do usuário quebrado:** `GET /api/user/profile` lançava 500 quando a consulta de memberships retornava `permission denied` (códigos `PGRST301`/`42501`), impedindo o carregamento do avatar e das opções. A rota agora registra o incidente em telemetria e continua respondendo com os dados do perfil, retornando `org_id`/`member_id` nulos.

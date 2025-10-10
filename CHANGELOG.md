@@ -18,6 +18,24 @@
 ### Fixed
 - Ajustamos os estados de loading da tabela de sequências para usar apenas os tipos suportados pelo `@vibe/core/Table`, liberando o `pnpm run build` sem quebrar os skeletons responsivos das métricas.
 - Atualizamos o skeleton personalizado das colunas numéricas para mapear o tipo `"rectangle"` do Vibe aos placeholders de métricas, evitando comparações com valores inexistentes como `"short-text"`/`"number"` durante o build.
+# 2025-11-20
+
+### Changed
+- Editor de Sequências (`/sequences/[id]`) redesenhado com cabeçalho compacto, toggle "Inativa | Ativa" e CTA "Salvar sequência", cartões de etapas com menu contextual, painel de notas em `--allgrey-background-color` e rolagem independente entre lista e editor.
+- Migração das inscrições da sequência para `@vibe/core/Table` com ordenação por cabeçalho, skeleton durante ações e manutenção das ações inline (pausar/retomar/encerrar) alinhadas ao design Monday.
+
+### Fixed
+- Ajustamos as colunas da tabela de inscrições para definir `loadingStateType` nativo do Vibe (ID/Tipo/Status como `"medium-text"`, data como `"long-text"` e ações como `"circle"`), eliminando o import ocioso de `Skeleton` e garantindo skeletons consistentes durante operações.
+
+### Documentation
+- Atualizamos `docs/sequences_module.md` com o novo layout do editor (toolbar de notas, menu contextual e rolagem independente) e com os requisitos da tabela de inscrições usando `@vibe/core/Table` com ordenação e skeletons.
+# 2025-11-21
+
+### Fixed
+- Impedimos que o helper `createSupabaseServerClient` derrube o runtime quando o Next bloqueia `cookies().set`, encapsulando a mutação em `try/catch` e registrando um aviso somente em desenvolvimento.
+
+### Documentation
+- Documentamos no `README.md` que o helper ignora mutações de cookie fora de Server Actions/Route Handlers para evitar o erro "Cookies can only be modified in a Server Action or Route Handler".
 
 # 2025-11-20
 
@@ -26,6 +44,13 @@
 
 ### Documentation
 - Atualizamos `docs/sequences_module.md` com o novo layout da lista de sequências, detalhando ações da barra superior, chips de status, tooltips das métricas e busca focada no nome.
+- CRM Kanban remodelado para estilo monday.com com cabeçalhos coloridos, menu contextual e botão rápido de criação usando componentes `@vibe/core` (`IconButton`, `MenuButton`).
+
+### Fixed
+- Drag and drop do Kanban passa a usar `closestCorners` e `data` explícito no `useDroppable`, garantindo que cartões reconheçam o estágio alvo ao serem soltos.
+
+### Documentation
+- `docs/crm_readme.md` atualizado com a estratégia de cores por estágio, novos atalhos de criação e notas sobre o ajuste do drag and drop.
 
 # 2025-11-18
 
