@@ -15,7 +15,6 @@ import {
   closestCorners,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Button, IconButton, Menu, MenuButton, MenuItem } from "@vibe/core";
 import { Add, Column, MoreActions } from "@vibe/icons";
 import clsx from "clsx";
@@ -227,7 +226,21 @@ function DraggableKanbanCard({ contact, onOpenContact }: KanbanCardProps) {
 
   const style: React.CSSProperties = {};
   if (transform) {
-    style.transform = CSS.Transform.toString(transform);
+    const { x = 0, y = 0, scaleX = 1, scaleY = 1, scaleZ = 1, rotateX = 0, rotateY = 0, rotateZ = 0 } = transform;
+    const pieces = [`translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`];
+    if ([scaleX, scaleY, scaleZ].some((value) => value !== 1)) {
+      pieces.push(`scale3d(${scaleX}, ${scaleY}, ${scaleZ})`);
+    }
+    if (rotateX) {
+      pieces.push(`rotateX(${rotateX}deg)`);
+    }
+    if (rotateY) {
+      pieces.push(`rotateY(${rotateY}deg)`);
+    }
+    if (rotateZ) {
+      pieces.push(`rotateZ(${rotateZ}deg)`);
+    }
+    style.transform = pieces.join(" ");
   }
   if (isDragging) {
     style.zIndex = 160;

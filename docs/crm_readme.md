@@ -36,7 +36,7 @@
 
 ## Atualização de Dezembro/2026 — Tabela com edição célula a célula e Kanban de altura total
 - `ContactsKanban` agora ocupa toda a altura útil da página (`boardWrapper` + `columnBody` flex), mantendo cabeçalhos fixos e colunas alinhadas mesmo em telas altas. O botão “Adicionar contato” da coluna vazia foi reduzido ao tamanho de um cartão padrão para evitar confusão com a área de drop.
-- O arraste dos cartões foi ajustado para usar `CSS.Transform.toString`, eliminando o deslocamento que deixava o preview longe do cursor em navegadores desktop.
+- O arraste dos cartões agora normaliza manualmente a string de `transform` (translate/scale/rotate) para eliminar o deslocamento que deixava o preview longe do cursor em navegadores desktop.
 - A visão Tabela renomeou **Estágio** para **Status** e o chip virou um botão colorido de largura total (`StatusCell`) com popover (`MenuButton`) para alternar estágios reutilizando as mesmas tonalidades do Kanban.
 - Cada célula da grade tornou-se editável por clique único: `InlineTextField`/`InlineSelectField` abrem inputs em contexto, fazem autosave on-blur e mostram erros/salvamento inline. O botão “Editar” foi removido; basta clicar no campo desejado.
 - A grade recebeu bordas internas/externas consistentes (`styles.table`), combinando com o grid do monday.com e tornando a seleção visual mais nítida.

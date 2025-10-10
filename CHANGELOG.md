@@ -6,7 +6,7 @@
 - Aplicamos bordas internas/externas consistentes (`styles.table`) na grade para alinhar o visual ao monday.com.
 
 ### Fixed
-- Corrigimos o deslocamento dos cartões no arraste do Kanban convertendo o `transform` via `CSS.Transform.toString`, garantindo que o preview siga o cursor sem defasar.
+- Corrigimos o deslocamento dos cartões no arraste do Kanban gerando manualmente a string de `transform` (translate/scale/rotate), garantindo que o preview siga o cursor sem defasar e sem depender de novos pacotes utilitários.
 
 ### Documentation
 - Registramos em `docs/crm_readme.md` a nova edição inline da tabela e o Kanban em altura total, incluindo o popover de status.

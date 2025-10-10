@@ -39,7 +39,6 @@ import {
 import type { TableColumn, TableRowProps } from "@vibe/core";
 import {
   ContactRecord,
-  ContactStageDefinition,
   ContactStageId,
   CONTACT_STAGES,
   MembershipSummary,
@@ -76,15 +75,6 @@ const dateFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" });
 const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
 
 const DEFAULT_VIEW: SavedViewId = "meus";
-
-const STAGE_TONES: Record<string, string> = {
-  blue: styles.stagePillBlue,
-  green: styles.stagePillGreen,
-  orange: styles.stagePillOrange,
-  purple: styles.stagePillPurple,
-  gray: styles.stagePillGray,
-  red: styles.stagePillRed,
-};
 
 const STATUS_TONES: Record<string, string> = {
   blue: styles.statusToneBlue,
