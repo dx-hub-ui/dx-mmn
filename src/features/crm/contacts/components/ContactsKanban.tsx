@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
   PointerSensor,
   useDroppable,
   useDraggable,
@@ -30,6 +32,7 @@ type ContactsKanbanProps = {
   onOpenContact: (contactId: string) => void;
   onAddContact?: (stage: ContactStageId) => void;
   onConfigureColumn?: (stage: ContactStageId) => void;
+  creatingStageId?: ContactStageId | null;
 };
 
 type KanbanColumnProps = {
@@ -38,6 +41,7 @@ type KanbanColumnProps = {
   onOpenContact: (contactId: string) => void;
   onAddContact?: (stage: ContactStageId) => void;
   onConfigureColumn?: (stage: ContactStageId) => void;
+  isCreating?: boolean;
 };
 
 type KanbanCardProps = {
@@ -45,11 +49,31 @@ type KanbanCardProps = {
   onOpenContact: (contactId: string) => void;
 };
 
-function StageColumn({ stage, contacts, onOpenContact, onAddContact, onConfigureColumn }: KanbanColumnProps) {
+type DraggableListeners = ReturnType<typeof useDraggable>["listeners"];
+type DraggableAttributes = ReturnType<typeof useDraggable>["attributes"];
+
+type KanbanCardViewProps = KanbanCardProps & {
+  listeners?: DraggableListeners;
+  attributes?: DraggableAttributes;
+  isDragging?: boolean;
+  isOverlay?: boolean;
+  style?: React.CSSProperties;
+};
+
+function StageColumn({
+  stage,
+  contacts,
+  onOpenContact,
+  onAddContact,
+  onConfigureColumn,
+  isCreating,
+}: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.id, data: { stageId: stage.id } });
 
   const handleAddContact = () => {
-    onAddContact?.(stage.id);
+    if (!isCreating) {
+      onAddContact?.(stage.id);
+    }
   };
 
   const handleConfigureColumn = () => {
@@ -63,6 +87,7 @@ function StageColumn({ stage, contacts, onOpenContact, onAddContact, onConfigure
       aria-label={`Coluna ${stage.label}`}
       data-over={isOver || undefined}
       data-tone={stage.tone}
+      data-creating={isCreating || undefined}
     >
       <header className={styles.columnHeader}>
         <div className={styles.columnHeaderInfo}>
@@ -110,23 +135,28 @@ function StageColumn({ stage, contacts, onOpenContact, onAddContact, onConfigure
             size={IconButton.sizes.SMALL}
             tooltipContent={`Adicionar contato em ${stage.label}`}
             onClick={handleAddContact}
-            disabled={!onAddContact}
+            disabled={!onAddContact || isCreating}
           />
         </div>
       </header>
       <div className={styles.columnBody} role="list">
+        {isCreating ? (
+          <div className={styles.columnCreating} role="status" aria-live="polite">
+            Criando contato…
+          </div>
+        ) : null}
         {contacts.length === 0 ? (
           <button
             type="button"
             className={styles.columnEmpty}
             onClick={handleAddContact}
-            disabled={!onAddContact}
+            disabled={!onAddContact || isCreating}
           >
             {onAddContact ? "Adicionar contato" : "Arraste contatos para este estágio"}
           </button>
         ) : (
           contacts.map((contact) => (
-            <KanbanCard key={contact.id} contact={contact} onOpenContact={onOpenContact} />
+            <DraggableKanbanCard key={contact.id} contact={contact} onOpenContact={onOpenContact} />
           ))
         )}
       </div>
@@ -134,50 +164,53 @@ function StageColumn({ stage, contacts, onOpenContact, onAddContact, onConfigure
   );
 }
 
-function KanbanCard({ contact, onOpenContact }: KanbanCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: contact.id });
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined;
-
-  const { role, tabIndex, ...attributeRest } = attributes;
+const KanbanCardView = React.forwardRef<React.ElementRef<"article">, KanbanCardViewProps>(function KanbanCardView(
+  { contact, onOpenContact, listeners, attributes, isDragging, isOverlay, style }: KanbanCardViewProps,
+  ref
+) {
+  const { role, tabIndex, ...attributeRest } = attributes ?? {};
   const draggableProps = {
     role: role ?? "listitem",
-    tabIndex: tabIndex ?? 0,
+    tabIndex: isOverlay ? -1 : tabIndex ?? 0,
     ...attributeRest,
-    ...listeners,
+    ...(listeners ?? {}),
   };
 
   return (
     <article
-      ref={setNodeRef}
-      className={clsx(styles.card, isDragging && styles.dragging)}
+      ref={ref}
+      className={clsx(styles.card, isDragging && styles.dragging, isOverlay && styles.overlay)}
       style={style}
+      aria-hidden={isOverlay ? true : undefined}
       {...draggableProps}
     >
-      <div className={styles.cardHeader}>
+      <header className={styles.cardHeader}>
         <button type="button" className={styles.cardNameButton} onClick={() => onOpenContact(contact.id)}>
           {contact.name}
         </button>
         <span className={styles.stageBadge}>{contact.stage.toUpperCase()}</span>
-      </div>
-      <div className={styles.cardMeta}>
-        <span>Dono: {contact.owner?.displayName ?? "Sem dono"}</span>
-        {contact.nextActionNote ? <span>Próximo: {contact.nextActionNote}</span> : null}
-        {contact.nextActionAt ? <span>Data: {new Date(contact.nextActionAt).toLocaleDateString("pt-BR")}</span> : null}
-      </div>
+      </header>
+      <ul className={styles.cardMeta} aria-label="Detalhes do contato">
+        <li className={styles.metaItem}>Dono: {contact.owner?.displayName ?? "Sem dono"}</li>
+        {contact.nextActionNote ? <li className={styles.metaItem}>Próximo: {contact.nextActionNote}</li> : null}
+        {contact.nextActionAt ? (
+          <li className={styles.metaItem}>
+            Data: {new Date(contact.nextActionAt).toLocaleDateString("pt-BR")}
+          </li>
+        ) : null}
+      </ul>
       <div className={styles.cardActions}>
         <Button
-          kind={Button.kinds.SECONDARY}
+          kind={Button.kinds.TERTIARY}
+          size={Button.sizes.SMALL}
           disabled={!contact.whatsapp}
           onClick={() => contact.whatsapp && window.open(`https://wa.me/${contact.whatsapp.replace(/\D/g, "")}`)}
         >
           WhatsApp
         </Button>
         <Button
-          kind={Button.kinds.SECONDARY}
+          kind={Button.kinds.TERTIARY}
+          size={Button.sizes.SMALL}
           disabled={!contact.email}
           onClick={() => contact.email && window.open(`mailto:${contact.email}`)}
         >
@@ -185,6 +218,30 @@ function KanbanCard({ contact, onOpenContact }: KanbanCardProps) {
         </Button>
       </div>
     </article>
+  );
+});
+
+function DraggableKanbanCard({ contact, onOpenContact }: KanbanCardProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: contact.id });
+
+  const style: React.CSSProperties = {};
+  if (transform) {
+    style.transform = `translate3d(${transform.x}px, ${transform.y}px, 0)`;
+  }
+  if (isDragging) {
+    style.zIndex = 160;
+  }
+
+  return (
+    <KanbanCardView
+      ref={setNodeRef}
+      contact={contact}
+      onOpenContact={onOpenContact}
+      attributes={attributes}
+      listeners={listeners}
+      isDragging={isDragging}
+      style={style}
+    />
   );
 }
 
@@ -194,7 +251,9 @@ export default function ContactsKanban({
   onOpenContact,
   onAddContact,
   onConfigureColumn,
+  creatingStageId,
 }: ContactsKanbanProps) {
+  const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -214,22 +273,47 @@ export default function ContactsKanban({
     return byStage;
   }, [contacts]);
 
+  const handleDragStart = (event: DragStartEvent) => {
+    if (!event.active) {
+      return;
+    }
+    setActiveId(String(event.active.id));
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!active || !over) {
+      setActiveId(null);
       return;
     }
     const contactId = String(active.id);
     const targetStage = (over.data?.current?.stageId ?? over.id) as ContactStageId;
     const contact = contacts.find((item) => item.id === contactId);
     if (!contact || contact.stage === targetStage) {
+      setActiveId(null);
       return;
     }
     onStageChange(contactId, targetStage);
+    setActiveId(null);
   };
 
+  const handleDragCancel = () => {
+    setActiveId(null);
+  };
+
+  const activeContact = useMemo(
+    () => contacts.find((item) => item.id === activeId) ?? null,
+    [activeId, contacts]
+  );
+
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd} collisionDetection={closestCorners}>
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+      collisionDetection={closestCorners}
+    >
       <div className={styles.board}>
         {CONTACT_STAGES.map((stage) => (
           <StageColumn
@@ -239,9 +323,15 @@ export default function ContactsKanban({
             onOpenContact={onOpenContact}
             onAddContact={onAddContact}
             onConfigureColumn={onConfigureColumn}
+            isCreating={creatingStageId === stage.id}
           />
         ))}
       </div>
+      <DragOverlay dropAnimation={null}>
+        {activeContact ? (
+          <KanbanCardView contact={activeContact} onOpenContact={onOpenContact} isOverlay />
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }

@@ -1,4 +1,5 @@
 import { captureException } from "@sentry/nextjs";
+import type { PostgrestError } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   ContactDetail,
@@ -110,6 +111,22 @@ function mapReferral(row: ReferralRow): ContactReferralSummary {
   };
 }
 
+function isMissingContactEventsTable(error: PostgrestError | null | undefined): boolean {
+  if (!error) {
+    return false;
+  }
+  return error.code === "PGRST205" || error.code === "PGRST116" || error.code === "42P01";
+}
+
+function reportMissingContactEvents(error: PostgrestError, context: Record<string, unknown>) {
+  console.warn("[crm] contact_events table unavailable, skipping timeline logging", context);
+  captureException(error, {
+    level: "warning",
+    tags: { module: "crm", entity: "contact_events" },
+    extra: context,
+  });
+}
+
 export async function logContactEvents(
   supabase: SupabaseServerClient,
   events: ContactEventInsert[]
@@ -144,6 +161,7 @@ export async function logContactEvents(
   }
 
   const notificationTasks: Promise<unknown>[] = [];
+  let missingContactEvents = false;
 
   for (const event of events) {
     const { mentions, ...rest } = event;
@@ -161,6 +179,16 @@ export async function logContactEvents(
       .single();
 
     if (error) {
+      if (isMissingContactEventsTable(error)) {
+        missingContactEvents = true;
+        reportMissingContactEvents(error, {
+          action: "log",
+          eventType: rest.type,
+          contactId: rest.contactId,
+          organizationId: rest.organizationId,
+        });
+        break;
+      }
       throw error;
     }
 
@@ -213,6 +241,10 @@ export async function logContactEvents(
       }
     });
   }
+
+  if (missingContactEvents) {
+    return;
+  }
 }
 
 export async function fetchContactDetail(
@@ -241,7 +273,8 @@ export async function fetchContactDetail(
       .eq("referred_by_contact_id", contactId),
   ]);
 
-  if (eventsError) {
+  const missingTimeline = eventsError ? isMissingContactEventsTable(eventsError) : false;
+  if (eventsError && !missingTimeline) {
     throw eventsError;
   }
 
@@ -249,7 +282,12 @@ export async function fetchContactDetail(
     throw referralsError;
   }
 
-  const timeline = (eventsData ?? []).map((row) => mapEventRow(row as unknown as ContactEventRow));
+  const timelineRows = missingTimeline ? [] : eventsData ?? [];
+  if (missingTimeline && eventsError) {
+    reportMissingContactEvents(eventsError, { action: "fetch_detail", contactId });
+  }
+
+  const timeline = (timelineRows ?? []).map((row) => mapEventRow(row as unknown as ContactEventRow));
   const referrals = (referralsData ?? []).map((row) => mapReferral(row as unknown as ReferralRow));
 
   return { contact, timeline, referrals };

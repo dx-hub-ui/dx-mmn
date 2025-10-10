@@ -1,6 +1,6 @@
 # CRM de Contatos — Notas de Arquitetura
 
-## Visão Geras
+## Visão Geral
 - A área `/crm` é servida via página `src/app/(app)/crm/page.tsx`, carregada dentro do AppShell padrão descrito em `page_design_guidelines.md`.
 - O módulo utiliza o Supabase (RLS) para carregar contatos e memberships visíveis através das funções utilitárias `listContacts` e `fetchVisibleMemberships`.
 - A listagem principal (`ContactsBoardPage`) usa componentes do Vibe (`Tabs`, `Table`) para alternar entre a visão em tabela e o Kanban. A tabela oferece ordenação por coluna, skeletons durante carregamentos e mantém a navegação por teclado acessível (`role="grid"`).
@@ -10,6 +10,23 @@
 - Cada coluna agora exibe menu de três pontos (`MenuButton` + `IconButton` com `MoreActions`) com atalhos "Adicionar novo contato" e "Definir limite da coluna" e um botão `+` dedicado que dispara `onAddContact(stageId)`.
 - O estado vazio de coluna passou a exibir um botão de atalho para criação rápida quando `onAddContact` estiver disponível, alinhado ao comportamento esperado em monday.com.
 - O drag and drop utiliza `closestCorners` e dados explícitos de estágio no `useDroppable`, resolvendo cenários em que o cartão não reconhecia o drop target e trazendo feedback visual com borda/acento ao arrastar.
+
+## Atualização de Novembro/2025 — Toolbar simplificada e criação direta
+- O cabeçalho da página foi reduzido ao título fixo **Meus Contatos**, com as ações de Relatórios e Importar migradas para um `MenuButton` (ícone `MoreActions`) no canto superior direito.
+- A visão Tabela ganhou uma toolbar acima da grade com "Criar contato", "Filtros" e "Atualizar"; o botão de filtros abre um popover (`Dialog` + `DialogContentContainer`) com checkboxes de estágio/dono, campo de tags e intervalo de próximo passo.
+- Substituímos os banners inline por toasts sólidos (verde, vermelho e laranja) posicionados no canto inferior esquerdo, acionados por salvamentos, erros ou bloqueios de ação.
+- O Kanban passou a usar apenas cabeçalhos coloridos, corpo neutro (`--dark-background-color`) e cartões planos sem sombras; o placeholder de criação evita cliques enquanto o POST está em andamento.
+- "Adicionar Contato" no Kanban cria o registro imediatamente (nome padrão "Novo contato N"), mantém o usuário na visão e sincroniza a Tabela após o retorno da API.
+- Ajustamos o z-index dos cartões durante o arrastar para que permaneçam sobre as colunas e evitem a sobreposição invertida reportada anteriormente.
+- O helper `createContactRequest` fica definido antes dos handlers React e é compartilhado pela tabela/Kanban para reaproveitar validações do `parseEditableContactForm` sem violar a ordem dos hooks.
+
+## Atualização de Outubro/2026 — Kanban compacto e fallback de timeline
+- O título e mensagens da página `/crm` passaram a falar apenas em **Contatos**, removendo a sigla CRM das cópias visíveis.
+- `ContactsKanban` foi redesenhado para um layout mais estreito (`clamp(220px, 22vw, 260px)` por coluna), com cabeçalhos compactos e cartões que usam botões terciários pequenos para as ações de WhatsApp/e-mail.
+- A renderização de drag & drop agora usa `DragOverlay`, evitando que o cartão arrastado fique atrás das colunas; o overlay recebe `box-shadow` suave para indicar que está em movimento.
+- Tipamos o `KanbanCardView` com `forwardRef` baseado no elemento semântico `<article>`, evitando dependências de tipos inexistentes no Edge Runtime ao gerar builds Next.
+- Cards menores: espaçamento reduzido, meta convertida em lista e badge de estágio enxuto, seguindo tokens da aplicação.
+- Falhas ao inserir/consultar `contact_events` com erro `PGRST205` (banco sem migração) agora geram apenas um aviso e seguem com timeline vazia, mantendo salvamentos/edições funcionando.
 
 ## Revisão de Bugs (Junho/2025)
 - **Prioridade Alta — Geração de convites bloqueada:** a rota `POST /api/invites/generate` lia apenas a variável `SUPABASE_URL`. Em ambientes que expõem apenas `NEXT_PUBLIC_SUPABASE_URL` (setup recomendado no restante do app) o endpoint retornava "Server configuration missing" e nenhum convite podia ser criado. A correção passa a aceitar ambas as chaves e normaliza a URL antes de chamar a função Edge do Supabase.

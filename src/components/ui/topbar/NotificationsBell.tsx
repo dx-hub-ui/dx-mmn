@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR from "swr";
-import { Badge, Dialog, DialogContentContainer, IconButton } from "@vibe/core";
+import { Avatar, Counter, Dialog, DialogContentContainer } from "@vibe/core";
 import { Notifications } from "@vibe/icons";
 import { captureException } from "@sentry/nextjs";
 import { trackEvent } from "@/lib/telemetry";
@@ -46,6 +46,7 @@ export default function NotificationsBell({ orgId, orgName }: NotificationsBellP
   );
 
   const unreadCount = data?.unreadCount ?? 0;
+  const counterAriaLabel = unreadCount === 1 ? "1 notificação não lida" : `${unreadCount} notificações não lidas`;
 
   const showBadge = unreadCount > 0;
 
@@ -120,13 +121,13 @@ export default function NotificationsBell({ orgId, orgName }: NotificationsBellP
   const hasError = Boolean(error);
 
   const triggerButton = (
-    <IconButton
+    <button
       ref={buttonRef}
-      icon={Notifications}
-      ariaLabel={hasError ? "Erro ao carregar notificações" : "Notificações"}
-      tooltipContent={hasError ? "Tentar novamente" : "Notificações"}
-      size={IconButton.sizes.MEDIUM}
-      kind={IconButton.kinds.TERTIARY}
+      type="button"
+      className={styles.triggerButton}
+      aria-label={hasError ? "Erro ao carregar notificações" : "Notificações"}
+      aria-haspopup="dialog"
+      aria-expanded={open}
       onClick={() => {
         if (hasError) {
           mutate();
@@ -134,9 +135,30 @@ export default function NotificationsBell({ orgId, orgName }: NotificationsBellP
         }
         handleToggle();
       }}
-      aria-haspopup="dialog"
-      aria-expanded={open}
-    />
+    >
+      <span className={styles.triggerContent} data-error={hasError ? "true" : undefined}>
+        <Avatar
+          id="notification-avatar"
+          type={Avatar.types.ICON}
+          size={Avatar.sizes.MEDIUM}
+          icon={Notifications}
+          backgroundColor={hasError ? "negative" : "royal"}
+          ariaLabel={hasError ? "Erro ao carregar notificações" : "Notificações"}
+          withoutTooltip
+        />
+        {showBadge ? (
+          <span className={styles.counterWrapper}>
+            <Counter
+              id="notification-counter"
+              ariaLabel={counterAriaLabel}
+              count={unreadCount}
+              maxDigits={3}
+              color="negative"
+            />
+          </span>
+        ) : null}
+      </span>
+    </button>
   );
 
   return (
@@ -165,21 +187,7 @@ export default function NotificationsBell({ orgId, orgName }: NotificationsBellP
         </DialogContentContainer>
       }
     >
-      <div className={styles.button}>
-        {showBadge ? (
-          <Badge
-            type={Badge.types.COUNTER}
-            count={unreadCount}
-            maxDigits={3}
-            anchor={Badge.anchors.TOP_END}
-            alignment={Badge.alignments.OUTSIDE}
-          >
-            {triggerButton}
-          </Badge>
-        ) : (
-          triggerButton
-        )}
-      </div>
+      <div className={styles.button}>{triggerButton}</div>
     </PopoverDialog>
   );
 }
