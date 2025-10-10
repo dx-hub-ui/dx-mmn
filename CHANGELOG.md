@@ -1,3 +1,11 @@
+# 2025-11-26
+
+### Fixed
+- Recriamos o acionador de notificações da topbar com `Avatar` + `Counter`, restaurando o badge visível, suporte ao contador em tempo real e foco acessível mesmo quando o fetch do contador falhar.
+
+### Documentation
+- Documentamos no guia de notificações que o sino usa `Avatar` (`type="icon"`, fundo `royal`) com `Counter` negativo sobreposto, prevenindo regressões visuais e de acessibilidade no topo do shell.
+
 # 2025-11-24
 
 ### Fixed
