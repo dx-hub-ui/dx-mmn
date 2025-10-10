@@ -3,11 +3,12 @@
 ### Fixed
 - Blindamos `POST /api/inbox/mark-all-read` para incluir o filtro de favoritos com `notification_bookmarks` e evitamos o erro de tipagem que quebrava o `pnpm run build`.
 - Ajustamos o helper de filtros do `POST /api/inbox/mark-all-read` para usar uma tipagem genérica explícita em vez de `this`, eliminando o erro "A 'this' type is available only in a non-static member" durante o build da Vercel.
-- Adicionamos um type guard aos resultados do Supabase ao marcar tudo como lido, ignorando linhas inválidas e impedindo que o erro "Property 'id' does not exist on type 'GenericStringError'" volte a derrubar o `pnpm run build`.
+- Adicionamos type guards aos resultados do Supabase ao listar o feed e ao marcar tudo como lido, iterando manualmente pelas linhas para ignorar payloads inválidos e impedir que o erro "Property 'id' does not exist on type 'GenericStringError'" volte a derrubar o `pnpm run build`.
+- Ajustamos a marcação das abas do inbox para encapsular o selo "Novo" dentro do label, atendendo aos requisitos de tipagem do `@vibe/core/Tab` durante o build.
 
 ### Documentation
 - Atualizamos `docs/inbox.md` para registrar que a ação de marcar tudo como lido na aba de favoritos aplica o `inner join` com `notification_bookmarks`.
-- Documentamos que o endpoint `mark-all-read` agora valida cada linha retornada antes de acessar o campo `id`, evitando regressões quando o Supabase mescla erros à resposta.
+- Documentamos que os endpoints do inbox agora validam cada linha retornada antes de acessar o campo `id`, descrevendo a iteração manual que evita regressões quando o Supabase mescla erros à resposta.
 
 # 2025-11-25
 

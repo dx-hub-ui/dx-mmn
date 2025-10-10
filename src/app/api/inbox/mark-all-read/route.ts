@@ -106,7 +106,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Falha ao coletar itens" }, { status: 500 });
   }
 
-  const ids = (rows ?? []).filter(hasId).map((row) => row.id);
+  const ids: string[] = [];
+  for (const row of rows ?? []) {
+    if (hasId(row)) {
+      ids.push(row.id);
+    }
+  }
   if (ids.length === 0) {
     const { data: counterData, error: counterError } = await supabase
       .from("notification_counters")

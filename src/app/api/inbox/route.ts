@@ -3,7 +3,6 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { captureException } from "@sentry/nextjs";
-import type { PostgrestFilterBuilder } from "@supabase/postgrest-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ensureOrgMembership, HttpError } from "@/lib/notifications/server";
 import { parseInboxQuery } from "@/lib/inbox/schema";
@@ -18,15 +17,29 @@ function selectWithBookmarks(select: string, tab: string) {
   return tab === "bookmarked" ? `${select},notification_bookmarks!inner()` : select;
 }
 
-type InboxBuilder = PostgrestFilterBuilder<InboxViewRow, InboxViewRow[], unknown>;
+function isInboxRow(row: unknown): row is InboxViewRow {
+  if (typeof row !== "object" || row === null) {
+    return false;
+  }
 
-function applyCommonFilters(query: InboxBuilder, params: {
+  const candidate = row as Partial<InboxViewRow>;
+  return typeof candidate.id === "string" && typeof candidate.org_id === "string" && typeof candidate.user_id === "string";
+}
+
+type FilterableQuery = {
+  eq(column: string, value: unknown): FilterableQuery;
+  is(column: string, value: unknown): FilterableQuery;
+};
+
+function applyCommonFilters<T>(query: T, params: {
   orgId: string;
   userId: string;
   tab: string;
   show: string;
 }) {
-  let nextQuery = query.eq("org_id", params.orgId).eq("user_id", params.userId);
+  let nextQuery = (query as unknown as FilterableQuery)
+    .eq("org_id", params.orgId)
+    .eq("user_id", params.userId);
 
   if (params.tab === "mentions") {
     nextQuery = nextQuery.eq("type", "mention");
@@ -40,7 +53,7 @@ function applyCommonFilters(query: InboxBuilder, params: {
     nextQuery = nextQuery.eq("status", "unread");
   }
 
-  return nextQuery;
+  return nextQuery as unknown as T;
 }
 
 export async function GET(request: NextRequest) {
@@ -105,7 +118,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Falha ao carregar feed" }, { status: 500 });
   }
 
-  const rows = (data ?? []) as InboxViewRow[];
+  const rows: InboxViewRow[] = [];
+  for (const row of data ?? []) {
+    if (isInboxRow(row)) {
+      rows.push(row);
+    }
+  }
 
   let nextCursor: string | undefined;
   if (rows.length > limit) {

@@ -29,12 +29,14 @@ export default function InboxTabs({ value, onChange }: InboxTabsProps) {
       <TabList className={styles.tabList} aria-label="Categorias de atualizações">
         {ORDER.map((tabKey, index) => (
           <Tab key={tabKey} value={index} active={index === activeIndex} onClick={() => onChange(tabKey)}>
-            <span className={styles.tabLabel}>{LABELS[tabKey]}</span>
-            {tabKey === "new" ? (
-              <Badge type={Badge.types.PILL} className={styles.newBadge}>
-                Novo
-              </Badge>
-            ) : null}
+            <span className={styles.tabLabel}>
+              {LABELS[tabKey]}
+              {tabKey === "new" ? (
+                <Badge type={Badge.types.COUNTER} className={styles.newBadge}>
+                  Novo
+                </Badge>
+              ) : null}
+            </span>
           </Tab>
         ))}
       </TabList>
