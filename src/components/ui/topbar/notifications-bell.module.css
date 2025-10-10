@@ -2,6 +2,32 @@
   position: relative;
 }
 
+.triggerButton {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 9999px;
+}
+
+.triggerButton:focus-visible {
+  outline: 2px solid var(--app-focus-color, #0073ea);
+  outline-offset: 2px;
+  border-radius: 9999px;
+}
+
+.triggerContent {
+  position: relative;
+  display: inline-flex;
+}
+
+.counterWrapper {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+}
+
 .dialogContent {
   padding: 0;
   background: transparent;
