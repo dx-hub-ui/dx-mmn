@@ -67,7 +67,7 @@ export default function NotificationPreferencesModal({ open, orgId, onClose, onS
             timezone: payload.timezone ?? "UTC",
           });
         }
-      } catch (fetchError) {
+      } catch {
         if (!cancelled) {
           setError("Não foi possível carregar as preferências agora.");
         }
@@ -103,7 +103,7 @@ export default function NotificationPreferencesModal({ open, orgId, onClose, onS
         throw new Error(`Falha ao salvar preferências (${response.status})`);
       }
       onSaved();
-    } catch (saveError) {
+    } catch {
       setError("Não foi possível salvar suas preferências. Tente novamente.");
     } finally {
       setSaving(false);

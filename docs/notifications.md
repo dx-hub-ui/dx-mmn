@@ -85,6 +85,7 @@ Todas as tabelas possuem RLS obrigando `org_id = current_org()` e `user_id = aut
 - A API de listagem retorna no máximo 20 itens por página; o badge exibe até "99+".
 - O filtro de busca aceita `title` e `snippet` (`ILIKE` com `%term%`).
 - Scroll virtualizado guarda posição por 5 minutos (`sessionStorage` em memória).
+- A UI usa `TabsContext`, `TabList`, `TabPanels` do `@vibe/core`; o pacote não exporta um wrapper `Tabs`, portanto mantenha o contexto explícito para evitar falhas de build.
 - Triggers `sync_notification_counters` garantem consistência mesmo com `DELETE` ou `status` alterado.
 - `queue_notification` ignora auto-menções (`actor_id === user_id`) e fontes silenciadas.
 - Realtime: payload `pg_notify` contém `{ event: 'notification.created', id, org_id }`.
@@ -102,6 +103,7 @@ Todas as tabelas possuem RLS obrigando `org_id = current_org()` e `user_id = aut
 | Badge fica em 0 mesmo com registros | Falta de `set_current_org` na requisição | Verifique se `orgId` foi enviado e se a rota chamou `applyOrgContext` via `ensureOrgMembership`. |
 | Painel carrega vazio | Consulta bloqueada por RLS | Confirme que o usuário é membro ativo (`memberships.status='active'`). |
 | Digest semanal não dispara | `pg_cron` desabilitado ou webhook sem segredo | Verifique se `app.weekly_digest_webhook` e `app.internal_webhook_secret` estão configurados e se o job `notifications_weekly_digest` está ativo. |
+| Rotas `/api/notifications/*` falham no build | Runtime Edge tentando importar `@supabase/supabase-js` | Forçamos `export const runtime = "nodejs"` em todos os handlers; mantenha a declaração ao criar novos endpoints. |
 | Emails não enviados | Provider em modo noop | Veja `ENABLE_EMAIL_SEND` e as variáveis `RESEND_API_KEY`/`BREVO_API_KEY`. Logs em `notifications:email_failed` detalham a causa. |
 
 ## Referências rápidas

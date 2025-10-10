@@ -6,6 +6,10 @@
 - Digest semanal por e-mail usando `pg_cron`, webhook interno assinado e template `WeeklyMentionsDigest` em pt-BR.
 - Testes unitários, integração e E2E (`notifications-panel.spec.ts`) cobrindo fluxo de leitura, mute e preferências.
 
+### Fixed
+- Substituímos o wrapper inexistente `Tabs` pelo `TabsContext` do `@vibe/core` no painel, garantindo build limpo e mantendo o foco/teclado funcionando nas abas.
+- Declaramos `export const runtime = "nodejs"` em todos os handlers de notificações/preferências para impedir que o bundle Edge quebre ao importar o cliente do Supabase.
+
 ### Documentation
 - Criado `docs/notifications.md` com fluxos, payloads, métricas e troubleshooting do sistema de notificações multi-tenant.
 

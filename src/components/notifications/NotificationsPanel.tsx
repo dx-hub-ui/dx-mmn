@@ -10,11 +10,11 @@ import {
   MenuItem,
   Search,
   Skeleton,
-  Tabs,
   Tab,
   TabList,
   TabPanel,
   TabPanels,
+  TabsContext,
   Text,
 } from "@vibe/core";
 import { Filter, Retry, Settings } from "@vibe/icons";
@@ -112,17 +112,14 @@ export default function NotificationsPanel({
     [activeTab, debouncedSearch, orgId, selectedPeople]
   );
 
-  const {
-    data: pages,
-    error,
-    isValidating,
-    size,
-    setSize,
-    mutate,
-  } = useSWRInfinite<NotificationResponse>(getKey, listFetcher, {
-    revalidateFirstPage: true,
-    revalidateOnFocus: true,
-  });
+  const { data: pages, error, isValidating, setSize, mutate } = useSWRInfinite<NotificationResponse>(
+    getKey,
+    listFetcher,
+    {
+      revalidateFirstPage: true,
+      revalidateOnFocus: true,
+    }
+  );
 
   const notifications = useMemo<NotificationItemDTO[]>(
     () => (pages ? pages.flatMap((page) => page.items) : []),
@@ -351,7 +348,7 @@ export default function NotificationsPanel({
   return (
     <div className={styles.panel} role="dialog" aria-modal="false" aria-label={`Notificações de ${orgName}`}>
       <header className={styles.header}>
-        <Tabs activeTabId={activeTabIndex}>
+        <TabsContext activeTabId={activeTabIndex}>
           <TabList className={styles.tabBar} aria-label="Categorias de notificações">
             {TAB_ORDER.map((tabKey, index) => (
               <Tab
@@ -422,7 +419,7 @@ export default function NotificationsPanel({
               </TabPanel>
             ))}
           </TabPanels>
-        </Tabs>
+        </TabsContext>
         {selectedPeople.length > 0 || debouncedSearch ? (
           <div className={styles.filterTagList}>
             {debouncedSearch ? <span className={styles.filterTag}>Busca: “{debouncedSearch}”</span> : null}

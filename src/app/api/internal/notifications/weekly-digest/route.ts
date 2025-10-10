@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { NextRequest, NextResponse } from "next/server";
 import { captureException } from "@sentry/nextjs";
 import { ZodError, z } from "zod";
