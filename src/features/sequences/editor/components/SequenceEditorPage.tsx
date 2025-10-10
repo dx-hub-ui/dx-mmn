@@ -126,21 +126,15 @@ type SortableStepProps = {
   canMoveDown: boolean;
 };
 
+type SortableStepComponent = (props: SortableStepProps) => JSX.Element;
+
 const STEP_TYPE_LABEL: Record<SequenceStepRecord["type"], string> = {
   general_task: "Tarefa geral",
   call_task: "Tarefa de ligação",
 };
 
-function SortableStep({
-  step,
-  index,
-  isSelected,
-  disableReorder,
-  disableActions,
-  onSelect,
-  onToggle,
-  onMenuAction,
-}: SortableStepProps) {
+const SortableStep: SortableStepComponent = (props) => {
+  const { step, index, isSelected, disableReorder, disableActions, onSelect, onToggle, onMenuAction } = props;
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: step.id,
     disabled: disableReorder,
@@ -334,7 +328,7 @@ function SortableStep({
       </div>
     </article>
   );
-}
+};
 
 type StepModalProps = {
   open: boolean;
