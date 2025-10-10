@@ -27,7 +27,7 @@ Todas as rotas exigem `orgId` e aproveitam a view `public.v_user_updates` criada
 
 ### Notas de manutenção
 
-- O endpoint `mark-all-read` agora tipa o builder do Supabase com os parâmetros genéricos completos para evitar erros de compilação em builds recentes do Next.js.
+- O endpoint `mark-all-read` aplica os filtros ativos (aba, board e estado "Mostrar") diretamente no Supabase. Corrigimos um bug em que a opção "Mostrar ▾ Todas as atualizações" ainda retornava apenas itens não lidos ao marcar tudo como lido.
 
 ## Telemetria
 

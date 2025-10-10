@@ -4,6 +4,9 @@
 - Entregamos o modal "Feed de atualizações" com layout em duas colunas, seleção em massa, virtualização e integração com Supabase, acessível pelo novo botão de inbox no topo da aplicação.
 - Criamos a view `public.v_user_updates`, endpoints `GET/POST /api/inbox` e suporte a favoritos para alimentar o novo feed sem duplicar regras existentes de notificações.
 
+### Fixed
+- Corrigimos o endpoint `POST /api/inbox/mark-all-read` para respeitar o filtro "Mostrar ▾ Todas as atualizações", evitando que a operação marcasse apenas itens não lidos quando o usuário solicitava limpar a fila completa.
+
 ### Documentation
 - Registramos em `docs/inbox.md` a arquitetura do feed, contratos de API e persistência de preferências, incluindo captura da interface para alinhamento com o design system.
 

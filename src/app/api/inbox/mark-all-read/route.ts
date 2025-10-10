@@ -3,11 +3,9 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { captureException } from "@sentry/nextjs";
 import { z } from "zod";
-import type { PostgrestFilterBuilder } from "@supabase/postgrest-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ensureOrgMembership, HttpError } from "@/lib/notifications/server";
 import { trackServerEvent } from "@/lib/telemetry.server";
-import type { InboxViewRow } from "@/lib/inbox/mapper";
 
 const bodySchema = z.object({
   orgId: z.string().uuid(),
@@ -18,9 +16,12 @@ const bodySchema = z.object({
 
 const MAX_BATCH = 1000;
 
-type InboxBuilder = PostgrestFilterBuilder<unknown, unknown, InboxViewRow, InboxViewRow[], unknown, unknown, unknown>;
+type FilterableQuery<T> = T & {
+  eq(column: string, value: unknown): T;
+  is(column: string, value: unknown): T;
+};
 
-function applyFilters(query: InboxBuilder, params: { orgId: string; userId: string; tab?: string | null; board?: string | null }) {
+function applyFilters<T extends FilterableQuery<T>>(query: T, params: { orgId: string; userId: string; tab?: string | null; board?: string | null }) {
   let next = query.eq("org_id", params.orgId).eq("user_id", params.userId);
 
   if (params.tab === "mentions") {
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
       .order("id", { ascending: false })
       .limit(MAX_BATCH),
     { orgId, userId, tab, board }
-  ).eq("status", "unread");
+  );
 
   if (show === "unread") {
     selectQuery = selectQuery.eq("status", "unread");
