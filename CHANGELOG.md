@@ -2,6 +2,7 @@
 
 ### Fixed
 - Blindamos `POST /api/inbox/mark-all-read` para incluir o filtro de favoritos com `notification_bookmarks` e evitamos o erro de tipagem que quebrava o `pnpm run build`.
+- Ajustamos o helper de filtros do `POST /api/inbox/mark-all-read` para usar uma tipagem genérica explícita em vez de `this`, eliminando o erro "A 'this' type is available only in a non-static member" durante o build da Vercel.
 
 ### Documentation
 - Atualizamos `docs/inbox.md` para registrar que a ação de marcar tudo como lido na aba de favoritos aplica o `inner join` com `notification_bookmarks`.

@@ -29,6 +29,7 @@ Todas as rotas exigem `orgId` e aproveitam a view `public.v_user_updates` criada
 
 - O endpoint `mark-all-read` aplica os filtros ativos (aba, board e estado "Mostrar") diretamente no Supabase. Corrigimos um bug em que a opção "Mostrar ▾ Todas as atualizações" ainda retornava apenas itens não lidos ao marcar tudo como lido.
 - A mesma rota agora também força o `inner join` com `notification_bookmarks` quando a aba "Favoritos" está ativa, garantindo que somente atualizações salvas sejam marcadas como lidas.
+- Após a adoção do join de favoritos, tipamos o helper de filtros com um genérico explícito para evitar dependência do tipo `this` e manter o build da Vercel estável.
 
 ## Telemetria
 

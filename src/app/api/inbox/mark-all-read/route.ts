@@ -16,16 +16,16 @@ const bodySchema = z.object({
 
 const MAX_BATCH = 1000;
 
-type FilterableQuery = {
-  eq(column: string, value: unknown): this;
-  is(column: string, value: unknown): this;
+type FilterableQuery<T> = {
+  eq(column: string, value: unknown): T;
+  is(column: string, value: unknown): T;
 };
 
 function selectWithBookmarks(select: string, tab: string) {
   return tab === "bookmarked" ? `${select},notification_bookmarks!inner()` : select;
 }
 
-function applyFilters<T extends FilterableQuery>(
+function applyFilters<T extends FilterableQuery<T>>(
   query: T,
   params: { orgId: string; userId: string; tab?: string | null; board?: string | null }
 ) {
