@@ -475,3 +475,8 @@
 - Quando o Supabase não encontra `code_verifier` (ex.: link aberto em outro dispositivo), o callback agora ignora o erro e cai no `token_hash`, evitando o loop de autenticação ao validar magic links.
 - Ajustamos o componente `SortableStep` no editor de sequências para inicializar as props antes do hook `useSortable`, eliminando o erro de sintaxe que quebrava o build na Vercel.
 
+## 2025-10-16
+
+### Fixed
+- Ajustamos o handler `POST /api/inbox/mark-all-read` para usar a assinatura correta de `PostgrestFilterBuilder`, garantindo compilações bem-sucedidas no Next.js 14.
+

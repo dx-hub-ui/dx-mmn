@@ -18,7 +18,7 @@ const bodySchema = z.object({
 
 const MAX_BATCH = 1000;
 
-type InboxBuilder = PostgrestFilterBuilder<InboxViewRow, InboxViewRow[], unknown>;
+type InboxBuilder = PostgrestFilterBuilder<unknown, unknown, InboxViewRow, InboxViewRow[], unknown, unknown, unknown>;
 
 function applyFilters(query: InboxBuilder, params: { orgId: string; userId: string; tab?: string | null; board?: string | null }) {
   let next = query.eq("org_id", params.orgId).eq("user_id", params.userId);

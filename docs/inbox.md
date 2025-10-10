@@ -25,6 +25,10 @@ Os dados vêm das rotas em `/api/inbox`:
 
 Todas as rotas exigem `orgId` e aproveitam a view `public.v_user_updates` criada para expor metadados do feed.
 
+### Notas de manutenção
+
+- O endpoint `mark-all-read` agora tipa o builder do Supabase com os parâmetros genéricos completos para evitar erros de compilação em builds recentes do Next.js.
+
 ## Telemetria
 
 As interações relevantes disparam eventos PostHog com prefixo `inbox.*`, preservando o ID da organização e do usuário atual.
