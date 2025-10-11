@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useState, useTransition } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -111,6 +111,12 @@ type SortableStepProps = {
   onMenuAction: (action: StepMenuAction, step: SequenceStepRecord) => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  isEditingTitle: boolean;
+  titleDraft: string;
+  onTitleDraftChange: (value: string) => void;
+  onTitleCommit: () => void;
+  onTitleCancel: () => void;
+  titleInputRef: (element: HTMLInputElement | null) => void;
 };
 
 type SortableStepComponent = (props: SortableStepProps) => JSX.Element;
@@ -130,6 +136,12 @@ const SortableStep: SortableStepComponent = ({
   onMenuAction,
   canMoveUp,
   canMoveDown,
+  isEditingTitle,
+  titleDraft,
+  onTitleDraftChange,
+  onTitleCommit,
+  onTitleCancel,
+  titleInputRef,
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: step.id,
@@ -173,7 +185,30 @@ const SortableStep: SortableStepComponent = ({
       </button>
 
       <div className={styles.stepInfo}>
-        <h3>{step.title.trim() || STEP_TYPE_LABEL[step.type]}</h3>
+        {isEditingTitle ? (
+          <input
+            ref={titleInputRef}
+            className={styles.stepTitleInput}
+            value={titleDraft}
+            onChange={(event) => onTitleDraftChange(event.target.value)}
+            onClick={(event) => event.stopPropagation()}
+            onFocus={() => onSelect(step)}
+            onBlur={() => onTitleCommit()}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                onTitleCommit();
+              }
+              if (event.key === "Escape") {
+                event.preventDefault();
+                onTitleCancel();
+              }
+            }}
+            aria-label="Editar título da etapa"
+          />
+        ) : (
+          <h3>{step.title.trim() || STEP_TYPE_LABEL[step.type]}</h3>
+        )}
         <p>{shortDescription}</p>
       </div>
 
@@ -511,6 +546,8 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   const [stepModal, setStepModal] = useState<StepModalState | null>(null);
   const [localSteps, setLocalSteps] = useState<SequenceStepRecord[]>(data.steps);
   const [selectedStepId, setSelectedStepId] = useState<string | null>(data.steps[0]?.id ?? null);
+  const [editingStepId, setEditingStepId] = useState<string | null>(null);
+  const [titleDrafts, setTitleDrafts] = useState<Record<string, string>>({});
   const [enrollmentTargetType, setEnrollmentTargetType] = useState<SequenceTargetType>("contact");
   const [enrollmentTargets, setEnrollmentTargets] = useState("");
   const [rulesNotes, setRulesNotes] = useState(data.currentVersion?.notes ?? "");
@@ -521,6 +558,7 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   const [sequenceActive, setSequenceActive] = useState(data.sequence.isActive);
   const [activationError, setActivationError] = useState<string | null>(null);
   const [activationPending, startActivationTransition] = useTransition();
+  const titleInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -552,6 +590,29 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   }, [data.steps, selectedStepId]);
 
   useEffect(() => {
+    if (!editingStepId) {
+      return;
+    }
+    const input = titleInputRefs.current[editingStepId];
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  }, [editingStepId, localSteps]);
+
+  useEffect(() => {
+    const stepIds = new Set(localSteps.map((step) => step.id));
+    for (const id of Object.keys(titleInputRefs.current)) {
+      if (!stepIds.has(id)) {
+        delete titleInputRefs.current[id];
+      }
+    }
+    if (editingStepId && !stepIds.has(editingStepId)) {
+      setEditingStepId(null);
+    }
+  }, [localSteps, editingStepId]);
+
+  useEffect(() => {
     setSequenceActive(data.sequence.isActive);
     setActivationError(null);
   }, [data.sequence.isActive]);
@@ -559,6 +620,7 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   useEffect(() => {
     if (sequenceActive) {
       setStepModal(null);
+      setEditingStepId(null);
     }
   }, [sequenceActive]);
 
@@ -608,6 +670,159 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   };
 
   const sequenceTitle = data.sequence.name?.trim() || "Nova Sequência";
+
+  const updateTitleDraft = (stepId: string, value: string) => {
+    setTitleDrafts((prev) => ({ ...prev, [stepId]: value }));
+  };
+
+  const clearTitleDraft = (stepId: string) => {
+    setTitleDrafts((prev) => {
+      if (!(stepId in prev)) {
+        return prev;
+      }
+      const { [stepId]: _removed, ...rest } = prev;
+      return rest;
+    });
+  };
+
+  const handleTitleCancel = (step: SequenceStepRecord) => {
+    clearTitleDraft(step.id);
+    setEditingStepId(null);
+  };
+
+  const handleTitleCommit = (step: SequenceStepRecord) => {
+    if (!currentVersion) {
+      setEditingStepId(null);
+      clearTitleDraft(step.id);
+      return;
+    }
+
+    if (disableStepActions) {
+      setEditingStepId(null);
+      clearTitleDraft(step.id);
+      return;
+    }
+
+    const draftValue = titleDrafts[step.id] ?? step.title;
+    const sanitized = draftValue.trim() || "Nova etapa";
+    const normalizedCurrent = step.title.trim();
+
+    setEditingStepId(null);
+    clearTitleDraft(step.id);
+
+    if (sanitized === normalizedCurrent) {
+      return;
+    }
+
+    setLocalSteps((prev) =>
+      prev.map((item) => (item.id === step.id ? { ...item, title: sanitized } : item))
+    );
+
+    startTransition(async () => {
+      try {
+        await upsertSequenceStepAction({
+          sequenceId: data.sequence.id,
+          versionId: currentVersion.id,
+          stepId: step.id,
+          title: sanitized,
+          shortDescription: step.shortDescription ?? "",
+          type: step.type,
+          assigneeMode: step.assigneeMode,
+          assigneeMembershipId: step.assigneeMembershipId ?? null,
+          dueOffsetDays: step.dueOffsetDays,
+          dueOffsetHours: step.dueOffsetHours,
+          priority: step.priority ?? null,
+          tags: step.tags ?? [],
+          channelHint: step.channelHint ?? null,
+          pauseUntilDone: step.pauseUntilDone,
+          isActive: step.isActive,
+        });
+        router.refresh();
+      } catch (error) {
+        console.error("[sequences] falha ao atualizar título da etapa", error);
+      }
+    });
+  };
+
+  const handleCreateStep = (type: SequenceStepRecord["type"] = "general_task") => {
+    if (!currentVersion) {
+      return;
+    }
+
+    if (disableStepActions) {
+      return;
+    }
+
+    const insertIndex = localSteps.length;
+    const defaultTitle = type === "call_task" ? "Nova ligação" : "Nova etapa";
+
+    startTransition(async () => {
+      try {
+        const newStepId = await upsertSequenceStepAction({
+          sequenceId: data.sequence.id,
+          versionId: currentVersion.id,
+          title: defaultTitle,
+          shortDescription: "",
+          type,
+          assigneeMode: "owner",
+          assigneeMembershipId: null,
+          dueOffsetDays: 0,
+          dueOffsetHours: 0,
+          priority: null,
+          tags: [],
+          channelHint: null,
+          pauseUntilDone: false,
+          isActive: true,
+          insertAtIndex: insertIndex,
+        });
+
+        if (!newStepId) {
+          router.refresh();
+          return;
+        }
+
+        setLocalSteps((prev) => [
+          ...prev,
+          {
+            id: newStepId,
+            versionId: currentVersion.id,
+            orgId: data.sequence.orgId,
+            order: prev.length + 1,
+            title: defaultTitle,
+            shortDescription: "",
+            body: null,
+            type,
+            assigneeMode: "owner",
+            assigneeMembershipId: null,
+            dueOffsetDays: 0,
+            dueOffsetHours: 0,
+            priority: null,
+            tags: [],
+            checklist: null,
+            dependencies: [],
+            channelHint: null,
+            isActive: true,
+            pauseUntilDone: false,
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+        setSelectedStepId(newStepId);
+        setEditingStepId(newStepId);
+        setTitleDrafts((prev) => ({ ...prev, [newStepId]: defaultTitle }));
+        router.refresh();
+      } catch (error) {
+        console.error("[sequences] falha ao criar etapa", error);
+      }
+    });
+  };
+
+  const handleSelectStep = (step: SequenceStepRecord) => {
+    setSelectedStepId(step.id);
+    if (editingStepId && editingStepId !== step.id) {
+      clearTitleDraft(editingStepId);
+      setEditingStepId(null);
+    }
+  };
 
   const handleStepSubmit = async (
     values: {
@@ -805,6 +1020,9 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
   };
 
   const handleStepMenuAction = (action: StepMenuAction, step: SequenceStepRecord) => {
+    if (editingStepId) {
+      setEditingStepId(null);
+    }
     switch (action) {
       case "add-wait":
         openStepModal({
@@ -1177,13 +1395,7 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                 </div>
                 <Button
                   kind={Button.kinds.SECONDARY}
-                  onClick={() =>
-                    openStepModal({
-                      mode: "create",
-                      presetType: "general_task",
-                      position: { kind: "end" },
-                    })
-                  }
+                  onClick={() => handleCreateStep("general_task")}
                   disabled={disableStepActions}
                 >
                   Adicionar etapa
@@ -1200,13 +1412,7 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                         key={template.id}
                         type="button"
                         className={styles.stepTemplateCard}
-                        onClick={() =>
-                          openStepModal({
-                            mode: "create",
-                            presetType: template.id,
-                            position: { kind: "end" },
-                          })
-                        }
+                        onClick={() => handleCreateStep(template.id)}
                         disabled={disableStepActions}
                       >
                         <strong>{template.title}</strong>
@@ -1219,20 +1425,32 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleReorder}>
                   <SortableContext items={localSteps.map((step) => step.id)} strategy={verticalListSortingStrategy}>
                     <div className={styles.stepsList}>
-                      {localSteps.map((step, index) => (
-                        <SortableStep
-                          key={step.id}
-                          step={step}
-                          isSelected={selectedStepId === step.id}
-                          disableReorder={disableStepActions}
-                          disableActions={disableStepActions}
-                          onSelect={(selected) => setSelectedStepId(selected.id)}
-                          onToggle={handleToggle}
-                          onMenuAction={handleStepMenuAction}
-                          canMoveUp={index > 0}
-                          canMoveDown={index < localSteps.length - 1}
-                        />
-                      ))}
+                      {localSteps.map((step, index) => {
+                        const isEditingTitle = editingStepId === step.id;
+                        const titleDraft = titleDrafts[step.id] ?? step.title;
+                        return (
+                          <SortableStep
+                            key={step.id}
+                            step={step}
+                            isSelected={selectedStepId === step.id}
+                            disableReorder={disableStepActions}
+                            disableActions={disableStepActions}
+                            onSelect={handleSelectStep}
+                            onToggle={handleToggle}
+                            onMenuAction={handleStepMenuAction}
+                            canMoveUp={index > 0}
+                            canMoveDown={index < localSteps.length - 1}
+                            isEditingTitle={isEditingTitle}
+                            titleDraft={titleDraft}
+                            onTitleDraftChange={(value) => updateTitleDraft(step.id, value)}
+                            onTitleCommit={() => handleTitleCommit(step)}
+                            onTitleCancel={() => handleTitleCancel(step)}
+                            titleInputRef={(element) => {
+                              titleInputRefs.current[step.id] = element;
+                            }}
+                          />
+                        );
+                      })}
                     </div>
                   </SortableContext>
                 </DndContext>
@@ -1240,13 +1458,7 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
               <button
                 type="button"
                 className={styles.addStepLink}
-                onClick={() =>
-                  openStepModal({
-                    mode: "create",
-                    presetType: "general_task",
-                    position: { kind: "end" },
-                  })
-                }
+                onClick={() => handleCreateStep("general_task")}
                 disabled={disableStepActions}
               >
                 <Add aria-hidden />

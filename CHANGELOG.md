@@ -1,3 +1,11 @@
+# 2025-12-04
+
+### Changed
+- Simplificamos a criação de etapas no editor de sequências: clicar em "Adicionar" gera o cartão imediatamente na coluna esquerda com campo de título editável inline, mantendo a descrição editável no painel direito e eliminando o modal intermediário.
+
+### Documentation
+- Registramos em `docs/sequences_module.md` o novo fluxo de criação imediata de etapas com edição inline do título.
+
 # 2025-12-03
 
 ### Fixed

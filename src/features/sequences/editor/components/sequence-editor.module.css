@@ -298,6 +298,21 @@
   color: var(--dx-text, var(--vibe-color-fg-primary));
 }
 
+.stepTitleInput {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--layout-border-color, var(--dx-border));
+  font: var(--dx-font-text2-medium);
+  color: var(--dx-text, var(--vibe-color-fg-primary));
+  background: var(--vibe-color-bg-primary, var(--primary-background-color));
+}
+
+.stepTitleInput:focus-visible {
+  outline: 2px solid var(--dx-primary, var(--vibe-color-primary));
+  outline-offset: 2px;
+}
+
 .stepInfo p {
   margin: 0;
   font: var(--dx-font-text3-normal);
