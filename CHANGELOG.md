@@ -1,3 +1,11 @@
+# 2025-12-02
+
+### Fixed
+- Unificamos o estilo dos modais de Inbox, detalhes de contato e Minha conta adicionando a classe global `content_modal`, impedindo que dimensões customizadas quebrem o layout compartilhado.
+
+### Documentation
+- Atualizamos `docs/inbox.md` e `docs/crm_readme.md` para registrar que os modais reaproveitam a classe global `content_modal` e mantêm consistência visual.
+
 # 2025-12-01
 
 ### Fixed
