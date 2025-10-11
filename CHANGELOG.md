@@ -3,6 +3,9 @@
 ### Changed
 - Simplificamos a criação de etapas no editor de sequências: clicar em "Adicionar" gera o cartão imediatamente na coluna esquerda com campo de título editável inline, mantendo a descrição editável no painel direito e eliminando o modal intermediário.
 
+### Fixed
+- Ajustamos a limpeza dos rascunhos de título para remover chaves com `delete`, evitando o aviso `no-unused-vars` que quebrava o `pnpm run build` após criar ou cancelar a edição inline.
+
 ### Documentation
 - Registramos em `docs/sequences_module.md` o novo fluxo de criação imediata de etapas com edição inline do título.
 

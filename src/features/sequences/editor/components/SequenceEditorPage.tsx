@@ -680,8 +680,9 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
       if (!(stepId in prev)) {
         return prev;
       }
-      const { [stepId]: _removed, ...rest } = prev;
-      return rest;
+      const nextDrafts = { ...prev };
+      delete nextDrafts[stepId];
+      return nextDrafts;
     });
   };
 
