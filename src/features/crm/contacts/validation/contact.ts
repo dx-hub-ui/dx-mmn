@@ -24,7 +24,7 @@ export type NormalizedContactInput = Omit<ContactInput, "whatsapp"> & {
 
 const emailPattern = /.+@.+\..+/i;
 
-const allowedStages = new Set(["novo", "contatado", "followup", "qualificado", "cadastrado", "perdido"]);
+const allowedStages = new Set(["novo", "contatado", "followup", "cadastrado", "perdido"]);
 
 export function validateContactInput(payload: ContactInput): {
   value?: NormalizedContactInput;

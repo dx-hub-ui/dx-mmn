@@ -60,6 +60,7 @@ import ContactsKanban from "@/features/crm/contacts/components/ContactsKanban";
 import BulkActionsBar from "@/features/crm/contacts/components/BulkActionsBar";
 import ImportContactsModal from "@/features/crm/contacts/components/ImportContactsModal";
 import ReportsDialog from "@/features/crm/contacts/components/ReportsDialog";
+import type { ActiveSequenceSummary } from "@/features/crm/contacts/server/listActiveSequences";
 import {
   Add,
   Chart,
@@ -139,6 +140,7 @@ type ContactsBoardPageProps = {
   currentMembership: MembershipSummary;
   memberships: MembershipSummary[];
   initialContacts: ContactRecord[];
+  activeSequences: ActiveSequenceSummary[];
 };
 
 type ContactUpdateSource = "board" | "modal" | "kanban" | "bulk";
@@ -723,6 +725,7 @@ export default function ContactsBoardPage({
   currentMembership,
   memberships,
   initialContacts,
+  activeSequences,
 }: ContactsBoardPageProps) {
   const [contacts, setContacts] = useState<ContactRecord[]>(initialContacts);
   const [isLoading, setIsLoading] = useState(false);
@@ -2035,6 +2038,8 @@ export default function ContactsBoardPage({
           memberships={memberships}
           onClear={() => setSelection(new Set())}
           onUpdate={handleBulkUpdate}
+          sequences={activeSequences}
+          onNotify={(value) => setFeedback(value)}
         />
       ) : null}
       <ImportContactsModal

@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { listContacts, fetchVisibleMemberships } from "@/features/crm/contacts/server/listContacts";
 import ContactsBoardPage from "./ContactsBoardPage";
 import { MembershipSummary } from "@/features/crm/contacts/types";
+import { listActiveContactSequences } from "@/features/crm/contacts/server/listActiveSequences";
 
 type MembershipWithOrganization = {
   id: string;
@@ -75,9 +76,10 @@ export default async function CRMPage() {
     slug: membership.organization.slug,
   };
 
-  const [contacts, visibleMemberships] = await Promise.all([
+  const [contacts, visibleMemberships, activeSequences] = await Promise.all([
     listContacts(supabase, organization.id),
     fetchVisibleMemberships(supabase, organization.id),
+    listActiveContactSequences(supabase, organization.id),
   ]);
 
   const currentMembership: MembershipSummary = {
@@ -107,6 +109,7 @@ export default async function CRMPage() {
       currentMembership={currentMembership}
       memberships={visibleMemberships}
       initialContacts={contacts}
+      activeSequences={activeSequences}
     />
   );
 }

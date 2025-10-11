@@ -114,8 +114,8 @@ describe("ContactModal", () => {
     expect(heading).toBeInTheDocument();
 
     const stageSelect = screen.getByLabelText(/Alterar estágio/i);
-    fireEvent.change(stageSelect, { target: { value: "qualificado" } });
-    await waitFor(() => expect(stageChange).toHaveBeenCalledWith("qualificado"));
+    fireEvent.change(stageSelect, { target: { value: "followup" } });
+    await waitFor(() => expect(stageChange).toHaveBeenCalledWith("followup"));
   });
 
   it("salva alterações na aba dados", async () => {
