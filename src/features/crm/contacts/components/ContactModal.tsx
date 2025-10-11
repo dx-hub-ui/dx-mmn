@@ -231,7 +231,7 @@ export default function ContactModal({
     <div className={styles.overlay} role="presentation" onMouseDown={handleOverlayClick}>
       <div
         ref={modalRef}
-        className={styles.modal}
+        className={`${styles.modal} content_modal`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="contact-modal-title"

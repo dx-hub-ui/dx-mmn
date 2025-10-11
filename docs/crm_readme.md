@@ -73,7 +73,7 @@
 - Seleção persistente entre filtros e paginações virtuais com telemetria `crm/selection_changed`.
 
 ## Funcionalidades da Sprint 2
-- **Modal de contato completo** (`ContactModal`): cabeçalho com estágio editável, atalhos (WhatsApp/ligar/e-mail), sub-header com origem/tags e tabs Atividades, Dados, Próximo passo e Indicações. A timeline consome `contact_events` com filtros contextuais e navegação com setas (`←/→`). Fechar com `Esc` retorna foco à linha; `O`/enter abre a partir do grid.
+- **Modal de contato completo** (`ContactModal`): cabeçalho com estágio editável, atalhos (WhatsApp/ligar/e-mail), sub-header com origem/tags e tabs Atividades, Dados, Próximo passo e Indicações. A timeline consome `contact_events` com filtros contextuais e navegação com setas (`←/→`). Fechar com `Esc` retorna foco à linha; `O`/enter abre a partir do grid. O container principal aplica a classe global `content_modal` para herdar a geometria padrão dos modais.
 - **Edição completa dentro da modal** reaproveitando `EditableContactForm`, com validações compartilhadas e refresh da timeline pós-salvar. Telemetria adicionada: `crm/contact_modal_open`, `crm/contact_modal_save`, `crm/contact_modal_tab_change`.
 - **Kanban de estágios** (`ContactsKanban`): colunas por estágio com drag & drop via `@dnd-kit`. Atualiza Supabase e timeline com feedback visual, respeitando filtros/views ativos. Telemetria `crm/contact_stage_changed` envia `{ contactId, from, to, source }`.
 - **API GET `/api/crm/contacts/[id]`** retorna detalhe + timeline + referidos, mantendo autenticação Supabase.
