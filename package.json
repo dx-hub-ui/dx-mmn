@@ -13,7 +13,8 @@
     "e2e": "playwright test",
     "sentry:release": "node ./scripts/utils/create-release.js",
     "sentry:sourcemaps": "node ./scripts/postbuild.js",
-    "test:smoke": "tsx ./scripts/smoke/index.ts"
+    "test:smoke": "tsx ./scripts/smoke/index.ts",
+    "mcp:dev": "npx -y @vibe/mcp"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

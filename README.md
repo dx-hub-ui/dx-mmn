@@ -2,6 +2,11 @@
 
 Este repositório contém a base de uma aplicação Next.js 14 (App Router) integrada ao Supabase com autenticação, multi-tenancy e controle de papéis (org, leader, rep) para um CRM de marketing multinível.
 
+## Documentação complementar
+
+- [Plano de integração do Vibe MCP](docs/mcp_integration_plan.md) — análise de viabilidade e roteiro para habilitar o servidor MCP nas nossas ferramentas de desenvolvimento, cobrindo fases, riscos e métricas de sucesso.
+- [Workspace MCP integrado](docs/mcp_runtime.md) — instruções para subir o servidor `@vibe/mcp`, detalhes do `/mcp` dentro do app e eventos de telemetria acompanhados.
+
 ## Pré-requisitos
 
 - [Supabase CLI](https://supabase.com/docs/guides/cli) 1.158+.
@@ -58,6 +63,16 @@ Este repositório contém a base de uma aplicação Next.js 14 (App Router) inte
 - Falhas temporárias ao consultar memberships agora exibem um aviso amigável na própria página em vez de cair no erro genérico do Next.js, permitindo que usuários tentem novamente sem recarregar toda a aplicação.
 - A camada server do dashboard utiliza o cliente oficial `@supabase/supabase-js` para obter o tipo `User`, portanto mantenha as dependências instaladas com `pnpm install` após atualizar o projeto.
 - Utilize esta visualização para testar rapidamente como o conteúdo deverá variar conforme o papel em futuras implementações.
+
+## Integração Vibe MCP
+
+- Instale o servidor local com `pnpm mcp:dev`, que executa `npx -y @vibe/mcp` usando o endpoint padrão `http://127.0.0.1:8848`.
+- Configure, se necessário, as variáveis `VIBE_MCP_BASE_URL` e `VIBE_MCP_API_TOKEN` no `.env.local` para apontar para outro host ou adicionar autenticação Bearer.
+- A aplicação expõe uma nova seção `/mcp` dentro da área autenticada. Ela consome os handlers `GET /api/mcp/*` e mostra:
+  - Catálogo de componentes com props, tokens e exemplos oficiais.
+  - Painel de tokens de design com busca por nome.
+  - Biblioteca de ícones com pré-visualização SVG e caminhos de import.
+- A UI usa componentes `@vibe/core`, tokens `--dx-*` e registra os eventos `mcp.component_selected` e `mcp.component_metadata_viewed` via `@/lib/telemetry`.
 
 ## Variáveis de ambiente
 

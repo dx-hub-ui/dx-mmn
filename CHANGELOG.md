@@ -1,3 +1,17 @@
+# 2025-12-01
+
+### Added
+- Entregamos o workspace `/mcp` com busca de componentes, tokens e ícones usando o servidor Vibe MCP, incluindo navegação dedicada na sidebar.
+- Criamos o client tipado `src/lib/mcp/client.ts` e os handlers `GET /api/mcp/*` para intermediar chamadas ao MCP com validação `zod`.
+
+### Documentation
+- Publicamos `docs/mcp_runtime.md` com instruções operacionais do MCP, atualizamos o plano (`docs/mcp_integration_plan.md`) e documentamos o fluxo no `README.md`.
+
+# 2025-11-30
+
+### Documentation
+- Adicionamos `docs/mcp_integration_plan.md` com avaliação detalhada do Vibe MCP e plano de integração por fases, além de link na `README.md` para divulgar o roteiro de adoção.
+
 # 2025-11-29
 
 ### Changed
