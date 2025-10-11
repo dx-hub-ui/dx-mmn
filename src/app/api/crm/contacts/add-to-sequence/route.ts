@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
   const { data: membershipRow, error: membershipError } = await supabase
     .from("memberships")
-    .select("id, organization_id, user_id")
+    .select("id, organization_id, user_id, role, parent_leader_id")
     .eq("id", body.actorMembershipId)
     .maybeSingle();
 
@@ -61,6 +61,49 @@ export async function POST(req: NextRequest) {
   if (membershipRow.organization_id !== body.organizationId) {
     return NextResponse.json({ error: "Organização inválida" }, { status: 400 });
   }
+
+  const { data: organizationMemberships, error: organizationMembershipsError } = await supabase
+    .from("memberships")
+    .select("id, parent_leader_id")
+    .eq("organization_id", body.organizationId);
+
+  if (organizationMembershipsError) {
+    return NextResponse.json({ error: organizationMembershipsError.message }, { status: 500 });
+  }
+
+  const role = membershipRow.role as "org" | "leader" | "rep" | null;
+
+  if (!role || !["org", "leader", "rep"].includes(role)) {
+    return NextResponse.json({ error: "Função de membro inválida" }, { status: 403 });
+  }
+
+  const allowedMembershipIds = new Set<string>([membershipRow.id]);
+
+  if (role === "org") {
+    for (const member of organizationMemberships ?? []) {
+      allowedMembershipIds.add(member.id);
+    }
+  } else if (role === "leader") {
+    for (const member of organizationMemberships ?? []) {
+      if (member.id === membershipRow.id || member.parent_leader_id === membershipRow.id) {
+        allowedMembershipIds.add(member.id);
+      }
+    }
+  }
+
+  const { data: contacts, error: contactsError } = await supabase
+    .from("contacts")
+    .select("id, owner_membership_id")
+    .eq("organization_id", body.organizationId)
+    .in("id", body.contactIds);
+
+  if (contactsError) {
+    return NextResponse.json({ error: contactsError.message }, { status: 500 });
+  }
+
+  const contactMap = new Map(
+    (contacts ?? []).map((contact) => [contact.id, contact.owner_membership_id as string | null])
+  );
 
   const { data: sequenceRow, error: sequenceError } = await supabase
     .from("sequences")
@@ -97,6 +140,12 @@ export async function POST(req: NextRequest) {
   let skipped = 0;
 
   for (const contactId of body.contactIds) {
+    const ownerMembershipId = contactMap.get(contactId);
+    if (!ownerMembershipId || !allowedMembershipIds.has(ownerMembershipId)) {
+      skipped += 1;
+      continue;
+    }
+
     try {
       const { error } = await supabase.from("sequence_enrollments").insert({
         org_id: body.organizationId,
