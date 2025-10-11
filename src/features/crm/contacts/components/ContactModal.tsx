@@ -7,9 +7,8 @@ import React, {
   useState,
   type ChangeEvent,
   type KeyboardEvent as ReactKeyboardEvent,
-  type MouseEvent,
 } from "react";
-import { Button } from "@vibe/core";
+import { Button, Modal, ModalContent } from "@vibe/core";
 import {
   ContactDetail,
   ContactStageId,
@@ -185,12 +184,6 @@ export default function ContactModal({
     return null;
   }
 
-  const handleOverlayClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) {
-      onClose();
-    }
-  };
-
   const handleStageChange = async (event: ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value as ContactStageId;
     await onStageChange(value);
@@ -228,170 +221,172 @@ export default function ContactModal({
   const contact = detail?.contact ?? null;
 
   return (
-    <div className={styles.overlay} role="presentation" onMouseDown={handleOverlayClick}>
-      <div
-        ref={modalRef}
-        className={`${styles.modal} content_modal`}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="contact-modal-title"
-        tabIndex={-1}
-        onKeyDown={focusTrap}
-      >
-        <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Fechar">
-          Fechar
-        </button>
-        <div className={styles.navigationBar} aria-live="polite">
-          <span className={styles.countLabel}>{positionLabel}</span>
-          <button
-            type="button"
-            className={styles.navButton}
-            onClick={() => onNavigate("prev")}
-            disabled={!canNavigatePrev}
-            aria-label="Contato anterior"
-          >
-            ←
+    <Modal id="contact-modal" show={open} onClose={onClose} zIndex={5200} title={contact?.name ?? "Contato"}>
+      <ModalContent>
+        <div
+          ref={modalRef}
+          className={styles.modal}
+          tabIndex={-1}
+          onKeyDown={focusTrap}
+        >
+          <button type="button" className={styles.closeButton} onClick={onClose} aria-label="Fechar">
+            Fechar
           </button>
-          <button
-            type="button"
-            className={styles.navButton}
-            onClick={() => onNavigate("next")}
-            disabled={!canNavigateNext}
-            aria-label="Próximo contato"
-          >
-            →
-          </button>
-        </div>
+          <div className={styles.navigationBar} aria-live="polite">
+            <span className={styles.countLabel}>{positionLabel}</span>
+            <button
+              type="button"
+              className={styles.navButton}
+              onClick={() => onNavigate("prev")}
+              disabled={!canNavigatePrev}
+              aria-label="Contato anterior"
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              className={styles.navButton}
+              onClick={() => onNavigate("next")}
+              disabled={!canNavigateNext}
+              aria-label="Próximo contato"
+            >
+              →
+            </button>
+          </div>
 
-        <header className={styles.header}>
-          <div className={styles.headerTop}>
-            <div className={styles.titleGroup}>
-              <h2 id="contact-modal-title" className={styles.contactName}>
-                {contact?.name ?? "Contato"}
-              </h2>
-              <div className={styles.stageOwnerRow}>
-                <select
-                  className={styles.stageSelect}
-                  value={contact?.stage ?? "novo"}
-                  onChange={handleStageChange}
-                  aria-label="Alterar estágio"
+          <header className={styles.header}>
+            <div className={styles.headerTop}>
+              <div className={styles.titleGroup}>
+                <p className={styles.contactName}>
+                  {contact?.name ?? "Contato"}
+                </p>
+                <div className={styles.stageOwnerRow}>
+                  <select
+                    className={styles.stageSelect}
+                    value={contact?.stage ?? "novo"}
+                    onChange={handleStageChange}
+                    aria-label="Alterar estágio"
+                  >
+                    {CONTACT_STAGES.map((stage) => (
+                      <option key={stage.id} value={stage.id}>
+                        {stage.label}
+                      </option>
+                    ))}
+                  </select>
+                  {contact?.owner ? (
+                    <span className={styles.ownerBadge} aria-label="Dono do contato">
+                      🧑 {contact.owner.displayName}
+                    </span>
+                  ) : (
+                    <span className={styles.ownerBadge}>Sem dono</span>
+                  )}
+                </div>
+              </div>
+              <div className={styles.actionButtons} aria-label="Ações rápidas">
+                <Button
+                  kind={Button.kinds.SECONDARY}
+                  disabled={!contact?.whatsapp}
+                  onClick={() =>
+                    contact?.whatsapp && window.open(`https://wa.me/${contact.whatsapp.replace(/\D/g, "")}`)
+                  }
                 >
-                  {CONTACT_STAGES.map((stage) => (
-                    <option key={stage.id} value={stage.id}>
-                      {stage.label}
-                    </option>
-                  ))}
-                </select>
-                {contact?.owner ? (
-                  <span className={styles.ownerBadge} aria-label="Dono do contato">
-                    🧑 {contact.owner.displayName}
-                  </span>
-                ) : (
-                  <span className={styles.ownerBadge}>Sem dono</span>
-                )}
+                  WhatsApp
+                </Button>
+                <Button
+                  kind={Button.kinds.SECONDARY}
+                  disabled={!contact?.whatsapp}
+                  onClick={() => contact?.whatsapp && window.open(`tel:${contact.whatsapp}`)}
+                >
+                  Ligar
+                </Button>
+                <Button
+                  kind={Button.kinds.SECONDARY}
+                  disabled={!contact?.email}
+                  onClick={() => contact?.email && window.open(`mailto:${contact.email}`)}
+                >
+                  E-mail
+                </Button>
+                <Button kind={Button.kinds.SECONDARY} onClick={onRefresh} loading={loading}>
+                  Atualizar
+                </Button>
               </div>
             </div>
-            <div className={styles.actionButtons} aria-label="Ações rápidas">
-              <Button
-                kind={Button.kinds.SECONDARY}
-                disabled={!contact?.whatsapp}
-                onClick={() =>
-                  contact?.whatsapp && window.open(`https://wa.me/${contact.whatsapp.replace(/\D/g, "")}`)
-                }
-              >
-                WhatsApp
-              </Button>
-              <Button
-                kind={Button.kinds.SECONDARY}
-                disabled={!contact?.whatsapp}
-                onClick={() => contact?.whatsapp && window.open(`tel:${contact.whatsapp}`)}
-              >
-                Ligar
-              </Button>
-              <Button
-                kind={Button.kinds.SECONDARY}
-                disabled={!contact?.email}
-                onClick={() => contact?.email && window.open(`mailto:${contact.email}`)}
-              >
-                E-mail
-              </Button>
-              <Button kind={Button.kinds.SECONDARY} onClick={onRefresh} loading={loading}>
-                Atualizar
-              </Button>
+          </header>
+
+          <div className={styles.subHeader} role="presentation">
+            <div className={styles.subItem}>
+              <strong>Tags:</strong>
+              <span className={styles.tagsList}>
+                {contact?.tags.length ? (
+                  contact.tags.map((tag) => (
+                    <span key={tag} className={styles.tag}>
+                      {tag}
+                    </span>
+                  ))
+                ) : (
+                  <span>Sem tags</span>
+                )}
+              </span>
+            </div>
+            <div className={styles.subItem}>
+              <strong>Origem:</strong> {contact?.source ?? "Não informado"}
+            </div>
+            <div className={styles.subItem}>
+              <strong>Último toque:</strong>
+              {contact?.lastTouchAt ? dateFormatter.format(new Date(contact.lastTouchAt)) : "Sem registro"}
+            </div>
+            <div className={styles.subItem}>
+              <strong>Próximo passo:</strong>
+              {contact?.nextActionNote
+                ? `${contact.nextActionNote}${contact.nextActionAt ? ` — ${dateOnlyFormatter.format(new Date(contact.nextActionAt))}` : ""}`
+                : "Não definido"}
             </div>
           </div>
-        </header>
 
-        <div className={styles.subHeader} role="presentation">
-          <div className={styles.subItem}>
-            <strong>Tags:</strong>
-            <span className={styles.tagsList}>
-              {contact?.tags.length ? contact.tags.map((tag) => (
-                <span key={tag} className={styles.tag}>
-                  {tag}
-                </span>
-              )) : (
-                <span>Sem tags</span>
-              )}
-            </span>
-          </div>
-          <div className={styles.subItem}>
-            <strong>Origem:</strong> {contact?.source ?? "Não informado"}
-          </div>
-          <div className={styles.subItem}>
-            <strong>Último toque:</strong>
-            {contact?.lastTouchAt ? dateFormatter.format(new Date(contact.lastTouchAt)) : "Sem registro"}
-          </div>
-          <div className={styles.subItem}>
-            <strong>Próximo passo:</strong>
-            {contact?.nextActionNote ? `${contact.nextActionNote}${contact.nextActionAt ? ` — ${dateOnlyFormatter.format(new Date(contact.nextActionAt))}` : ""}` : "Não definido"}
-          </div>
-        </div>
+          <nav className={styles.tabs} aria-label="Seções do contato" role="tablist">
+            <button
+              type="button"
+              className={styles.tabButton}
+              role="tab"
+              aria-selected={activeTab === "activities"}
+              tabIndex={activeTab === "activities" ? 0 : -1}
+              onClick={() => onTabChange("activities")}
+            >
+              Atividades
+            </button>
+            <button
+              type="button"
+              className={styles.tabButton}
+              role="tab"
+              aria-selected={activeTab === "data"}
+              tabIndex={activeTab === "data" ? 0 : -1}
+              onClick={() => onTabChange("data")}
+            >
+              Dados
+            </button>
+            <button
+              type="button"
+              className={styles.tabButton}
+              role="tab"
+              aria-selected={activeTab === "tasks"}
+              tabIndex={activeTab === "tasks" ? 0 : -1}
+              onClick={() => onTabChange("tasks")}
+            >
+              Próximo passo
+            </button>
+            <button
+              type="button"
+              className={styles.tabButton}
+              role="tab"
+              aria-selected={activeTab === "referrals"}
+              tabIndex={activeTab === "referrals" ? 0 : -1}
+              onClick={() => onTabChange("referrals")}
+            >
+              Indicações
+            </button>
+          </nav>
 
-        <nav className={styles.tabs} aria-label="Seções do contato" role="tablist">
-          <button
-            type="button"
-            className={styles.tabButton}
-            role="tab"
-            aria-selected={activeTab === "activities"}
-            tabIndex={activeTab === "activities" ? 0 : -1}
-            onClick={() => onTabChange("activities")}
-          >
-            Atividades
-          </button>
-          <button
-            type="button"
-            className={styles.tabButton}
-            role="tab"
-            aria-selected={activeTab === "data"}
-            tabIndex={activeTab === "data" ? 0 : -1}
-            onClick={() => onTabChange("data")}
-          >
-            Dados
-          </button>
-          <button
-            type="button"
-            className={styles.tabButton}
-            role="tab"
-            aria-selected={activeTab === "tasks"}
-            tabIndex={activeTab === "tasks" ? 0 : -1}
-            onClick={() => onTabChange("tasks")}
-          >
-            Próximo passo
-          </button>
-          <button
-            type="button"
-            className={styles.tabButton}
-            role="tab"
-            aria-selected={activeTab === "referrals"}
-            tabIndex={activeTab === "referrals" ? 0 : -1}
-            onClick={() => onTabChange("referrals")}
-          >
-            Indicações
-          </button>
-        </nav>
-
-        <section className={styles.content} aria-live="polite">
+          <section className={styles.content} aria-live="polite">
           {activeTab === "activities" && (
             <div>
               <div className={styles.timelineFilters} role="group" aria-label="Filtro da timeline">
@@ -626,6 +621,7 @@ export default function ContactModal({
           )}
         </section>
       </div>
-    </div>
+      </ModalContent>
+    </Modal>
   );
 }
