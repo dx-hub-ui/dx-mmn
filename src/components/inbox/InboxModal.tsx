@@ -92,7 +92,7 @@ export default function InboxModal({ open, orgId, initialTab, onClose }: InboxMo
   };
 
   return (
-    <Modal id="inbox-modal" show={open} onClose={onClose} zIndex={5200}>
+    <Modal id="inbox-modal" show={open} onClose={onClose} zIndex={5200} title="Feed de atualizações">
       <ModalContent className={styles.modal}>
         <header className={styles.header}>
           <div className={styles.titleGroup}>

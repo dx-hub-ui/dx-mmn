@@ -1,3 +1,11 @@
+# 2025-12-01
+
+### Fixed
+- Definimos o `title` obrigatório do `InboxModal` para impedir o erro de runtime "Title prop is mandatory for Modal when HeaderModal isn't provided" ao abrir o feed.
+
+### Documentation
+- Reforçamos em `docs/inbox.md` que o modal precisa da prop `title` quando usa um header customizado dentro do conteúdo para satisfazer a validação do `@vibe/core`.
+
 # 2025-11-30
 
 ### Fixed
