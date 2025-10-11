@@ -1,10 +1,4 @@
-export type ContactStageId =
-  | "novo"
-  | "contatado"
-  | "followup"
-  | "qualificado"
-  | "cadastrado"
-  | "perdido";
+export type ContactStageId = "novo" | "contatado" | "followup" | "cadastrado" | "perdido";
 
 export type ContactStageDefinition = {
   id: ContactStageId;
@@ -30,31 +24,24 @@ export const CONTACT_STAGES: ContactStageDefinition[] = [
     tone: "purple",
   },
   {
-    id: "qualificado",
-    label: "Qualificado",
-    description: "Contato engajado e pronto para avançar",
-    order: 3,
-    tone: "green",
-  },
-  {
     id: "followup",
     label: "Follow-up",
     description: "Aguardando retorno ou ação",
-    order: 4,
+    order: 3,
     tone: "orange",
   },
   {
     id: "cadastrado",
     label: "Cadastrado",
     description: "Convertido no cadastro da rede",
-    order: 5,
+    order: 4,
     tone: "gray",
   },
   {
     id: "perdido",
     label: "Perdido",
     description: "Oportunidade perdida",
-    order: 6,
+    order: 5,
     tone: "red",
   },
 ];

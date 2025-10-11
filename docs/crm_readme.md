@@ -42,6 +42,15 @@
 - Cada célula da grade tornou-se editável por clique único: `InlineTextField`/`InlineSelectField` abrem inputs em contexto, fazem autosave on-blur e mostram erros/salvamento inline. O botão “Editar” foi removido; basta clicar no campo desejado.
 - A grade recebeu bordas internas/externas consistentes (`styles.table`), combinando com o grid do monday.com e tornando a seleção visual mais nítida.
 
+## Atualização de Dezembro/2026 — Barra flutuante de ações em lote e sequência em popover
+- `BulkActionsBar` passou a ser exibida como card flutuante centralizado acima da tabela, reaproveitando o token `--application-background-color` e sombra elevada para destacar a seleção em andamento.
+- O menu principal agora é acionado por ícone (`MoreActions`) com rótulos e descrições alinhados ao design da referência, agrupando as opções "Adicionar à sequência", "Duplicar", "Exportar", "Arquivar", "Apagar" (com dupla confirmação) e "Converter".
+- "Adicionar à sequência" abre uma sub-visualização em popover com busca e listagem das sequências ativas retornadas por `listActiveContactSequences`; ao confirmar a inclusão mostramos toast de sucesso via `onNotify`.
+- A exclusão exige dupla confirmação em modal dedicado com fundo `--application-background-color`, campo de confirmação textual e telemetria (`crm/bulk_action_execute`) preservada.
+- "Converter" reutiliza o fluxo de indicação, permitindo atribuir contato pai direto do popover sem sair da barra.
+- Criamos o endpoint `POST /api/crm/contacts/add-to-sequence` para matricular contatos selecionados em massa, ignorando duplicidades e registrando telemetria.
+- Removemos o estágio intermediário **Qualificado**, consolidando o funil em `Novo → Contato feito → Follow-up → Cadastrado → Perdido` e normalizando leituras legadas no `listContacts`.
+
 ## Revisão de Bugs (Junho/2025)
 - **Prioridade Alta — Geração de convites bloqueada:** a rota `POST /api/invites/generate` lia apenas a variável `SUPABASE_URL`. Em ambientes que expõem apenas `NEXT_PUBLIC_SUPABASE_URL` (setup recomendado no restante do app) o endpoint retornava "Server configuration missing" e nenhum convite podia ser criado. A correção passa a aceitar ambas as chaves e normaliza a URL antes de chamar a função Edge do Supabase.
 - **Prioridade Média — Menu do usuário quebrado:** `GET /api/user/profile` lançava 500 quando a consulta de memberships retornava `permission denied` (códigos `PGRST301`/`42501`), impedindo o carregamento do avatar e das opções. A rota agora registra o incidente em telemetria e continua respondendo com os dados do perfil, retornando `org_id`/`member_id` nulos.
@@ -60,7 +69,7 @@
 
 ## Modelo de Dados
 - `contacts` ganhou colunas `score` (0-100), `referred_by_contact_id` (cadeia de indicações), `next_action_note` (texto do próximo passo) e agora expõe `source` na API/board para sub-header do modal. Índices exclusivos garantem dedupe por telefone/e-mail normalizados.
-- `status` foi renomeado de `ganho` para `cadastrado` para alinhar com a pipeline oficial (`Novo → Contato feito → Qualificado → Follow-up → Cadastrado → Perdido`).
+- `status` foi renomeado de `ganho` para `cadastrado` para alinhar com a pipeline oficial (`Novo → Contato feito → Follow-up → Cadastrado → Perdido`).
 - `contact_events` (nova tabela criada em `002_crm_contact_events.sql`) armazena timeline normalizada (`event_type`, `payload` JSON, `actor_membership_id`). Cada create/update relevante gera eventos automáticos: criação, mudança de estágio, troca de dono e atualização de próximo passo.
 - Seed (`supabase/seed.sql`) oferece dados com cadeias de indicações (até 1 nível), eventos históricos e próximos passos realistas para validar filtros, timeline e views.
 

@@ -154,7 +154,12 @@ export function mapContactRow(row: ContactRow): ContactRecord {
     email: row.email,
     whatsapp: row.whatsapp,
     source: row.source,
-    stage: (row.status === "ganho" ? "cadastrado" : (row.status as ContactRecord["stage"])) ?? "novo",
+    stage:
+      ((row.status === "ganho"
+        ? "cadastrado"
+        : row.status === "qualificado"
+        ? "followup"
+        : (row.status as ContactRecord["stage"])) ?? "novo") as ContactRecord["stage"],
     tags: row.tags ?? [],
     score: row.score,
     lastTouchAt: row.last_touch_at,

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "@vibe/core";
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { Button, Dialog, type DialogProps, type DialogType, DialogContentContainer, IconButton, TextField } from "@vibe/core";
 import {
   BulkActionPayload,
   BulkActionResult,
@@ -19,6 +19,28 @@ import {
   getTeamMembershipIds,
   normalizeTagsInput,
 } from "../utils/permissions";
+import {
+  MoreActions,
+  Duplicate,
+  Download,
+  Archive,
+  Delete as DeleteIcon,
+  ConvertToItem,
+  DropdownChevronLeft,
+  CloseSmall,
+  Apps,
+  Group,
+  DueDate,
+  Connect,
+  Tags,
+  Completed,
+  Downgrade,
+} from "@vibe/icons";
+import type { ActiveSequenceSummary } from "@/features/crm/contacts/server/listActiveSequences";
+
+const PopoverDialog = Dialog as unknown as ComponentType<DialogProps & { type?: DialogType }>;
+
+type NotificationPayload = { type: "success" | "error" | "warning"; message: string };
 
 function buildCsvRow(values: string[]): string {
   return values
@@ -99,6 +121,8 @@ type BulkActionsBarProps = {
   memberships: MembershipSummary[];
   onClear: () => void;
   onUpdate: (updated: ContactRecord[], removedIds: string[]) => void;
+  sequences: ActiveSequenceSummary[];
+  onNotify: (feedback: NotificationPayload) => void;
 };
 
 export default function BulkActionsBar({
@@ -110,11 +134,20 @@ export default function BulkActionsBar({
   memberships,
   onClear,
   onUpdate,
+  sequences,
+  onNotify,
 }: BulkActionsBarProps) {
   const [panel, setPanel] = useState<PanelState>(null);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [menuView, setMenuView] = useState<"actions" | "sequences" | "convert" | "advanced">("actions");
+  const [menuSearch, setMenuSearch] = useState("");
+  const [menuActionLoading, setMenuActionLoading] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteStep, setDeleteStep] = useState<1 | 2>(1);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
 
   const selectedContacts = useMemo(() => contacts.filter((contact) => selectedIds.includes(contact.id)), [
     contacts,
@@ -125,7 +158,7 @@ export default function BulkActionsBar({
     [selectedContacts, currentMembership, memberships]
   );
 
-  const [stageValue, setStageValue] = useState<string>("qualificado");
+  const [stageValue, setStageValue] = useState<string>("followup");
   const [lostReason, setLostReason] = useState("");
   const [lostReviewAt, setLostReviewAt] = useState("");
   const [ownerId, setOwnerId] = useState<string>(currentMembership.id);
@@ -161,10 +194,64 @@ export default function BulkActionsBar({
     }
   }, [panel]);
 
+  useEffect(() => {
+    if (!actionsOpen) {
+      setMenuView("actions");
+      setMenuSearch("");
+      setMenuActionLoading(null);
+    }
+  }, [actionsOpen]);
+
+  useEffect(() => {
+    if (selectedIds.length === 0) {
+      closeActionsMenu();
+      closeDeleteModal();
+    }
+  }, [selectedIds.length]);
+
+  useEffect(() => {
+    setMenuSearch("");
+  }, [menuView]);
+
   const allowedOwnerIds = useMemo(() => new Set(getTeamMembershipIds(currentMembership, memberships)), [
     currentMembership,
     memberships,
   ]);
+
+  const filteredSequences = useMemo(() => {
+    if (sequences.length === 0) {
+      return [] as ActiveSequenceSummary[];
+    }
+    const term = menuSearch.trim().toLowerCase();
+    const base = term
+      ? sequences.filter((sequence) => sequence.name.toLowerCase().includes(term))
+      : sequences;
+    return [...base].sort((a, b) => {
+      if (a.updatedAt && b.updatedAt) {
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      }
+      if (a.updatedAt) {
+        return -1;
+      }
+      if (b.updatedAt) {
+        return 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [sequences, menuSearch]);
+
+  const availableParentContacts = useMemo(() => {
+    const candidates = contacts.filter((contact) => !selectedIds.includes(contact.id));
+    const term = menuSearch.trim().toLowerCase();
+    const sorted = [...candidates].sort((a, b) => a.name.localeCompare(b.name));
+    if (!term) {
+      return sorted;
+    }
+    return sorted.filter((contact) => {
+      const haystack = `${contact.name} ${contact.email ?? ""}`.toLowerCase();
+      return haystack.includes(term);
+    });
+  }, [contacts, selectedIds, menuSearch]);
 
   const canExecute = (action: BulkActionType) => canExecuteBulkAction(currentMembership.role, action);
 
@@ -181,10 +268,14 @@ export default function BulkActionsBar({
     setError(null);
   }
 
-  async function runAction(action: BulkActionPayload) {
+  async function runAction(
+    action: BulkActionPayload,
+    options?: { successMessage?: string; notifyMessage?: string }
+  ): Promise<boolean> {
     setLoading(true);
     setFeedback(null);
     setError(null);
+    let success = false;
     try {
       const response = await fetch("/api/crm/contacts/bulk", {
         method: "POST",
@@ -210,16 +301,222 @@ export default function BulkActionsBar({
       if (result.errors.length > 0) {
         setError(result.errors.map((item) => item.message).join("; "));
       } else {
-        setFeedback(`${selectedIds.length} contato(s) atualizados.`);
+        const message = options?.successMessage ?? `${selectedIds.length} contato(s) atualizados.`;
+        setFeedback(message);
+        if (options?.notifyMessage) {
+          onNotify({ type: "success", message: options.notifyMessage });
+        }
+        success = true;
       }
 
       trackEvent("crm/bulk_action_execute", { action: action.type, count: selectedIds.length });
       closePanel();
+      return success;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao executar ação");
+      return false;
     } finally {
       setLoading(false);
     }
+  }
+
+  function closeActionsMenu() {
+    setActionsOpen(false);
+    setMenuView("actions");
+    setMenuSearch("");
+    setMenuActionLoading(null);
+  }
+
+  function openPanelState(state: PanelState) {
+    closeActionsMenu();
+    setPanel(state);
+  }
+
+  function openDeleteModal() {
+    closeActionsMenu();
+    setDeleteStep(1);
+    setDeleteConfirmInput("");
+    setDeleteModalOpen(true);
+    setError(null);
+  }
+
+  function closeDeleteModal() {
+    setDeleteModalOpen(false);
+    setDeleteStep(1);
+    setDeleteConfirmInput("");
+  }
+
+  async function handleAddContactsToSequence(sequence: ActiveSequenceSummary) {
+    setMenuActionLoading(`sequence:${sequence.id}`);
+    setError(null);
+    try {
+      const response = await fetch("/api/crm/contacts/add-to-sequence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          organizationId,
+          actorMembershipId,
+          sequenceId: sequence.id,
+          contactIds: selectedIds,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Erro ao adicionar à sequência");
+      }
+
+      const enrolled = typeof payload.enrolled === "number" ? payload.enrolled : selectedIds.length;
+      const skipped = typeof payload.skipped === "number" ? payload.skipped : 0;
+      const message = skipped > 0
+        ? `${enrolled} contato(s) adicionados e ${skipped} ignorados em ${sequence.name}.`
+        : `${enrolled} contato(s) adicionados à sequência ${sequence.name}.`;
+      setFeedback(message);
+      onNotify({ type: "success", message });
+      trackEvent("crm/bulk_add_to_sequence", { sequenceId: sequence.id, count: enrolled, skipped });
+      closeActionsMenu();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao adicionar à sequência");
+    } finally {
+      setMenuActionLoading(null);
+      setMenuView("actions");
+    }
+  }
+
+  async function handleDuplicateSelected() {
+    if (selectedContacts.length === 0) {
+      return;
+    }
+    setMenuActionLoading("duplicate");
+    setError(null);
+    try {
+      const created: ContactRecord[] = [];
+      for (const contact of selectedContacts) {
+        const response = await fetch("/api/crm/contacts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            organizationId,
+            actorMembershipId,
+            ownerMembershipId: contact.ownerMembershipId ?? currentMembership.id,
+            name: `${contact.name} (cópia)`,
+            email: contact.email,
+            whatsapp: contact.whatsapp,
+            stage: contact.stage,
+            tags: contact.tags,
+            score: contact.score,
+            nextActionAt: contact.nextActionAt,
+            nextActionNote: contact.nextActionNote,
+            referredByContactId: contact.referredByContactId ?? null,
+            source: contact.source ?? null,
+          }),
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Erro ao duplicar contatos");
+        }
+        created.push(payload.contact as ContactRecord);
+      }
+
+      if (created.length > 0) {
+        onUpdate(created, []);
+        const message = `${created.length} contato(s) duplicado(s).`;
+        setFeedback(message);
+        onNotify({ type: "success", message });
+        trackEvent("crm/bulk_duplicate_contacts", { count: created.length });
+      }
+      closeActionsMenu();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao duplicar contatos");
+    } finally {
+      setMenuActionLoading(null);
+    }
+  }
+
+  async function handleConvertSelection(parent: ContactRecord | null) {
+    setMenuActionLoading(`convert:${parent ? parent.id : "none"}`);
+    const success = await runAction(
+      { type: "referral", referredByContactId: parent ? parent.id : null },
+      {
+        successMessage: parent
+          ? `${selectedIds.length} contato(s) vinculados a ${parent.name}.`
+          : `${selectedIds.length} contato(s) atualizados sem contato pai.`,
+        notifyMessage: parent ? `Contato pai definido como ${parent.name}.` : "Contato pai removido.",
+      }
+    );
+    setMenuActionLoading(null);
+    if (success) {
+      closeActionsMenu();
+      setMenuView("actions");
+    }
+  }
+
+  async function handleArchive() {
+    setMenuActionLoading("archive");
+    const success = await runAction(
+      { type: "archive" },
+      {
+        successMessage: `${selectedIds.length} contato(s) arquivados.`,
+        notifyMessage: `${selectedIds.length} contato(s) arquivados.`,
+      }
+    );
+    setMenuActionLoading(null);
+    if (success) {
+      closeActionsMenu();
+    }
+  }
+
+  async function handleMarkCadastrado() {
+    setMenuActionLoading("mark_cadastrado");
+    const success = await runAction(
+      { type: "mark_cadastrado" },
+      {
+        successMessage: `${selectedIds.length} contato(s) marcados como cadastrados.`,
+        notifyMessage: `${selectedIds.length} contato(s) marcados como cadastrados.`,
+      }
+    );
+    setMenuActionLoading(null);
+    if (success) {
+      closeActionsMenu();
+    }
+  }
+
+  async function handleUnarchive() {
+    setMenuActionLoading("unarchive");
+    const success = await runAction(
+      { type: "unarchive" },
+      {
+        successMessage: `${selectedIds.length} contato(s) reativados.`,
+        notifyMessage: `${selectedIds.length} contato(s) reativados.`,
+      }
+    );
+    setMenuActionLoading(null);
+    if (success) {
+      closeActionsMenu();
+    }
+  }
+
+  async function handleDeleteConfirm() {
+    const success = await runAction(
+      { type: "delete" },
+      {
+        successMessage: `${selectedIds.length} contato(s) apagados.`,
+        notifyMessage: `${selectedIds.length} contato(s) apagados.`,
+      }
+    );
+    if (success) {
+      closeDeleteModal();
+      closeActionsMenu();
+    }
+  }
+
+  function handleExportCsv() {
+    exportContactsCsv(selectedContacts);
+    const message = `${selectedContacts.length} contato(s) exportados para CSV.`;
+    setFeedback(message);
+    onNotify({ type: "success", message });
+    closeActionsMenu();
   }
 
   function handleStageSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -241,7 +538,7 @@ export default function BulkActionsBar({
             type: "stage",
             stage: stageId,
           };
-    runAction(payload);
+    void runAction(payload);
   }
 
   function handleNextStepSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -252,7 +549,7 @@ export default function BulkActionsBar({
       date: nextStepDate ? new Date(nextStepDate).toISOString() : null,
       applyIfEmpty,
     };
-    runAction(payload);
+    void runAction(payload);
   }
 
   function handleReferralSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -262,7 +559,7 @@ export default function BulkActionsBar({
       type: "referral",
       referredByContactId: value || null,
     };
-    runAction(payload);
+    void runAction(payload);
   }
 
   function handleTagsSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -272,7 +569,7 @@ export default function BulkActionsBar({
       setError("Informe pelo menos uma tag");
       return;
     }
-    runAction({ type: "tags", mode: tagsMode, tags });
+    void runAction({ type: "tags", mode: tagsMode, tags });
   }
 
   function handleOwnerSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -281,7 +578,7 @@ export default function BulkActionsBar({
       setError("Selecione um dono válido");
       return;
     }
-    runAction({ type: "owner", ownerMembershipId: ownerId });
+    void runAction({ type: "owner", ownerMembershipId: ownerId });
   }
 
   function handleMergeSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -294,7 +591,7 @@ export default function BulkActionsBar({
       setError("Selecione o contato principal");
       return;
     }
-    runAction({ type: "merge", primaryContactId: mergePrimaryId });
+    void runAction({ type: "merge", primaryContactId: mergePrimaryId });
   }
 
   const disableStage = !canExecute("stage");
@@ -308,6 +605,18 @@ export default function BulkActionsBar({
   const disableUnarchive = !canExecute("unarchive");
   const disableDelete = !canExecute("delete");
   const disableMerge = !canExecute("merge") || selectedIds.length !== 2;
+  const hasAdvancedActions = !(
+    disableStage &&
+    disableOwner &&
+    disableNextStep &&
+    disableReferral &&
+    disableTags &&
+    disableMarkCadastrado &&
+    disableMarkPerdido &&
+    disableMerge &&
+    disableUnarchive
+  );
+  const isBusy = loading || menuActionLoading !== null;
 
   return (
     <>
@@ -316,126 +625,368 @@ export default function BulkActionsBar({
         role="region"
         aria-label={`Barra de ações — ${selectedIds.length} contato(s) selecionado(s)`}
       >
-        <div className={styles.summaryRow}>
-          <strong>{selectedIds.length} contato(s) selecionado(s)</strong>
-          <Button kind={Button.kinds.TERTIARY} type="button" onClick={onClear}>
-            Fechar
-          </Button>
+        <div className={styles.barHeader}>
+          <div className={styles.selectionBadge} aria-live="polite">
+            <span className={styles.selectionCount}>{selectedIds.length}</span>
+            <span>contato(s) selecionado(s)</span>
+          </div>
+          <div className={styles.barActions}>
+            <PopoverDialog
+              open={actionsOpen}
+              type="popover"
+              position="bottom-end"
+              moveBy={{ main: 4, secondary: 0 }}
+              showTrigger={[]}
+              hideTrigger={[]}
+              onClickOutside={closeActionsMenu}
+              onDialogDidHide={() => setActionsOpen(false)}
+              content={
+                <DialogContentContainer className={styles.actionsMenu} role="menu">
+                  {menuView === "actions" ? (
+                    <div className={styles.menuSection}>
+                      <button
+                        type="button"
+                        className={styles.menuItem}
+                        onClick={() => setMenuView("sequences")}
+                        disabled={sequences.length === 0}
+                        aria-disabled={sequences.length === 0}
+                      >
+                        <Apps className={styles.menuIcon} aria-hidden="true" />
+                        <span className={styles.menuText}>
+                          <span className={styles.menuTitle}>Adicionar à sequência</span>
+                          <span className={styles.menuSubtitle}>
+                            {sequences.length === 0
+                              ? "Nenhuma sequência ativa disponível"
+                              : "Inscreva os contatos em uma sequência ativa"}
+                          </span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.menuItem}
+                        onClick={handleDuplicateSelected}
+                        disabled={isBusy}
+                      >
+                        <Duplicate className={styles.menuIcon} aria-hidden="true" />
+                        <span className={styles.menuText}>
+                          <span className={styles.menuTitle}>Duplicar</span>
+                          <span className={styles.menuSubtitle}>Cria cópias mantendo dono e status atuais</span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.menuItem}
+                        onClick={handleExportCsv}
+                        disabled={isBusy}
+                      >
+                        <Download className={styles.menuIcon} aria-hidden="true" />
+                        <span className={styles.menuText}>
+                          <span className={styles.menuTitle}>Exportar</span>
+                          <span className={styles.menuSubtitle}>Gera um CSV com os contatos selecionados</span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.menuItem}
+                        onClick={handleArchive}
+                        disabled={disableArchive || isBusy}
+                        aria-disabled={disableArchive || isBusy}
+                      >
+                        <Archive className={styles.menuIcon} aria-hidden="true" />
+                        <span className={styles.menuText}>
+                          <span className={styles.menuTitle}>Arquivar</span>
+                          <span className={styles.menuSubtitle}>Move os contatos para o arquivo</span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.menuItem}
+                        onClick={() => {
+                          setMenuView("convert");
+                        }}
+                        disabled={disableReferral}
+                        aria-disabled={disableReferral}
+                      >
+                        <ConvertToItem className={styles.menuIcon} aria-hidden="true" />
+                        <span className={styles.menuText}>
+                          <span className={styles.menuTitle}>Converter</span>
+                          <span className={styles.menuSubtitle}>Atribui um contato pai para os selecionados</span>
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.menuItemDanger}
+                        onClick={openDeleteModal}
+                        disabled={disableDelete}
+                        aria-disabled={disableDelete}
+                      >
+                        <DeleteIcon className={styles.menuIcon} aria-hidden="true" />
+                        <span className={styles.menuText}>
+                          <span className={styles.menuTitle}>Apagar</span>
+                          <span className={styles.menuSubtitle}>Remove definitivamente os contatos selecionados</span>
+                        </span>
+                      </button>
+                    </div>
+                  ) : menuView === "sequences" ? (
+                    <div className={styles.menuSection}>
+                      <div className={styles.menuHeader}>
+                        <IconButton
+                          icon={DropdownChevronLeft}
+                          ariaLabel="Voltar"
+                          kind={IconButton.kinds.TERTIARY}
+                          size={IconButton.sizes.SMALL}
+                          onClick={() => setMenuView("actions")}
+                        />
+                        <span className={styles.menuTitle}>Escolher sequência</span>
+                      </div>
+                      <TextField
+                        title="Buscar sequência"
+                        placeholder="Buscar por nome"
+                        value={menuSearch}
+                        onChange={(value) => setMenuSearch(value)}
+                        autoFocus
+                      />
+                      <div className={styles.menuList}>
+                        {filteredSequences.length === 0 ? (
+                          <p className={styles.emptyMessage}>Nenhuma sequência encontrada.</p>
+                        ) : (
+                          filteredSequences.map((sequence) => (
+                            <button
+                              type="button"
+                              key={sequence.id}
+                              className={styles.menuItem}
+                              onClick={() => handleAddContactsToSequence(sequence)}
+                              disabled={menuActionLoading !== null && menuActionLoading !== `sequence:${sequence.id}`}
+                            >
+                              <Apps className={styles.menuIcon} aria-hidden="true" />
+                              <span className={styles.menuText}>
+                                <span className={styles.menuTitle}>{sequence.name}</span>
+                              </span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  ) : menuView === "advanced" ? (
+                    <div className={styles.menuSection}>
+                      <div className={styles.menuHeader}>
+                        <IconButton
+                          icon={DropdownChevronLeft}
+                          ariaLabel="Voltar"
+                          kind={IconButton.kinds.TERTIARY}
+                          size={IconButton.sizes.SMALL}
+                          onClick={() => setMenuView("actions")}
+                        />
+                        <span className={styles.menuTitle}>Ações avançadas</span>
+                      </div>
+                      <div className={styles.menuList}>
+                        <button
+                          type="button"
+                          className={styles.menuItem}
+                          onClick={() => openPanelState({ type: "stage" })}
+                          disabled={disableStage}
+                          aria-disabled={disableStage}
+                        >
+                          <Apps className={styles.menuIcon} aria-hidden="true" />
+                          <span className={styles.menuText}>
+                            <span className={styles.menuTitle}>Mover estágio</span>
+                            <span className={styles.menuSubtitle}>Atualiza o status dos contatos selecionados</span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.menuItem}
+                          onClick={() => openPanelState({ type: "owner" })}
+                          disabled={disableOwner}
+                          aria-disabled={disableOwner}
+                        >
+                          <Group className={styles.menuIcon} aria-hidden="true" />
+                          <span className={styles.menuText}>
+                            <span className={styles.menuTitle}>Atribuir dono</span>
+                            <span className={styles.menuSubtitle}>Redefine o responsável pelos contatos</span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.menuItem}
+                          onClick={() => openPanelState({ type: "next_step" })}
+                          disabled={disableNextStep}
+                          aria-disabled={disableNextStep}
+                        >
+                          <DueDate className={styles.menuIcon} aria-hidden="true" />
+                          <span className={styles.menuText}>
+                            <span className={styles.menuTitle}>Definir próximo passo</span>
+                            <span className={styles.menuSubtitle}>Agenda nota e data para acompanhamento</span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.menuItem}
+                          onClick={() => openPanelState({ type: "referral" })}
+                          disabled={disableReferral}
+                          aria-disabled={disableReferral}
+                        >
+                          <Connect className={styles.menuIcon} aria-hidden="true" />
+                          <span className={styles.menuText}>
+                            <span className={styles.menuTitle}>Definir contato pai</span>
+                            <span className={styles.menuSubtitle}>Atualiza o campo "Indicado por"</span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.menuItem}
+                          onClick={() => openPanelState({ type: "tags" })}
+                          disabled={disableTags}
+                          aria-disabled={disableTags}
+                        >
+                          <Tags className={styles.menuIcon} aria-hidden="true" />
+                          <span className={styles.menuText}>
+                            <span className={styles.menuTitle}>Atualizar tags</span>
+                            <span className={styles.menuSubtitle}>Adiciona ou remove etiquetas em massa</span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.menuItem}
+                          onClick={handleMarkCadastrado}
+                          disabled={disableMarkCadastrado || isBusy}
+                          aria-disabled={disableMarkCadastrado || isBusy}
+                        >
+                          <Completed className={styles.menuIcon} aria-hidden="true" />
+                          <span className={styles.menuText}>
+                            <span className={styles.menuTitle}>Marcar como cadastrado</span>
+                            <span className={styles.menuSubtitle}>Conclui os contatos no funil</span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.menuItem}
+                          onClick={() => openPanelState({ type: "stage", locked: true, presetStage: "perdido" })}
+                          disabled={disableMarkPerdido}
+                          aria-disabled={disableMarkPerdido}
+                        >
+                          <Downgrade className={styles.menuIcon} aria-hidden="true" />
+                          <span className={styles.menuText}>
+                            <span className={styles.menuTitle}>Marcar como perdido</span>
+                            <span className={styles.menuSubtitle}>Solicita motivo e data de revisão</span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.menuItem}
+                          onClick={() => openPanelState({ type: "merge" })}
+                          disabled={disableMerge}
+                          aria-disabled={disableMerge}
+                        >
+                          <Duplicate className={styles.menuIcon} aria-hidden="true" />
+                          <span className={styles.menuText}>
+                            <span className={styles.menuTitle}>Mesclar duplicados</span>
+                            <span className={styles.menuSubtitle}>Une dois contatos em um só registro</span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.menuItem}
+                          onClick={handleUnarchive}
+                          disabled={disableUnarchive || isBusy}
+                          aria-disabled={disableUnarchive || isBusy}
+                        >
+                          <Archive className={styles.menuIcon} aria-hidden="true" />
+                          <span className={styles.menuText}>
+                            <span className={styles.menuTitle}>Reativar contatos</span>
+                            <span className={styles.menuSubtitle}>Retorna contatos arquivados ao funil</span>
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={styles.menuSection}>
+                      <div className={styles.menuHeader}>
+                        <IconButton
+                          icon={DropdownChevronLeft}
+                          ariaLabel="Voltar"
+                          kind={IconButton.kinds.TERTIARY}
+                          size={IconButton.sizes.SMALL}
+                          onClick={() => setMenuView("actions")}
+                        />
+                        <span className={styles.menuTitle}>Selecionar contato pai</span>
+                      </div>
+                      <TextField
+                        title="Buscar contato"
+                        placeholder="Buscar por nome ou e-mail"
+                        value={menuSearch}
+                        onChange={(value) => setMenuSearch(value)}
+                        autoFocus
+                      />
+                      <div className={styles.menuList}>
+                        <button
+                          type="button"
+                          className={styles.menuItem}
+                          onClick={() => handleConvertSelection(null)}
+                          disabled={isBusy}
+                        >
+                          <span className={styles.menuText}>
+                            <span className={styles.menuTitle}>Remover contato pai</span>
+                            <span className={styles.menuSubtitle}>Limpa o relacionamento atual</span>
+                          </span>
+                        </button>
+                        {availableParentContacts.length === 0 ? (
+                          <p className={styles.emptyMessage}>Nenhum contato disponível para atribuir.</p>
+                        ) : (
+                          availableParentContacts.map((contact) => (
+                            <button
+                              type="button"
+                              key={contact.id}
+                              className={styles.menuItem}
+                              onClick={() => handleConvertSelection(contact)}
+                              disabled={menuActionLoading !== null && menuActionLoading !== `convert:${contact.id}`}
+                            >
+                              <span className={styles.menuText}>
+                                <span className={styles.menuTitle}>{contact.name}</span>
+                                {contact.email ? (
+                                  <span className={styles.menuSubtitle}>{contact.email}</span>
+                                ) : null}
+                              </span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </DialogContentContainer>
+              }
+            >
+              <IconButton
+                icon={MoreActions}
+                ariaLabel="Abrir menu de ações em lote"
+                kind={IconButton.kinds.SECONDARY}
+                size={IconButton.sizes.SMALL}
+                className={styles.actionsTrigger}
+                onClick={() => setActionsOpen((open) => !open)}
+              />
+            </PopoverDialog>
+            <Button kind={Button.kinds.TERTIARY} type="button" onClick={onClear}>
+              Fechar
+            </Button>
+          </div>
         </div>
-        <div className={styles.actionsRow}>
-          <Button kind={Button.kinds.SECONDARY} type="button" disabled={disableStage} onClick={() => setPanel({ type: "stage" })}>
-            Mover estágio
-          </Button>
-          <Button kind={Button.kinds.SECONDARY} type="button" disabled={disableOwner} onClick={() => setPanel({ type: "owner" })}>
-            Atribuir dono
-          </Button>
+        <div className={styles.barSecondary}>
+          <span className={styles.barHint}>Ações aplicam mudanças em todos os contatos selecionados.</span>
           <Button
-            kind={Button.kinds.SECONDARY}
+            kind={Button.kinds.TERTIARY}
             type="button"
-            disabled={disableNextStep}
-            onClick={() => setPanel({ type: "next_step" })}
+            className={styles.advancedTrigger}
+            disabled={!hasAdvancedActions}
+            aria-disabled={!hasAdvancedActions}
+            onClick={() => {
+              if (!hasAdvancedActions) {
+                return;
+              }
+              setMenuView("advanced");
+              setActionsOpen(true);
+            }}
           >
-            Definir próximo passo
-          </Button>
-          <Button
-            kind={Button.kinds.SECONDARY}
-            type="button"
-            disabled={disableReferral}
-            onClick={() => setPanel({ type: "referral" })}
-          >
-            Definir “Indicado por”
-          </Button>
-          <Button kind={Button.kinds.SECONDARY} type="button" disabled={disableTags} onClick={() => setPanel({ type: "tags" })}>
-            Tags
-          </Button>
-          <Button
-            kind={Button.kinds.SECONDARY}
-            type="button"
-            disabled={disableMarkCadastrado}
-            onClick={() => runAction({ type: "mark_cadastrado" })}
-          >
-            Cadastrado
-          </Button>
-          <Button
-            kind={Button.kinds.SECONDARY}
-            type="button"
-            disabled={disableMarkPerdido}
-            onClick={() => setPanel({ type: "stage", locked: true, presetStage: "perdido" })}
-          >
-            Perdido
-          </Button>
-          <Button
-            kind={Button.kinds.SECONDARY}
-            type="button"
-            disabled={disableMerge}
-            onClick={() => setPanel({ type: "merge" })}
-          >
-            Mesclar duplicados
-          </Button>
-          <Button
-            kind={Button.kinds.SECONDARY}
-            type="button"
-            disabled={disableArchive}
-            onClick={() =>
-              setPanel({
-                type: "confirm",
-                action: "archive",
-                title: "Arquivar contatos",
-                message: "Os contatos serão movidos para o arquivo e poderão ser reativados depois.",
-              })
-            }
-          >
-            Arquivar
-          </Button>
-          <Button
-            kind={Button.kinds.SECONDARY}
-            type="button"
-            disabled={disableUnarchive}
-            onClick={() =>
-              setPanel({
-                type: "confirm",
-                action: "unarchive",
-                title: "Reativar contatos",
-                message: "Os contatos voltarão para o funil ativo.",
-              })
-            }
-          >
-            Reativar
-          </Button>
-          <Button
-            kind={Button.kinds.SECONDARY}
-            type="button"
-            disabled={disableDelete}
-            onClick={() =>
-              setPanel({
-                type: "confirm",
-                action: "delete",
-                title: "Excluir contatos",
-                message: "Esta ação é permanente. Confirme para excluir os contatos selecionados.",
-              })
-            }
-          >
-            Excluir
-          </Button>
-          <Button
-            kind={Button.kinds.SECONDARY}
-            type="button"
-            onClick={() => exportContactsCsv(selectedContacts)}
-          >
-            Exportar (CSV)
-          </Button>
-          <Button
-            kind={Button.kinds.SECONDARY}
-            type="button"
-            onClick={() =>
-              setPanel({
-                type: "info",
-                title: "Mais ações",
-                message: "Nenhuma ação adicional configurada para este conjunto.",
-              })
-            }
-          >
-            Mais…
+            Ações avançadas
           </Button>
         </div>
         {feedback ? <div className={styles.feedback}>{feedback}</div> : null}
@@ -446,6 +997,69 @@ export default function BulkActionsBar({
           </div>
         ) : null}
       </div>
+
+      {deleteModalOpen ? (
+        <div className={styles.deleteOverlay} role="presentation" onMouseDown={closeDeleteModal}>
+          <div
+            className={styles.deleteModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bulk-delete-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className={styles.deleteHeader}>
+              <h2 id="bulk-delete-title">Confirmar exclusão</h2>
+              <IconButton
+                icon={CloseSmall}
+                ariaLabel="Fechar modal de exclusão"
+                kind={IconButton.kinds.TERTIARY}
+                size={IconButton.sizes.SMALL}
+                onClick={closeDeleteModal}
+              />
+            </div>
+            <div className={styles.deleteBody}>
+              {deleteStep === 1 ? (
+                <p className={styles.deleteDescription}>
+                  Você está prestes a apagar <strong>{selectedIds.length}</strong> contato(s). Essa ação não pode ser desfeita.
+                </p>
+              ) : (
+                <>
+                  <p className={styles.deleteDescription}>
+                    Digite <strong>APAGAR</strong> para confirmar a exclusão definitiva.
+                  </p>
+                  <TextField
+                    title="Confirme digitando APAGAR"
+                    placeholder="APAGAR"
+                    value={deleteConfirmInput}
+                    onChange={(value) => setDeleteConfirmInput(value)}
+                    autoFocus
+                  />
+                </>
+              )}
+            </div>
+            <div className={styles.deleteFooter}>
+              <Button kind={Button.kinds.TERTIARY} type="button" onClick={closeDeleteModal}>
+                Cancelar
+              </Button>
+              {deleteStep === 1 ? (
+                <Button kind={Button.kinds.SECONDARY} type="button" onClick={() => setDeleteStep(2)}>
+                  Continuar
+                </Button>
+              ) : (
+                <Button
+                  kind={Button.kinds.PRIMARY}
+                  type="button"
+                  onClick={handleDeleteConfirm}
+                  loading={loading}
+                  disabled={deleteConfirmInput.trim().toUpperCase() !== "APAGAR" || loading}
+                >
+                  Apagar definitivamente
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {panel ? (
         <div className={styles.panelOverlay} role="presentation" onClick={closePanel}>

@@ -1,3 +1,17 @@
+# 2025-11-30
+
+### Added
+- Criamos a rota `POST /api/crm/contacts/add-to-sequence` para matricular contatos selecionados em sequências ativas com dedupe e telemetria.
+
+### Changed
+- Remodelamos a barra de ações em lote para um card flutuante com menu popover alinhado ao design de referência, incluindo fluxo de sequência, duplicação, exportação, arquivamento, conversão e exclusão com dupla confirmação.
+
+### Removed
+- Eliminamos o estágio "Qualificado" do funil de contatos, atualizando tipos, normalização no `listContacts` e adicionando migração SQL para remover o valor do enum.
+
+### Documentation
+- Atualizamos `docs/crm_readme.md` e `docs/dev_setup_crm.md` com o novo fluxo da barra em popover, o endpoint de sequência e o funil sem "Qualificado".
+
 # 2025-11-29
 
 ### Changed
