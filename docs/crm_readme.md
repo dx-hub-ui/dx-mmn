@@ -45,6 +45,7 @@
 ## Atualização de Dezembro/2026 — Barra flutuante de ações em lote e sequência em popover
 - `BulkActionsBar` passou a ser exibida como card flutuante centralizado acima da tabela, reaproveitando o token `--application-background-color` e sombra elevada para destacar a seleção em andamento.
 - O menu principal agora é acionado por ícone (`MoreActions`) com rótulos e descrições alinhados ao design da referência, agrupando as opções "Adicionar à sequência", "Duplicar", "Exportar", "Arquivar", "Apagar" (com dupla confirmação) e "Converter".
+- A cópia do atalho de conversão usa aspas escapadas (&quot;Indicado por&quot;) para manter o texto consistente com a referência sem violar o lint de build.
 - "Adicionar à sequência" abre uma sub-visualização em popover com busca e listagem das sequências ativas retornadas por `listActiveContactSequences`; ao confirmar a inclusão mostramos toast de sucesso via `onNotify`.
 - A exclusão exige dupla confirmação em modal dedicado com fundo `--application-background-color`, campo de confirmação textual e telemetria (`crm/bulk_action_execute`) preservada.
 - "Converter" reutiliza o fluxo de indicação, permitindo atribuir contato pai direto do popover sem sair da barra.

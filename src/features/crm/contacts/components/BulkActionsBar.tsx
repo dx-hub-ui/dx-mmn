@@ -829,7 +829,9 @@ export default function BulkActionsBar({
                           <Connect className={styles.menuIcon} aria-hidden="true" />
                           <span className={styles.menuText}>
                             <span className={styles.menuTitle}>Definir contato pai</span>
-                            <span className={styles.menuSubtitle}>Atualiza o campo "Indicado por"</span>
+                            <span className={styles.menuSubtitle}>
+                              Atualiza o campo &quot;Indicado por&quot;
+                            </span>
                           </span>
                         </button>
                         <button

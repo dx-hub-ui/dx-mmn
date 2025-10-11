@@ -6,6 +6,9 @@
 ### Changed
 - Remodelamos a barra de ações em lote para um card flutuante com menu popover alinhado ao design de referência, incluindo fluxo de sequência, duplicação, exportação, arquivamento, conversão e exclusão com dupla confirmação.
 
+### Fixed
+- Ajustamos a cópia do atalho de conversão para respeitar entidades HTML, evitando que o lint de build acuse aspas não escapadas.
+
 ### Removed
 - Eliminamos o estágio "Qualificado" do funil de contatos, atualizando tipos, normalização no `listContacts` e adicionando migração SQL para remover o valor do enum.
 
