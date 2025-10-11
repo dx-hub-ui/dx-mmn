@@ -30,6 +30,7 @@ A página usa componentes `@vibe/core`, tokens de aplicação (`--dx-*`) e telem
 - Os route handlers `GET /api/mcp/*` atuam como BFF, encapsulando chamadas ao MCP e padronizando erros.
 - O client `src/lib/mcp/client.ts` valida as respostas com `zod` antes de repassar para o front.
 - A UI consome os endpoints via SWR com debounce de 300 ms, mantendo a navegação fluida.
+- O catálogo memoiza a lista retornada pelo SWR antes de sincronizar a seleção inicial, evitando reexecuções infinitas do efeito que escolhe o primeiro componente disponível.
 
 ## Telemetria
 
