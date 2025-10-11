@@ -1,24 +1,19 @@
-# 2025-12-02
-
-### Fixed
-- Unificamos o estilo dos modais de Inbox, detalhes de contato e Minha conta adicionando a classe global `content_modal`, impedindo que dimensões customizadas quebrem o layout compartilhado.
-
-### Documentation
-- Atualizamos `docs/inbox.md` e `docs/crm_readme.md` para registrar que os modais reaproveitam a classe global `content_modal` e mantêm consistência visual.
-
-# 2025-12-01
-
-### Added
-- Entregamos o workspace `/mcp` com busca de componentes, tokens e ícones usando o servidor Vibe MCP, incluindo navegação dedicada na sidebar.
-- Criamos o client tipado `src/lib/mcp/client.ts` e os handlers `GET /api/mcp/*` para intermediar chamadas ao MCP com validação `zod`.
-
-### Documentation
-- Publicamos `docs/mcp_runtime.md` com instruções operacionais do MCP, atualizamos o plano (`docs/mcp_integration_plan.md`) e documentamos o fluxo no `README.md`.
-
 # 2025-11-30
 
+### Added
+- Criamos a rota `POST /api/crm/contacts/add-to-sequence` para matricular contatos selecionados em sequências ativas com dedupe e telemetria.
+
+### Changed
+- Remodelamos a barra de ações em lote para um card flutuante com menu popover alinhado ao design de referência, incluindo fluxo de sequência, duplicação, exportação, arquivamento, conversão e exclusão com dupla confirmação.
+
+### Fixed
+- Ajustamos a cópia do atalho de conversão para respeitar entidades HTML, evitando que o lint de build acuse aspas não escapadas.
+
+### Removed
+- Eliminamos o estágio "Qualificado" do funil de contatos, atualizando tipos, normalização no `listContacts` e adicionando migração SQL para remover o valor do enum.
+
 ### Documentation
-- Adicionamos `docs/mcp_integration_plan.md` com avaliação detalhada do Vibe MCP e plano de integração por fases, além de link na `README.md` para divulgar o roteiro de adoção.
+- Atualizamos `docs/crm_readme.md` e `docs/dev_setup_crm.md` com o novo fluxo da barra em popover, o endpoint de sequência e o funil sem "Qualificado".
 
 # 2025-11-29
 

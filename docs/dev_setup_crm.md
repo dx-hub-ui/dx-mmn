@@ -74,7 +74,7 @@ A aplicação fica disponível em `http://localhost:3000`. Usuários seed: `owne
 
 ## 7. Dados realistas
 O seed inclui:
-- Estágios distribuídos (`novo`, `contatado`, `qualificado`, `followup`, `cadastrado`, `perdido`).
+- Estágios distribuídos (`novo`, `contatado`, `followup`, `cadastrado`, `perdido`).
 - Scores (0-100) e próximos passos com datas futuras/passadas.
 - Cadeia de indicações (`referred_by_contact_id`) para validar a coluna "Indicado por" e a view "Indicados por mim".
 - Eventos de timeline (`contact_events`) simulando criação, mudança de estágio e atualização de próximo passo.
