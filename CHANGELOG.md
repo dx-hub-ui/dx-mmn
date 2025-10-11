@@ -1,21 +1,16 @@
 # 2025-12-01
 
-### Fixed
-- Definimos o `title` obrigatório do `InboxModal` para impedir o erro de runtime "Title prop is mandatory for Modal when HeaderModal isn't provided" ao abrir o feed.
+### Added
+- Entregamos o workspace `/mcp` com busca de componentes, tokens e ícones usando o servidor Vibe MCP, incluindo navegação dedicada na sidebar.
+- Criamos o client tipado `src/lib/mcp/client.ts` e os handlers `GET /api/mcp/*` para intermediar chamadas ao MCP com validação `zod`.
 
 ### Documentation
-- Reforçamos em `docs/inbox.md` que o modal precisa da prop `title` quando usa um header customizado dentro do conteúdo para satisfazer a validação do `@vibe/core`.
+- Publicamos `docs/mcp_runtime.md` com instruções operacionais do MCP, atualizamos o plano (`docs/mcp_integration_plan.md`) e documentamos o fluxo no `README.md`.
 
 # 2025-11-30
 
-### Fixed
-- Substituímos o `IconButton` mudo do sino na topbar pelo próprio `NotificationsBell`, garantindo que o clique abra o popover de notificações e eliminando o ícone duplicado que confundia os usuários.
-- Corrigimos o `GET /api/inbox` limitando o `SELECT` às colunas disponíveis em produção, evitando respostas 500 quando a view `v_user_updates` ainda não expõe metadados opcionais.
-- Migramos o modal do feed para o componente `Modal` do `@vibe/core` com `zIndex` elevado, garantindo que a sobreposição cubra a sidebar e respeite o layout do anexo de referência.
-
 ### Documentation
-- Atualizamos `docs/notifications.md` para deixar explícito que a topbar renderiza diretamente o `NotificationsBell`, evitando ícones sem ação quando o feature flag está ativo ou desabilitado.
-- Atualizamos `docs/inbox.md` com a migração para `Modal` e o novo `SELECT` enxuto do endpoint.
+- Adicionamos `docs/mcp_integration_plan.md` com avaliação detalhada do Vibe MCP e plano de integração por fases, além de link na `README.md` para divulgar o roteiro de adoção.
 
 # 2025-11-29
 
