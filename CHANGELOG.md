@@ -1,10 +1,10 @@
 # 2025-12-02
 
 ### Fixed
-- Unificamos o estilo dos modais de Inbox, detalhes de contato e Minha conta adicionando a classe global `content_modal`, impedindo que dimensões customizadas quebrem o layout compartilhado.
+- Unificamos o estilo dos modais de Inbox, detalhes de contato e Minha conta aplicando overrides globais em `.ReactModal__Overlay` e `.ReactModal__Content`, removendo classes particulares que quebravam a consistência visual.
 
 ### Documentation
-- Atualizamos `docs/inbox.md` e `docs/crm_readme.md` para registrar que os modais reaproveitam a classe global `content_modal` e mantêm consistência visual.
+- Atualizamos `docs/inbox.md` e `docs/crm_readme.md` para registrar que os modais reaproveitam os estilos globais de `.ReactModal__Overlay` e `.ReactModal__Content` para manter consistência visual.
 
 # 2025-12-01
 

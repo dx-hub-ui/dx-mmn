@@ -281,8 +281,8 @@ export default function AccountModal({ open, profile, onClose, onProfileUpdated 
   return (
     <Modal id="account-modal" show={open} onClose={onClose} width="720px" contentSpacing>
       <ModalHeader title="Minha conta" />
-      <ModalContent className="content_modal">
-          <div className={styles.root}>
+      <ModalContent>
+        <div className={styles.root}>
             <TabsContext activeTabId={activeTab}>
               <TabList>
                 <Tab value={0} active={activeTab === 0} onClick={() => setActiveTab(0)}>

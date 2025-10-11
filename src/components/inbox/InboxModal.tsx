@@ -93,59 +93,61 @@ export default function InboxModal({ open, orgId, initialTab, onClose }: InboxMo
 
   return (
     <Modal id="inbox-modal" show={open} onClose={onClose} zIndex={5200} title="Feed de atualizações">
-      <ModalContent className={`${styles.modal} content_modal`}>
-        <header className={styles.header}>
-          <div className={styles.titleGroup}>
-            <span className={styles.iconWrapper} aria-hidden>
-              <InboxIcon />
-            </span>
-            <div>
-              <Text type={Text.types.TEXT1} weight={Text.weights.BOLD}>
-                Feed de atualizações
-              </Text>
-              <Text type={Text.types.TEXT3} color={Text.colors.SECONDARY}>
-                Acompanhe tudo que está acontecendo em tempo real.
-              </Text>
+      <ModalContent>
+        <div className={styles.modal}>
+          <header className={styles.header}>
+            <div className={styles.titleGroup}>
+              <span className={styles.iconWrapper} aria-hidden>
+                <InboxIcon />
+              </span>
+              <div>
+                <Text type={Text.types.TEXT1} weight={Text.weights.BOLD}>
+                  Feed de atualizações
+                </Text>
+                <Text type={Text.types.TEXT3} color={Text.colors.SECONDARY}>
+                  Acompanhe tudo que está acontecendo em tempo real.
+                </Text>
+              </div>
+            </div>
+            <div className={styles.actions}>
+              <IconButton icon={Help} ariaLabel="Ajuda" tooltipContent="Ajuda" kind={IconButton.kinds.TERTIARY} />
+              <IconButton
+                icon={Close}
+                ariaLabel="Fechar feed"
+                tooltipContent="Fechar"
+                kind={IconButton.kinds.TERTIARY}
+                onClick={onClose}
+              />
+            </div>
+          </header>
+          <InboxTabs value={state.tab} onChange={handleTabChange} />
+          <InboxShowBar value={state.show} onChange={handleShowChange} onMarkAll={handleMarkAll} disabled={isLoading} />
+          <div className={styles.body}>
+            <InboxFilters value={state.board} counts={counts} onChange={handleBoardChange} />
+            <div className={styles.panelWrapper}>
+              <InboxPanel
+                items={items}
+                isLoading={isLoading}
+                isValidating={isValidating}
+                error={error ?? null}
+                hasMore={hasMore}
+                loadMore={loadMore}
+                onRetry={refresh}
+                onOpenItem={handleOpenItem}
+                onMarkSelection={handleMarkSelection}
+                saveScroll={saveScroll}
+                initialScrollTop={initialScrollTop}
+              />
             </div>
           </div>
-          <div className={styles.actions}>
-            <IconButton icon={Help} ariaLabel="Ajuda" tooltipContent="Ajuda" kind={IconButton.kinds.TERTIARY} />
-            <IconButton
-              icon={Close}
-              ariaLabel="Fechar feed"
-              tooltipContent="Fechar"
-              kind={IconButton.kinds.TERTIARY}
-              onClick={onClose}
-            />
-          </div>
-        </header>
-        <InboxTabs value={state.tab} onChange={handleTabChange} />
-        <InboxShowBar value={state.show} onChange={handleShowChange} onMarkAll={handleMarkAll} disabled={isLoading} />
-        <div className={styles.body}>
-          <InboxFilters value={state.board} counts={counts} onChange={handleBoardChange} />
-          <div className={styles.panelWrapper}>
-            <InboxPanel
-              items={items}
-              isLoading={isLoading}
-              isValidating={isValidating}
-              error={error ?? null}
-              hasMore={hasMore}
-              loadMore={loadMore}
-              onRetry={refresh}
-              onOpenItem={handleOpenItem}
-              onMarkSelection={handleMarkSelection}
-              saveScroll={saveScroll}
-              initialScrollTop={initialScrollTop}
-            />
-          </div>
+          <footer className={styles.footer}>
+            <Text type={Text.types.TEXT3} color={Text.colors.SECONDARY}>
+              {unreadCount > 0
+                ? `${unreadCount} atualização${unreadCount > 1 ? "s" : ""} não lida${unreadCount > 1 ? "s" : ""}`
+                : "Tudo lido por aqui"}
+            </Text>
+          </footer>
         </div>
-        <footer className={styles.footer}>
-          <Text type={Text.types.TEXT3} color={Text.colors.SECONDARY}>
-            {unreadCount > 0
-              ? `${unreadCount} atualização${unreadCount > 1 ? "s" : ""} não lida${unreadCount > 1 ? "s" : ""}`
-              : "Tudo lido por aqui"}
-          </Text>
-        </footer>
       </ModalContent>
     </Modal>
   );
