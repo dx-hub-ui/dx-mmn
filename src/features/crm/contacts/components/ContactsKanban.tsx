@@ -283,6 +283,9 @@ export default function ContactsKanban({
   creatingStageId,
 }: ContactsKanbanProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeOverlaySize, setActiveOverlaySize] = useState<
+    { width: number; height: number } | null
+  >(null);
   const [optimisticStages, setOptimisticStages] = useState<Record<string, ContactStageId>>({});
   const previousStageMapRef = useRef<Record<string, ContactStageId>>({});
   const sensors = useSensors(
@@ -374,12 +377,20 @@ export default function ContactsKanban({
       return;
     }
     setActiveId(String(event.active.id));
+
+    const rect = event.active.rect?.current?.initial;
+    if (rect) {
+      setActiveOverlaySize({ width: rect.width, height: rect.height });
+    } else {
+      setActiveOverlaySize(null);
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!active || !over) {
       setActiveId(null);
+      setActiveOverlaySize(null);
       return;
     }
     const contactId = String(active.id);
@@ -387,6 +398,7 @@ export default function ContactsKanban({
     const contact = contacts.find((item) => item.id === contactId);
     if (!contact || contact.stage === targetStage) {
       setActiveId(null);
+      setActiveOverlaySize(null);
       return;
     }
     setOptimisticStage(contactId, targetStage);
@@ -397,10 +409,12 @@ export default function ContactsKanban({
       });
     }
     setActiveId(null);
+    setActiveOverlaySize(null);
   };
 
   const handleDragCancel = () => {
     setActiveId(null);
+    setActiveOverlaySize(null);
   };
 
   const activeContact = useMemo(() => {
@@ -440,7 +454,16 @@ export default function ContactsKanban({
       </div>
       <DragOverlay dropAnimation={null}>
         {activeContact ? (
-          <KanbanCardView contact={activeContact} onOpenContact={onOpenContact} isOverlay />
+          <KanbanCardView
+            contact={activeContact}
+            onOpenContact={onOpenContact}
+            isOverlay
+            style={
+              activeOverlaySize
+                ? { width: activeOverlaySize.width, height: activeOverlaySize.height }
+                : undefined
+            }
+          />
         ) : null}
       </DragOverlay>
     </DndContext>

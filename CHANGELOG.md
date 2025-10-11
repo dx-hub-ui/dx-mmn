@@ -1,3 +1,11 @@
+# 2025-12-03
+
+### Fixed
+- Alinhamos o preview de arraste do Kanban de contatos ao cursor armazenando as dimensões do cartão original e reutilizando-as no `DragOverlay`, mantendo o ponteiro dentro do cartão durante o movimento.
+
+### Documentation
+- Atualizamos `docs/crm_readme.md` para registrar que o `DragOverlay` replica as dimensões do cartão a fim de evitar deslocamentos perceptíveis do cursor.
+
 # 2025-12-02
 
 ### Fixed
