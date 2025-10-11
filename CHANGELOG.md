@@ -1,3 +1,12 @@
+# 2025-11-30
+
+### Fixed
+- Corrigimos o `GET /api/inbox` limitando o `SELECT` às colunas disponíveis em produção, evitando respostas 500 quando a view `v_user_updates` ainda não expõe metadados opcionais.
+- Migramos o modal do feed para o componente `Modal` do `@vibe/core` com `zIndex` elevado, garantindo que a sobreposição cubra a sidebar e respeite o layout do anexo de referência.
+
+### Documentation
+- Atualizamos `docs/inbox.md` com a migração para `Modal` e o novo `SELECT` enxuto do endpoint.
+
 # 2025-11-29
 
 ### Changed
