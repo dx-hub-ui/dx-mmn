@@ -754,66 +754,20 @@ export default function SequenceEditorPage({ orgId, membershipId, membershipRole
       return;
     }
 
-    const insertIndex = localSteps.length;
     const defaultTitle = type === "call_task" ? "Nova ligação" : "Nova etapa";
 
-    startTransition(async () => {
-      try {
-        const newStepId = await upsertSequenceStepAction({
-          sequenceId: data.sequence.id,
-          versionId: currentVersion.id,
-          title: defaultTitle,
-          shortDescription: "",
-          type,
-          assigneeMode: "owner",
-          assigneeMembershipId: null,
-          dueOffsetDays: 0,
-          dueOffsetHours: 0,
-          priority: null,
-          tags: [],
-          channelHint: null,
-          pauseUntilDone: false,
-          isActive: true,
-          insertAtIndex: insertIndex,
-        });
-
-        if (!newStepId) {
-          router.refresh();
-          return;
-        }
-
-        setLocalSteps((prev) => [
-          ...prev,
-          {
-            id: newStepId,
-            versionId: currentVersion.id,
-            orgId: data.sequence.orgId,
-            order: prev.length + 1,
-            title: defaultTitle,
-            shortDescription: "",
-            body: null,
-            type,
-            assigneeMode: "owner",
-            assigneeMembershipId: null,
-            dueOffsetDays: 0,
-            dueOffsetHours: 0,
-            priority: null,
-            tags: [],
-            checklist: null,
-            dependencies: [],
-            channelHint: null,
-            isActive: true,
-            pauseUntilDone: false,
-            createdAt: new Date().toISOString(),
-          },
-        ]);
-        setSelectedStepId(newStepId);
-        setEditingStepId(newStepId);
-        setTitleDrafts((prev) => ({ ...prev, [newStepId]: defaultTitle }));
-        router.refresh();
-      } catch (error) {
-        console.error("[sequences] falha ao criar etapa", error);
-      }
+    setEditingStepId(null);
+    openStepModal({
+      mode: "create",
+      presetType: type,
+      position: { kind: "end" },
+      initialValues: {
+        title: defaultTitle,
+        shortDescription: "",
+        dueOffsetDays: 0,
+        dueOffsetHours: 0,
+        pauseUntilDone: false,
+      },
     });
   };
 
