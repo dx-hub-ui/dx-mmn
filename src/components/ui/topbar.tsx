@@ -27,21 +27,20 @@ export default function Topbar({ isSidebarOpen, className, activeOrg }: TopbarPr
         </div>
         <div className={styles.middle} />
         <nav className={styles.nav} aria-label="Topbar actions">
-          {/* Added Notifications icon */}
-          <IconButton
-            icon={Notifications}
-            ariaLabel="Abrir notificações"
-            tooltipContent="Notificações"
-            size={IconButton.sizes.MEDIUM}
-            kind={IconButton.kinds.TERTIARY}
-          />
-
           {notificationsEnabled && activeOrg ? (
-            <>
-              <NotificationsBell orgId={activeOrg.id} orgName={activeOrg.name} />
-              <InboxIconButton orgId={activeOrg.id} />
-            </>
-          ) : activeOrg ? (
+            <NotificationsBell orgId={activeOrg.id} orgName={activeOrg.name} />
+          ) : (
+            <IconButton
+              icon={Notifications}
+              ariaLabel="Notificações"
+              tooltipContent="Notificações"
+              size={IconButton.sizes.MEDIUM}
+              kind={IconButton.kinds.TERTIARY}
+              disabled
+            />
+          )}
+
+          {activeOrg ? (
             <InboxIconButton orgId={activeOrg.id} />
           ) : (
             <IconButton
