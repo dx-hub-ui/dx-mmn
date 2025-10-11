@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { Dialog, DialogContentContainer, IconButton, Text } from "@vibe/core";
+import { IconButton, Modal, ModalContent, Text } from "@vibe/core";
 import { Close, Help, Inbox as InboxIcon } from "@vibe/icons";
-import type { ComponentProps, ComponentType } from "react";
 import { captureException } from "@sentry/nextjs";
 import { trackEvent } from "@/lib/telemetry";
 import { getRequestContext } from "@/lib/request-context";
@@ -15,8 +14,6 @@ import InboxShowBar from "./InboxShowBar";
 import InboxPanel from "./InboxPanel";
 import { useInboxPreferences } from "./useInboxPreferences";
 import styles from "./inbox-modal.module.css";
-
-const ModalDialog = Dialog as unknown as ComponentType<ComponentProps<typeof Dialog> & { type?: string }>;
 
 type InboxModalProps = {
   open: boolean;
@@ -95,68 +92,61 @@ export default function InboxModal({ open, orgId, initialTab, onClose }: InboxMo
   };
 
   return (
-    <ModalDialog
-      open={open}
-      useDerivedStateFromProps
-      type="modal"
-      onDialogDidHide={onClose}
-      onClickOutside={onClose}
-      content={
-        <DialogContentContainer className={styles.modal}>
-          <header className={styles.header}>
-            <div className={styles.titleGroup}>
-              <span className={styles.iconWrapper} aria-hidden>
-                <InboxIcon />
-              </span>
-              <div>
-                <Text type={Text.types.TEXT1} weight={Text.weights.BOLD}>
-                  Feed de atualizações
-                </Text>
-                <Text type={Text.types.TEXT3} color={Text.colors.SECONDARY}>
-                  Acompanhe tudo que está acontecendo em tempo real.
-                </Text>
-              </div>
-            </div>
-            <div className={styles.actions}>
-              <IconButton icon={Help} ariaLabel="Ajuda" tooltipContent="Ajuda" kind={IconButton.kinds.TERTIARY} />
-              <IconButton
-                icon={Close}
-                ariaLabel="Fechar feed"
-                tooltipContent="Fechar"
-                kind={IconButton.kinds.TERTIARY}
-                onClick={onClose}
-              />
-            </div>
-          </header>
-          <InboxTabs value={state.tab} onChange={handleTabChange} />
-          <InboxShowBar value={state.show} onChange={handleShowChange} onMarkAll={handleMarkAll} disabled={isLoading} />
-          <div className={styles.body}>
-            <InboxFilters value={state.board} counts={counts} onChange={handleBoardChange} />
-            <div className={styles.panelWrapper}>
-              <InboxPanel
-                items={items}
-                isLoading={isLoading}
-                isValidating={isValidating}
-                error={error ?? null}
-                hasMore={hasMore}
-                loadMore={loadMore}
-                onRetry={refresh}
-                onOpenItem={handleOpenItem}
-                onMarkSelection={handleMarkSelection}
-                saveScroll={saveScroll}
-                initialScrollTop={initialScrollTop}
-              />
+    <Modal id="inbox-modal" show={open} onClose={onClose} zIndex={5200}>
+      <ModalContent className={styles.modal}>
+        <header className={styles.header}>
+          <div className={styles.titleGroup}>
+            <span className={styles.iconWrapper} aria-hidden>
+              <InboxIcon />
+            </span>
+            <div>
+              <Text type={Text.types.TEXT1} weight={Text.weights.BOLD}>
+                Feed de atualizações
+              </Text>
+              <Text type={Text.types.TEXT3} color={Text.colors.SECONDARY}>
+                Acompanhe tudo que está acontecendo em tempo real.
+              </Text>
             </div>
           </div>
-          <footer className={styles.footer}>
-            <Text type={Text.types.TEXT3} color={Text.colors.SECONDARY}>
-              {unreadCount > 0
-                ? `${unreadCount} atualização${unreadCount > 1 ? "s" : ""} não lida${unreadCount > 1 ? "s" : ""}`
-                : "Tudo lido por aqui"}
-            </Text>
-          </footer>
-        </DialogContentContainer>
-      }
-    />
+          <div className={styles.actions}>
+            <IconButton icon={Help} ariaLabel="Ajuda" tooltipContent="Ajuda" kind={IconButton.kinds.TERTIARY} />
+            <IconButton
+              icon={Close}
+              ariaLabel="Fechar feed"
+              tooltipContent="Fechar"
+              kind={IconButton.kinds.TERTIARY}
+              onClick={onClose}
+            />
+          </div>
+        </header>
+        <InboxTabs value={state.tab} onChange={handleTabChange} />
+        <InboxShowBar value={state.show} onChange={handleShowChange} onMarkAll={handleMarkAll} disabled={isLoading} />
+        <div className={styles.body}>
+          <InboxFilters value={state.board} counts={counts} onChange={handleBoardChange} />
+          <div className={styles.panelWrapper}>
+            <InboxPanel
+              items={items}
+              isLoading={isLoading}
+              isValidating={isValidating}
+              error={error ?? null}
+              hasMore={hasMore}
+              loadMore={loadMore}
+              onRetry={refresh}
+              onOpenItem={handleOpenItem}
+              onMarkSelection={handleMarkSelection}
+              saveScroll={saveScroll}
+              initialScrollTop={initialScrollTop}
+            />
+          </div>
+        </div>
+        <footer className={styles.footer}>
+          <Text type={Text.types.TEXT3} color={Text.colors.SECONDARY}>
+            {unreadCount > 0
+              ? `${unreadCount} atualização${unreadCount > 1 ? "s" : ""} não lida${unreadCount > 1 ? "s" : ""}`
+              : "Tudo lido por aqui"}
+          </Text>
+        </footer>
+      </ModalContent>
+    </Modal>
   );
 }

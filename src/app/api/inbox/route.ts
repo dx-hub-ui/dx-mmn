@@ -11,7 +11,7 @@ import { mapInboxRow, type InboxViewRow } from "@/lib/inbox/mapper";
 import type { InboxResponse } from "@/types/inbox";
 
 const SELECT_FIELDS =
-  "id, org_id, user_id, type, source_type, source_id, actor_id, title, snippet, link, status, created_at, read_at, board_id, board_label, actor_email, actor_meta, actor_display_name, actor_avatar_url";
+  "id, org_id, user_id, type, source_type, source_id, actor_id, title, snippet, link, status, created_at, read_at, board_id, board_label, actor_email, actor_display_name, actor_avatar_url";
 
 function selectWithBookmarks(select: string, tab: string) {
   return tab === "bookmarked" ? `${select},notification_bookmarks!inner()` : select;
@@ -23,7 +23,12 @@ function isInboxRow(row: unknown): row is InboxViewRow {
   }
 
   const candidate = row as Partial<InboxViewRow>;
-  return typeof candidate.id === "string" && typeof candidate.org_id === "string" && typeof candidate.user_id === "string";
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.org_id === "string" &&
+    typeof candidate.user_id === "string" &&
+    typeof candidate.created_at === "string"
+  );
 }
 
 type FilterableQuery = {
