@@ -326,3 +326,23 @@ html, body {
   white-space: nowrap;
   border: 0;
 }
+
+.content_modal {
+  position: absolute;
+  inset: 32px auto 0px;
+  border: 1px solid rgb(204, 204, 204);
+  background: var(--application-background-color);
+  overflow: hidden auto;
+  border-radius: 16px 16px 0px 0px;
+  outline: none;
+  padding: 0px;
+  height: auto;
+  width: 96%;
+  max-height: 1800px;
+  max-width: 2000px;
+  transform: none;
+  transition: none;
+  will-change: auto;
+  box-shadow: rgb(0, 0, 0) 0px 6px 20px 0px;
+  color: var(--primary-text-color);
+}
