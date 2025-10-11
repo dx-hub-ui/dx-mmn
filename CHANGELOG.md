@@ -1,10 +1,12 @@
 # 2025-11-30
 
 ### Fixed
+- Substituímos o `IconButton` mudo do sino na topbar pelo próprio `NotificationsBell`, garantindo que o clique abra o popover de notificações e eliminando o ícone duplicado que confundia os usuários.
 - Corrigimos o `GET /api/inbox` limitando o `SELECT` às colunas disponíveis em produção, evitando respostas 500 quando a view `v_user_updates` ainda não expõe metadados opcionais.
 - Migramos o modal do feed para o componente `Modal` do `@vibe/core` com `zIndex` elevado, garantindo que a sobreposição cubra a sidebar e respeite o layout do anexo de referência.
 
 ### Documentation
+- Atualizamos `docs/notifications.md` para deixar explícito que a topbar renderiza diretamente o `NotificationsBell`, evitando ícones sem ação quando o feature flag está ativo ou desabilitado.
 - Atualizamos `docs/inbox.md` com a migração para `Modal` e o novo `SELECT` enxuto do endpoint.
 
 # 2025-11-29
