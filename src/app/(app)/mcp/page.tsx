@@ -128,7 +128,10 @@ export default function McpWorkspacePage() {
     isLoading: componentsLoading,
   } = useSWR<ComponentsResponse>(componentUrl, fetcher, { keepPreviousData: true });
 
-  const components = componentsData?.components ?? [];
+  const components = useMemo(
+    () => componentsData?.components ?? [],
+    [componentsData?.components]
+  );
 
   useEffect(() => {
     if (components.length === 0) {

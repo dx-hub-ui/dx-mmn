@@ -1,3 +1,11 @@
+# 2025-12-05
+
+### Fixed
+- Memoizamos a lista retornada pelo catálogo MCP antes de sincronizar a seleção inicial, impedindo reexecuções infinitas do efeito e restaurando o `pnpm run build` sem avisos de hooks.
+
+### Documentation
+- Acrescentamos em `docs/mcp_runtime.md` a nota sobre a memoização da lista de componentes para orientar futuros ajustes no catálogo.
+
 # 2025-12-04
 
 ### Changed
